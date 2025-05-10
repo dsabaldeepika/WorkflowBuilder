@@ -1,34 +1,161 @@
-import { ReactNode } from "react";
-import { LucideProps } from "lucide-react";
+import { Node, Edge } from 'reactflow';
+import { NodeData } from '@/store/useWorkflowStore';
 
-export interface Module {
-  id: string;
-  label: string;
-  description: string;
-  type: 'trigger' | 'action';
-  icon: React.ComponentType<LucideProps>;
-}
-
+// App definitions
 export interface App {
   id: string;
-  label: string;
+  name: string;
   description: string;
-  icon: React.ComponentType<LucideProps>;
-  iconBg: string;
-  iconColor: string;
+  icon: string;
+  category: string;
   modules: Module[];
 }
 
-export interface WorkflowNode {
+export interface Module {
   id: string;
+  name: string;
+  description: string;
+  type: ModuleType;
+  icon: string;
+  actions: Action[];
+}
+
+export type ModuleType = 'trigger' | 'action' | 'helper';
+
+export interface Action {
+  id: string;
+  name: string;
+  description: string;
+  inputFields: InputField[];
+  outputFields: OutputField[];
+}
+
+export interface InputField {
+  id: string;
+  name: string;
+  type: DataType;
+  description: string;
+  required: boolean;
+  default?: any;
+  options?: Option[];
+}
+
+export interface OutputField {
+  id: string;
+  name: string;
+  type: DataType;
+  description: string;
+}
+
+export interface Option {
+  id: string;
+  label: string;
+  value: any;
+}
+
+// Node category definitions
+export type NodeCategory = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent';
+
+// Node type definitions
+export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent';
+
+// Data type definitions
+export type DataType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'any';
+
+// Workflow definitions
+export interface Workflow {
+  id: string;
+  name: string;
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Workflow template definitions
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  image?: string;
+  useCases?: string[];
+  requirements?: string[];
+  documentation?: string;
+}
+
+// Workflow execution definitions
+export interface WorkflowExecution {
+  id: string;
+  workflowId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
+  startTime: string;
+  endTime?: string;
+  logs: ExecutionLog[];
+  result?: any;
+  error?: string;
+}
+
+export interface ExecutionLog {
+  timestamp: string;
+  nodeId: string;
+  message: string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  data?: any;
+}
+
+// Agent definitions
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  tools: AgentTool[];
+  model: string;
+  memory: boolean;
+  maxTokens: number;
+}
+
+export interface AgentTool {
+  id: string;
+  name: string;
+  description: string;
+  parameters: AgentToolParameter[];
+}
+
+export interface AgentToolParameter {
+  id: string;
+  name: string;
+  type: DataType;
+  description: string;
+  required: boolean;
+}
+
+// Connection validation
+export interface ConnectionValidation {
+  isValid: boolean;
+  message?: string;
+  source: string;
+  target: string;
+}
+
+// Performance optimization
+export interface PerformanceReport {
+  bottlenecks: PerformanceIssue[];
+  redundancies: PerformanceIssue[];
+  apiCalls: PerformanceIssue[];
+  executionTime: number;
+  memoryUsage: number;
+  suggestions: string[];
+}
+
+export interface PerformanceIssue {
+  id: string;
+  nodeId: string;
   type: string;
-  position: {
-    x: number;
-    y: number;
-  };
-  data: {
-    appId: string;
-    moduleId: string;
-    config?: Record<string, any>;
-  };
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  suggestion: string;
 }

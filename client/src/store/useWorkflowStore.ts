@@ -1,17 +1,62 @@
-import { create } from "zustand";
-import { Node, Edge } from "reactflow";
-import { persist } from "zustand/middleware";
+import { create } from 'zustand';
+import { Node, Edge, Connection, addEdge } from 'reactflow';
+import { App, NodeCategory, Workflow, WorkflowTemplate, NodeType } from '@/types/workflow';
+import { WorkflowState } from '@/components/workflow/StateChangeAnimation';
+
+export type NodeData = {
+  label: string;
+  type?: string;
+  nodeType?: string;
+  category?: NodeCategory;
+  app?: App;
+  inputs?: Record<string, any>;
+  outputs?: Record<string, any>;
+  icon?: string;
+  description?: string;
+  configuration?: Record<string, any>;
+  state?: WorkflowState;
+  optimized?: boolean;
+  ports?: Array<{
+    id: string;
+    type: 'input' | 'output';
+    dataType: string;
+    required?: boolean;
+    allowedConnections?: string[];
+  }>;
+};
 
 interface WorkflowState {
-  nodes: Node[];
+  nodes: Node<NodeData>[];
   edges: Edge[];
+  selectedNodeId: string | null;
+  selectedEdgeId: string | null;
   isModalOpen: boolean;
   isAIAssistantOpen: boolean;
   isTemplateGalleryOpen: boolean;
   isAgentBuilderOpen: boolean;
-  addNode: (node: Node) => void;
+  nodeStates: Record<string, WorkflowState>;
+  connectionValidations: Record<string, {
+    isValid: boolean;
+    message?: string;
+  }>;
+  
+  // Actions
+  addNode: (node: Node<NodeData>) => void;
+  updateNode: (id: string, data: Partial<NodeData>) => void;
+  removeNode: (id: string) => void;
+  onNodesChange: (changes: any) => void;
+  onEdgesChange: (changes: any) => void;
+  onConnect: (connection: Connection) => void;
+  setNodes: (nodes: Node<NodeData>[]) => void;
   setEdges: (edges: Edge[]) => void;
-  removeNode: (nodeId: string) => void;
+  clearWorkflow: () => void;
+  saveWorkflow: () => void;
+  loadWorkflow: (workflow: Workflow) => void;
+  exportWorkflow: () => Workflow;
+  setSelectedNode: (id: string | null) => void;
+  setSelectedEdge: (id: string | null) => void;
+  
+  // Modal controls
   openNodePicker: () => void;
   closeNodePicker: () => void;
   openAIAssistant: () => void;
@@ -20,351 +65,376 @@ interface WorkflowState {
   closeTemplateGallery: () => void;
   openAgentBuilder: () => void;
   closeAgentBuilder: () => void;
+  
+  // AI & template features
   generateWorkflowFromDescription: (description: string) => void;
-  applyWorkflowTemplate: (templateId: string) => void;
+  applyWorkflowTemplate: (template: WorkflowTemplate) => void;
   createAgent: (agentConfig: any) => void;
-  saveWorkflow: () => void;
-  loadWorkflow: () => void;
-  clearWorkflow: () => void;
+  
+  // Node state management
+  setNodeState: (nodeId: string, state: WorkflowState) => void;
+  
+  // Connection validation
+  validateConnection: (connection: Connection) => boolean;
+  setConnectionValidation: (edgeId: string, isValid: boolean, message?: string) => void;
 }
 
-export const useWorkflowStore = create<WorkflowState>()(
-  persist(
-    (set, get) => ({
+export const useWorkflowStore = create<WorkflowState>((set, get) => ({
+  nodes: [],
+  edges: [],
+  selectedNodeId: null,
+  selectedEdgeId: null,
+  isModalOpen: false,
+  isAIAssistantOpen: false,
+  isTemplateGalleryOpen: false,
+  isAgentBuilderOpen: false,
+  nodeStates: {},
+  connectionValidations: {},
+  
+  addNode: (node) => {
+    set((state) => ({
+      nodes: [...state.nodes, node],
+    }));
+  },
+  
+  updateNode: (id, data) => {
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === id
+          ? { ...node, data: { ...node.data, ...data } }
+          : node
+      ),
+    }));
+  },
+  
+  removeNode: (id) => {
+    set((state) => ({
+      nodes: state.nodes.filter((node) => node.id !== id),
+      edges: state.edges.filter(
+        (edge) => edge.source !== id && edge.target !== id
+      ),
+    }));
+  },
+  
+  onNodesChange: (changes) => {
+    set((state) => {
+      const { nodes } = state;
+      // Apply all the node changes
+      const updatedNodes = changes.reduce((acc: Node[], change: any) => {
+        switch (change.type) {
+          case 'add':
+            return [...acc, change.item];
+          case 'remove':
+            return acc.filter((node) => node.id !== change.id);
+          case 'position':
+            return acc.map((node) =>
+              node.id === change.id
+                ? { ...node, position: change.position }
+                : node
+            );
+          default:
+            return acc;
+        }
+      }, nodes);
+      
+      return { nodes: updatedNodes };
+    });
+  },
+  
+  onEdgesChange: (changes) => {
+    set((state) => {
+      const { edges } = state;
+      // Apply all the edge changes
+      const updatedEdges = changes.reduce((acc: Edge[], change: any) => {
+        switch (change.type) {
+          case 'add':
+            return [...acc, change.item];
+          case 'remove':
+            return acc.filter((edge) => edge.id !== change.id);
+          default:
+            return acc;
+        }
+      }, edges);
+      
+      return { edges: updatedEdges };
+    });
+  },
+  
+  onConnect: (connection) => {
+    // Check if connection is valid before adding
+    const isValid = get().validateConnection(connection);
+    if (!isValid) return;
+    
+    set((state) => {
+      const newEdge = {
+        ...connection,
+        id: `e${connection.source}-${connection.target}`,
+      };
+      
+      return {
+        edges: addEdge(newEdge, state.edges),
+        connectionValidations: {
+          ...state.connectionValidations,
+          [newEdge.id]: { isValid: true }
+        }
+      };
+    });
+  },
+  
+  setNodes: (nodes) => {
+    set({ nodes });
+  },
+  
+  setEdges: (edges) => {
+    set({ edges });
+  },
+  
+  clearWorkflow: () => {
+    set({
       nodes: [],
       edges: [],
-      isModalOpen: false,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      nodeStates: {},
+      connectionValidations: {}
+    });
+  },
+  
+  saveWorkflow: () => {
+    // This would typically save to a backend
+    console.log('Saving workflow', {
+      nodes: get().nodes,
+      edges: get().edges,
+    });
+    // Simulate successful save
+    alert('Workflow saved successfully!');
+  },
+  
+  loadWorkflow: (workflow) => {
+    set({
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+    });
+  },
+  
+  exportWorkflow: () => {
+    return {
+      id: 'exported-workflow',
+      name: 'Exported Workflow',
+      nodes: get().nodes,
+      edges: get().edges,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  },
+  
+  setSelectedNode: (id) => {
+    set({ selectedNodeId: id });
+  },
+  
+  setSelectedEdge: (id) => {
+    set({ selectedEdgeId: id });
+  },
+  
+  openNodePicker: () => {
+    set({ isModalOpen: true });
+  },
+  
+  closeNodePicker: () => {
+    set({ isModalOpen: false });
+  },
+  
+  openAIAssistant: () => {
+    set({ isAIAssistantOpen: true });
+  },
+  
+  closeAIAssistant: () => {
+    set({ isAIAssistantOpen: false });
+  },
+  
+  openTemplateGallery: () => {
+    set({ isTemplateGalleryOpen: true });
+  },
+  
+  closeTemplateGallery: () => {
+    set({ isTemplateGalleryOpen: false });
+  },
+  
+  openAgentBuilder: () => {
+    set({ isAgentBuilderOpen: true });
+  },
+  
+  closeAgentBuilder: () => {
+    set({ isAgentBuilderOpen: false });
+  },
+  
+  generateWorkflowFromDescription: (description) => {
+    // Simulate AI generating a workflow
+    console.log('Generating workflow from:', description);
+    
+    // Sample workflow generation based on description
+    const sampleNodes: Node[] = [
+      {
+        id: 'trigger-1',
+        type: 'trigger',
+        position: { x: 250, y: 100 },
+        data: {
+          label: 'Schedule Trigger',
+          type: 'trigger',
+          nodeType: 'trigger',
+          description: 'Starts the workflow on a schedule',
+          icon: 'clock',
+        },
+      },
+      {
+        id: 'action-1',
+        type: 'action',
+        position: { x: 250, y: 250 },
+        data: {
+          label: 'Process Data',
+          type: 'action',
+          nodeType: 'action',
+          description: 'Processes incoming data',
+          icon: 'activity',
+        },
+      },
+      {
+        id: 'action-2',
+        type: 'action',
+        position: { x: 250, y: 400 },
+        data: {
+          label: 'Send Output',
+          type: 'action',
+          nodeType: 'action',
+          description: 'Sends the result',
+          icon: 'send',
+        },
+      },
+    ];
+    
+    const sampleEdges: Edge[] = [
+      {
+        id: 'e1-2',
+        source: 'trigger-1',
+        target: 'action-1',
+      },
+      {
+        id: 'e2-3',
+        source: 'action-1',
+        target: 'action-2',
+      },
+    ];
+    
+    set({
+      nodes: sampleNodes,
+      edges: sampleEdges,
       isAIAssistantOpen: false,
+    });
+  },
+  
+  applyWorkflowTemplate: (template) => {
+    // Apply a template to the current workflow
+    set({
+      nodes: template.nodes,
+      edges: template.edges,
       isTemplateGalleryOpen: false,
+    });
+  },
+  
+  createAgent: (agentConfig) => {
+    // Create a new agent from configuration
+    console.log('Creating agent with config:', agentConfig);
+    
+    // Sample agent node creation
+    const agentNode: Node = {
+      id: `agent-${Date.now()}`,
+      type: 'agent',
+      position: { x: 250, y: 250 },
+      data: {
+        label: agentConfig.name || 'New Agent',
+        type: 'agent',
+        nodeType: 'agent',
+        description: agentConfig.description || 'Custom agent',
+        configuration: agentConfig,
+        icon: 'bot',
+      },
+    };
+    
+    set((state) => ({
+      nodes: [...state.nodes, agentNode],
       isAgentBuilderOpen: false,
-      
-      addNode: (node) => 
-        set((state) => ({ 
-          nodes: [...state.nodes, node]
-        })),
-      
-      setEdges: (edges) => 
-        set({ edges }),
-      
-      removeNode: (nodeId) => 
-        set((state) => ({
-          nodes: state.nodes.filter((node) => node.id !== nodeId),
-          edges: state.edges.filter(
-            (edge) => edge.source !== nodeId && edge.target !== nodeId
-          ),
-        })),
-      
-      openNodePicker: () => 
-        set({ isModalOpen: true }),
-      
-      closeNodePicker: () => 
-        set({ isModalOpen: false }),
-      
-      openAIAssistant: () => 
-        set({ isAIAssistantOpen: true }),
-      
-      closeAIAssistant: () => 
-        set({ isAIAssistantOpen: false }),
-        
-      openTemplateGallery: () => 
-        set({ isTemplateGalleryOpen: true }),
-      
-      closeTemplateGallery: () => 
-        set({ isTemplateGalleryOpen: false }),
-        
-      openAgentBuilder: () => 
-        set({ isAgentBuilderOpen: true }),
-      
-      closeAgentBuilder: () => 
-        set({ isAgentBuilderOpen: false }),
-      
-      generateWorkflowFromDescription: (description: string) => {
-        // This would typically call an AI service to generate a workflow
-        console.log('Generating workflow from description:', description);
-        
-        // For now, we'll create a simple demo workflow with 2 nodes
-        const demoNode1 = {
-          id: `node-${Date.now()}-1`,
-          type: 'workflowNode',
-          position: { x: 250, y: 100 },
-          data: {
-            app: {
-              id: 'google-sheets',
-              label: 'Google Sheets',
-              description: 'Manage spreadsheet data',
-              icon: () => null,
-              iconBg: 'green',
-              iconColor: 'green',
-              modules: []
-            },
-            module: {
-              id: 'watch-sheet',
-              label: 'Watch Spreadsheet',
-              description: 'Triggers when spreadsheet is updated',
-              type: 'trigger',
-              icon: () => null
-            },
-            config: {
-              scheduleFrequency: 'hourly'
-            }
-          }
-        };
-        
-        const demoNode2 = {
-          id: `node-${Date.now()}-2`,
-          type: 'workflowNode',
-          position: { x: 250, y: 250 },
-          data: {
-            app: {
-              id: 'slack',
-              label: 'Slack',
-              description: 'Team communication tool',
-              icon: () => null,
-              iconBg: 'purple',
-              iconColor: 'purple',
-              modules: []
-            },
-            module: {
-              id: 'send-message',
-              label: 'Send Message',
-              description: 'Sends a message to a Slack channel',
-              type: 'action',
-              icon: () => null
-            },
-            config: {}
-          }
-        };
-        
-        // Add an edge connecting the nodes
-        const demoEdge = {
-          id: `${demoNode1.id}-${demoNode2.id}`,
-          source: demoNode1.id,
-          target: demoNode2.id,
-          animated: true,
-          style: { stroke: '#2563eb', strokeWidth: 2 },
-          type: 'smoothstep'
-        };
-        
-        set((state) => ({
-          nodes: [...state.nodes, demoNode1, demoNode2],
-          edges: [...state.edges, demoEdge]
-        }));
+    }));
+  },
+  
+  setNodeState: (nodeId, state) => {
+    set((prev) => ({
+      nodeStates: {
+        ...prev.nodeStates,
+        [nodeId]: state
       },
-      
-      applyWorkflowTemplate: (templateId: string) => {
-        console.log('Applying template with ID:', templateId);
-        
-        // This would fetch and apply a specific template based on templateId
-        // For now, we'll create a simple template workflow
-        
-        let templateNodes: Node[] = [];
-        let templateEdges: Edge[] = [];
-        
-        // Create different template flows based on templateId
-        if (templateId === 'new-lead-notification') {
-          // New Lead Notification template
-          const triggerNode = {
-            id: `node-${Date.now()}-1`,
-            type: 'workflowNode',
-            position: { x: 250, y: 100 },
-            data: {
-              app: {
-                id: 'salesforce',
-                label: 'Salesforce',
-                description: 'CRM system',
-                icon: () => null,
-                iconBg: 'blue',
-                iconColor: 'blue',
-                modules: []
-              },
-              module: {
-                id: 'new-lead',
-                label: 'New Lead',
-                description: 'Triggers when a new lead is created',
-                type: 'trigger',
-                icon: () => null
-              },
-              config: {
-                scheduleFrequency: 'hourly'
-              }
-            }
-          };
-          
-          const actionNode = {
-            id: `node-${Date.now()}-2`,
-            type: 'workflowNode',
-            position: { x: 250, y: 250 },
-            data: {
-              app: {
-                id: 'slack',
-                label: 'Slack',
-                description: 'Team communication tool',
-                icon: () => null,
-                iconBg: 'purple',
-                iconColor: 'purple',
-                modules: []
-              },
-              module: {
-                id: 'send-message',
-                label: 'Send Message',
-                description: 'Sends a message to a Slack channel',
-                type: 'action',
-                icon: () => null
-              },
-              config: {}
-            }
-          };
-          
-          const edge = {
-            id: `${triggerNode.id}-${actionNode.id}`,
-            source: triggerNode.id,
-            target: actionNode.id,
-            animated: true,
-            style: { stroke: '#2563eb', strokeWidth: 2 },
-            type: 'smoothstep'
-          };
-          
-          templateNodes = [triggerNode, actionNode];
-          templateEdges = [edge];
-        } else {
-          // Default template for other IDs
-          const triggerNode = {
-            id: `node-${Date.now()}-1`,
-            type: 'workflowNode',
-            position: { x: 250, y: 100 },
-            data: {
-              app: {
-                id: 'generic',
-                label: 'Generic Trigger',
-                description: 'Generic trigger app',
-                icon: () => null,
-                iconBg: 'gray',
-                iconColor: 'gray',
-                modules: []
-              },
-              module: {
-                id: 'trigger',
-                label: 'Template Trigger',
-                description: 'Template trigger action',
-                type: 'trigger',
-                icon: () => null
-              },
-              config: {
-                scheduleFrequency: 'daily'
-              }
-            }
-          };
-          
-          const actionNode = {
-            id: `node-${Date.now()}-2`,
-            type: 'workflowNode',
-            position: { x: 250, y: 250 },
-            data: {
-              app: {
-                id: 'generic',
-                label: 'Generic Action',
-                description: 'Generic action app',
-                icon: () => null,
-                iconBg: 'gray',
-                iconColor: 'gray',
-                modules: []
-              },
-              module: {
-                id: 'action',
-                label: 'Template Action',
-                description: 'Template action',
-                type: 'action',
-                icon: () => null
-              },
-              config: {}
-            }
-          };
-          
-          const edge = {
-            id: `${triggerNode.id}-${actionNode.id}`,
-            source: triggerNode.id,
-            target: actionNode.id,
-            animated: true,
-            style: { stroke: '#2563eb', strokeWidth: 2 },
-            type: 'smoothstep'
-          };
-          
-          templateNodes = [triggerNode, actionNode];
-          templateEdges = [edge];
-        }
-        
-        // Clear existing workflow and apply the template
-        set({
-          nodes: templateNodes,
-          edges: templateEdges,
-          isTemplateGalleryOpen: false
-        });
-      },
-      
-      createAgent: (agentConfig: any) => {
-        console.log('Creating agent with config:', agentConfig);
-        
-        // In a real app, this would create an AI agent that can be triggered and used in workflows
-        // For now, we'll just create a placeholder node for the agent
-        
-        const agentNode = {
-          id: `agent-${Date.now()}`,
-          type: 'workflowNode',
-          position: { x: 250, y: 100 },
-          data: {
-            app: {
-              id: 'ai-agent',
-              label: agentConfig.name || 'AI Agent',
-              description: agentConfig.description || 'Automated AI Agent',
-              icon: () => null,
-              iconBg: 'purple',
-              iconColor: 'purple',
-              modules: []
-            },
-            module: {
-              id: 'autonomous-agent',
-              label: 'Autonomous Agent',
-              description: 'AI-powered agent that performs tasks autonomously',
-              type: 'trigger',
-              icon: () => null
-            },
-            config: {
-              scheduleFrequency: 'daily',
-              agentConfig: agentConfig
-            }
-          }
-        };
-        
-        set((state) => ({
-          nodes: [...state.nodes, agentNode],
-          isAgentBuilderOpen: false
-        }));
-      },
-      
-      saveWorkflow: () => {
-        const { nodes, edges } = get();
-        localStorage.setItem('workflow', JSON.stringify({ nodes, edges }));
-      },
-      
-      loadWorkflow: () => {
-        try {
-          const savedWorkflow = localStorage.getItem('workflow');
-          if (savedWorkflow) {
-            const { nodes, edges } = JSON.parse(savedWorkflow);
-            set({ nodes, edges });
-          }
-        } catch (error) {
-          console.error("Error loading workflow:", error);
-        }
-      },
-      
-      clearWorkflow: () => {
-        localStorage.removeItem('workflow');
-        set({ nodes: [], edges: [] });
-      },
-    }),
-    {
-      name: 'workflow-storage',
+      nodes: prev.nodes.map((node) => 
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, state } }
+          : node
+      )
+    }));
+  },
+  
+  validateConnection: (connection) => {
+    // Basic validation - could be extended with more rules
+    if (!connection.source || !connection.target) return false;
+    
+    const { nodes } = get();
+    
+    // Find source and target nodes
+    const sourceNode = nodes.find((n) => n.id === connection.source);
+    const targetNode = nodes.find((n) => n.id === connection.target);
+    
+    if (!sourceNode || !targetNode) return false;
+    
+    // Simple rule: Don't allow connections to triggers
+    if (targetNode.type === 'trigger' || targetNode.data?.nodeType === 'trigger') {
+      return false;
     }
-  )
-);
+    
+    // If both nodes have ports defined, check compatibility
+    if (sourceNode.data?.ports && targetNode.data?.ports) {
+      const sourcePort = sourceNode.data.ports.find(
+        (p) => p.id === connection.sourceHandle && p.type === 'output'
+      );
+      
+      const targetPort = targetNode.data.ports.find(
+        (p) => p.id === connection.targetHandle && p.type === 'input'
+      );
+      
+      if (sourcePort && targetPort) {
+        // Check data type compatibility
+        if (sourcePort.dataType !== targetPort.dataType && 
+            sourcePort.dataType !== 'any' && 
+            targetPort.dataType !== 'any') {
+          return false;
+        }
+        
+        // Check if target allows connections from source node type
+        if (targetPort.allowedConnections && 
+            targetPort.allowedConnections.length > 0 &&
+            !targetPort.allowedConnections.includes(sourceNode.type as string)) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  },
+  
+  setConnectionValidation: (edgeId, isValid, message) => {
+    set((state) => ({
+      connectionValidations: {
+        ...state.connectionValidations,
+        [edgeId]: { isValid, message }
+      }
+    }));
+  }
+}));

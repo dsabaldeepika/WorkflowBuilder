@@ -1,177 +1,112 @@
-import { useCallback, useEffect, useState, useRef } from "react";
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  Edge, 
+import React, { useCallback, useState } from 'react';
+import ReactFlow, {
+  Controls,
+  Background,
   MiniMap,
-  MarkerType,
+  NodeTypes,
+  EdgeTypes,
+  Node,
+  Edge,
   Panel,
-  addEdge, 
-  useEdgesState, 
-  useNodesState,
   useReactFlow,
-  ReactFlowProvider
-} from "reactflow";
-import { PlusButton } from "./PlusButton";
-import { WorkflowNode } from "./WorkflowNode";
-import { useWorkflowStore } from "@/store/useWorkflowStore";
-import { Button } from "@/components/ui/button";
-import { Trash2, ZoomIn, ZoomOut, Maximize2, Grid, Eye } from "lucide-react";
+  ConnectionLineType,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import WorkflowNode from './WorkflowNode';
+import { ValidatedEdge } from './ConnectionValidator';
+import { WorkflowControls, downloadJSONFile, uploadJSONFile } from './WorkflowControls';
+import { useWorkflowStore } from '@/store/useWorkflowStore';
+import { WorkflowState } from './StateChangeAnimation';
+import { toast } from '@/hooks/use-toast';
 
-// Define node types
-const nodeTypes = {
-  workflowNode: WorkflowNode
+// Define custom node types
+const nodeTypes: NodeTypes = {
+  default: WorkflowNode,
+  trigger: WorkflowNode,
+  action: WorkflowNode,
+  condition: WorkflowNode,
+  data: WorkflowNode,
+  integration: WorkflowNode,
+  agent: WorkflowNode,
 };
 
-// Default edge options
-const defaultEdgeOptions = {
-  animated: true,
-  style: { stroke: '#2563eb', strokeWidth: 2 },
-  type: 'smoothstep',
-  markerEnd: {
-    type: MarkerType.ArrowClosed,
-    width: 15,
-    height: 15,
-    color: '#2563eb',
-  },
+// Define custom edge types
+const edgeTypes: EdgeTypes = {
+  default: ValidatedEdge,
 };
 
-interface WorkflowCanvasProps {
-  onAddNodeClick: () => void;
-}
-
-function WorkflowCanvasInner({ onAddNodeClick }: WorkflowCanvasProps) {
-  // Get workflow nodes from store
+export function WorkflowCanvas() {
   const { 
-    nodes: storeNodes, 
-    edges: storeEdges, 
-    addNode, 
-    setEdges, 
-    loadWorkflow,
-    clearWorkflow
+    nodes, 
+    edges, 
+    onNodesChange, 
+    onEdgesChange, 
+    onConnect,
+    setNodes,
+    setEdges,
+    setSelectedNode,
+    saveWorkflow,
+    exportWorkflow,
+    setNodeState
   } = useWorkflowStore();
   
-  // React Flow state
-  const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
-  const [edges, setRfEdges, onEdgesChange] = useEdgesState(storeEdges);
-  const [showMiniMap, setShowMiniMap] = useState(true);
-  
-  // Get React Flow instance
   const reactFlowInstance = useReactFlow();
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
-
-  // Load workflow from localStorage on mount
-  useEffect(() => {
-    loadWorkflow();
-  }, [loadWorkflow]);
-
-  // Update nodes in the store when they change
-  useEffect(() => {
-    useWorkflowStore.setState({ nodes });
-  }, [nodes]);
-
-  // Update edges in the store when they change
-  useEffect(() => {
-    setEdges(edges);
-  }, [edges, setEdges]);
-
-  // Handle edge connection
-  const onConnect = useCallback((params: any) => {
-    // Check if there's already a connection from the source node to any other node
-    const sourceNodeId = params.source;
-    const existingConnection = edges.find(edge => edge.source === sourceNodeId);
+  
+  // Handle node click to select
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node.id);
+  }, [setSelectedNode]);
+  
+  // Handle edge click to select
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    // Handle edge selection if needed
+  }, []);
+  
+  // Handle node state change (for animations)
+  const handleNodeStateChange = useCallback((nodeId: string, state: WorkflowState) => {
+    setNodeState(nodeId, state);
+  }, [setNodeState]);
+  
+  // Handle workflow export
+  const handleExport = useCallback(() => {
+    const flowData = exportWorkflow();
+    downloadJSONFile(flowData, `workflow-${Date.now()}.json`);
     
-    // If connection already exists, replace it
-    if (existingConnection) {
-      const newEdges = edges.filter(edge => edge.id !== existingConnection.id);
-      setRfEdges([...newEdges, { 
-        ...params, 
-        id: `${params.source}-${params.target}`,
-        animated: true,
-        style: { stroke: '#2563eb', strokeWidth: 2 },
-        type: 'smoothstep',
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 15,
-          height: 15,
-          color: '#2563eb',
-        },
-      }]);
-    } else {
-      // Create a new edge
-      setRfEdges((eds) => addEdge({ 
-        ...params, 
-        animated: true,
-        style: { stroke: '#2563eb', strokeWidth: 2 },
-        type: 'smoothstep', 
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 15,
-          height: 15,
-          color: '#2563eb',
-        },
-      }, eds));
-    }
-  }, [edges, setRfEdges]);
-
-  // Handle dropping a node onto the canvas
-  const onDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-
-      if (reactFlowWrapper.current) {
-        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-        const position = reactFlowInstance.project({
-          x: event.clientX - reactFlowBounds.left,
-          y: event.clientY - reactFlowBounds.top,
+    toast({
+      title: 'Workflow Exported',
+      description: 'Your workflow has been exported to a JSON file.',
+    });
+  }, [exportWorkflow]);
+  
+  // Handle workflow import
+  const handleImport = useCallback(() => {
+    uploadJSONFile((data) => {
+      try {
+        // Check if data looks like a valid workflow
+        if (!data.nodes || !Array.isArray(data.nodes) || !data.edges || !Array.isArray(data.edges)) {
+          throw new Error('Invalid workflow format');
+        }
+        
+        // Set nodes and edges from the imported file
+        setNodes(data.nodes);
+        setEdges(data.edges);
+        
+        toast({
+          title: 'Workflow Imported',
+          description: 'Your workflow has been imported successfully.',
         });
-
-        // You would normally get data from the drag event
-        // For demo purposes, we're just creating a fixed node
-        const newNode = {
-          id: `node-${nodes.length + 1}`,
-          type: 'workflowNode',
-          position,
-          data: { /* your node data */ },
-        };
-
-        setNodes([...nodes, newNode]);
+      } catch (error) {
+        toast({
+          title: 'Import Failed',
+          description: 'The file does not contain a valid workflow.',
+          variant: 'destructive',
+        });
       }
-    },
-    [reactFlowInstance, nodes, setNodes]
-  );
-
-  const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const fitCanvas = useCallback(() => {
-    if (nodes.length > 0) {
-      reactFlowInstance.fitView({ padding: 0.2 });
-    }
-  }, [reactFlowInstance, nodes]);
-
-  const zoomIn = useCallback(() => {
-    reactFlowInstance.zoomIn();
-  }, [reactFlowInstance]);
-
-  const zoomOut = useCallback(() => {
-    reactFlowInstance.zoomOut();
-  }, [reactFlowInstance]);
-
-  const handleClearCanvas = useCallback(() => {
-    if (confirm('Are you sure you want to clear all nodes from the canvas?')) {
-      clearWorkflow();
-    }
-  }, [clearWorkflow]);
-
-  const toggleMiniMap = useCallback(() => {
-    setShowMiniMap(prev => !prev);
-  }, []);
-
+    });
+  }, [setNodes, setEdges]);
+  
   return (
-    <main className="flex-1 overflow-hidden bg-gray-50 relative" ref={reactFlowWrapper}>
+    <div className="h-full w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -179,97 +114,38 @@ function WorkflowCanvasInner({ onAddNodeClick }: WorkflowCanvasProps) {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
+        edgeTypes={edgeTypes}
+        onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
+        connectionLineType={ConnectionLineType.SmoothStep}
         fitView
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        deleteKeyCode="Delete"
-        selectionKeyCode="Shift"
-        multiSelectionKeyCode="Control"
+        minZoom={0.2}
+        maxZoom={2}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        snapToGrid
+        snapGrid={[20, 20]}
+        className="workflow-canvas"
       >
-        <Background 
-          color="#d1d5db" 
-          size={20} 
-          gap={20}
-        />
+        <Background />
         <Controls />
-        {showMiniMap && <MiniMap 
-          nodeStrokeColor="#aaa" 
-          nodeColor="#fff"
-          nodeBorderRadius={8} 
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            border: '1px solid #ddd',
-          }}
-        />}
-
-        {/* Controls Panel */}
-        <Panel position="top-right" className="bg-white rounded-md shadow border border-gray-200 flex flex-col space-y-1 p-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-gray-600"
-            onClick={zoomIn}
-            title="Zoom In"
-          >
-            <ZoomIn size={16} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-gray-600"
-            onClick={zoomOut}
-            title="Zoom Out"
-          >
-            <ZoomOut size={16} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-gray-600"
-            onClick={fitCanvas}
-            title="Fit View"
-          >
-            <Maximize2 size={16} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`h-8 w-8 ${showMiniMap ? 'text-primary' : 'text-gray-600'}`}
-            onClick={toggleMiniMap}
-            title="Toggle Minimap"
-          >
-            <Eye size={16} />
-          </Button>
-          {nodes.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-red-500 hover:bg-red-50"
-              onClick={handleClearCanvas}
-              title="Clear Canvas"
-            >
-              <Trash2 size={16} />
-            </Button>
-          )}
+        <MiniMap
+          nodeStrokeWidth={3}
+          zoomable
+          pannable
+        />
+        <Panel position="top-left" className="p-4">
+          <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
+          <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
         </Panel>
+        
+        {/* Add workflow controls */}
+        <WorkflowControls 
+          onNodeStateChange={handleNodeStateChange}
+          onSave={saveWorkflow}
+          onExport={handleExport}
+          onImport={handleImport}
+        />
       </ReactFlow>
-
-      {/* Show plus button only if there are no nodes */}
-      {nodes.length === 0 && (
-        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <PlusButton onClick={onAddNodeClick} />
-        </div>
-      )}
-    </main>
-  );
-}
-
-// Wrap with ReactFlowProvider to access React Flow methods
-export function WorkflowCanvas(props: WorkflowCanvasProps) {
-  return (
-    <ReactFlowProvider>
-      <WorkflowCanvasInner {...props} />
-    </ReactFlowProvider>
+    </div>
   );
 }
