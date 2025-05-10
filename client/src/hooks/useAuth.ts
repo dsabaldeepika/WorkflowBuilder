@@ -1,12 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiRequest } from '@/lib/queryClient';
-
-// Add explicit type for API responses
-interface AuthResponse {
-  user: User;
-  token: string;
-}
+import { useQuery } from '@tanstack/react-query';
 
 export type UserRole = 'creator' | 'editor' | 'admin';
 
@@ -21,154 +16,46 @@ export interface User {
 }
 
 interface AuthState {
-  user: User | null;
-  token: string | null;
-  isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
   
   // Actions
-  loginWithToken: (token: string) => Promise<void>;
-  loginWithTest: (token: string) => Promise<void>;
   logout: () => Promise<void>;
-  getUser: () => Promise<User | null>;
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      isLoggedIn: false,
-      isLoading: false,
-      error: null,
+  (set) => ({
+    isLoading: false,
+    error: null,
+    
+    logout: async () => {
+      set({ isLoading: true });
       
-      loginWithToken: async (token: string) => {
-        set({ isLoading: true, error: null });
-        
-        try {
-          // Store the token
-          set({ token });
-          
-          // Fetch user profile
-          const user = await get().getUser();
-          
-          set({ 
-            user,
-            isLoggedIn: true,
-            isLoading: false,
-          });
-        } catch (error) {
-          console.error('Login error:', error);
-          set({ 
-            error: 'Authentication failed. Please try again.',
-            isLoading: false,
-            token: null
-          });
-        }
-      },
-      
-      loginWithTest: async (token: string) => {
-        set({ isLoading: true, error: null });
-        
-        try {
-          // Test login endpoint
-          const response = await apiRequest('/api/auth/test-login', {
-            method: 'POST',
-            body: JSON.stringify({ token }),
-          }) as AuthResponse;
-          
-          set({
-            user: response.user,
-            token: response.token,
-            isLoggedIn: true,
-            isLoading: false,
-          });
-        } catch (error) {
-          console.error('Test login error:', error);
-          set({ 
-            error: 'Test authentication failed. Invalid token.',
-            isLoading: false 
-          });
-        }
-      },
-      
-      logout: async () => {
-        set({ isLoading: true });
-        
-        try {
-          set({ 
-            user: null,
-            token: null,
-            isLoggedIn: false,
-            isLoading: false
-          });
-          
-          // Redirect to home page
-          window.location.href = '/';
-        } catch (error) {
-          console.error('Logout error:', error);
-          set({ isLoading: false });
-        }
-      },
-      
-      getUser: async () => {
-        const { token } = get();
-        
-        if (!token) {
-          return null;
-        }
-        
-        try {
-          const user = await apiRequest('/api/auth/me', {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }) as User;
-          
-          set({ user });
-          return user;
-        } catch (error) {
-          console.error('Get user error:', error);
-          set({ 
-            user: null,
-            token: null,
-            isLoggedIn: false
-          });
-          return null;
-        }
-      },
-    }),
-    {
-      name: 'pumpflux-auth',
-      partialize: (state) => ({ token: state.token }),
+      try {
+        // Redirect to logout endpoint which will clear the session
+        window.location.href = '/api/logout';
+      } catch (error) {
+        console.error('Logout error:', error);
+        set({ isLoading: false });
+      }
     }
-  )
+  })
 );
 
 // Hook to use in components
-export const useAuth = () => {
-  const {
-    user,
-    token,
-    isLoggedIn,
-    isLoading,
-    error,
-    loginWithToken,
-    loginWithTest,
-    logout,
-    getUser,
-  } = useAuthStore();
+export function useAuth() {
+  const { isLoading: storeLoading, error, logout } = useAuthStore();
+  
+  const { data: user, isLoading: queryLoading } = useQuery({
+    queryKey: ['/api/auth/user'],
+    retry: false,
+  });
 
   return {
     user,
-    token,
-    isLoggedIn,
-    isLoading,
+    isLoading: storeLoading || queryLoading,
+    isAuthenticated: !!user,
     error,
-    loginWithToken,
-    loginWithTest,
     logout,
-    getUser,
   };
 };

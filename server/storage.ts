@@ -34,6 +34,8 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined>;
   deactivateUser(id: number): Promise<boolean>;
+  // Replit Auth user method
+  upsertUser(user: { id: string, email: string | null, firstName: string | null, lastName: string | null, profileImageUrl: string | null }): Promise<User>;
   
   // Test user methods
   createTestUser(username: string, email: string): Promise<{user: User, testFlag: TestUserFlag}>;
@@ -143,6 +145,48 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   
+  // Replit Auth user method
+  async upsertUser(userData: { id: string, email: string | null, firstName: string | null, lastName: string | null, profileImageUrl: string | null }): Promise<User> {
+    // Generate a username from the ID if no email is provided
+    const username = userData.email ? userData.email.split('@')[0] : `user${userData.id}`;
+    const email = userData.email || `${username}@pumpflux.temp`;
+    
+    // Check if user exists by Replit ID (stored in username field)
+    const existingUser = await this.getUserByUsername(userData.id);
+    
+    if (existingUser) {
+      // Update existing user
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
+          email: userData.email || existingUser.email,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, existingUser.id))
+        .returning();
+      
+      return updatedUser;
+    } else {
+      // Create new user
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username: userData.id, // Store Replit ID as username for lookup
+          email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
+          role: UserRole.CREATOR
+        })
+        .returning();
+      
+      return newUser;
+    }
+  }
+
   async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
     const [updatedUser] = await db
       .update(users)
