@@ -167,7 +167,10 @@ router.get('/credentials/:id', async (req, res) => {
     // Don't return the actual credential values for security
     const safeCredential = {
       ...credential,
-      credentials: { ...credential.credentials, isSecure: true }
+      credentials: { 
+        isSecure: true,
+        type: typeof credential.credentials === 'object' ? 'secured_credentials' : 'secured_value'
+      }
     };
     
     res.json(safeCredential);
@@ -187,7 +190,10 @@ router.post('/credentials', async (req, res) => {
     // Don't return the actual credential values for security
     const safeCredential = {
       ...credential,
-      credentials: { ...credential.credentials, isSecure: true }
+      credentials: { 
+        isSecure: true,
+        type: typeof credential.credentials === 'object' ? 'secured_credentials' : 'secured_value'
+      }
     };
     
     res.status(201).json(safeCredential);
@@ -219,7 +225,10 @@ router.put('/credentials/:id', async (req, res) => {
     // Don't return the actual credential values for security
     const safeCredential = {
       ...credential,
-      credentials: { ...credential.credentials, isSecure: true }
+      credentials: { 
+        isSecure: true,
+        type: typeof credential.credentials === 'object' ? 'secured_credentials' : 'secured_value'
+      }
     };
     
     res.json(safeCredential);
