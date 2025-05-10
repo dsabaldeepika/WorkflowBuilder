@@ -22,6 +22,12 @@
  */
 
 import React, { useState } from 'react';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { useToast } from '@/hooks/use-toast';
+
+// UI Components
 import {
   Card,
   CardContent,
@@ -54,6 +60,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+
+// Icons
 import { 
   Film, 
   RssIcon, 
@@ -68,37 +79,6 @@ import {
   CheckCircle2,
   Code
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Video, 
-  RssIcon, 
-  Sparkles, 
-  Share2, 
-  Film,
-  Share,
-  CalendarCheck,
-  FileSearch,
-  Mail,
-  Database,
-  Info,
-  HelpCircle,
-  CheckCircle2,
-  Code,
-  ServerCrash,
-  PlusCircle
-} from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 // Define the different template types
 const TEMPLATE_TYPES = {
@@ -462,11 +442,7 @@ const templates: WorkflowTemplate[] = [
             label: 'Specific Publish Time',
             description: 'If using specific time, select when to publish',
             help: 'This is in your local timezone. For global audiences, consider testing different times to find the optimal publishing window.',
-            required: false,
-            conditional: {
-              field: 'publishSchedule',
-              value: 'specific'
-            }
+            required: false
           }
         ]
       },
@@ -490,10 +466,6 @@ const templates: WorkflowTemplate[] = [
             description: 'Email address to receive notifications',
             help: 'You can add multiple email addresses separated by commas.',
             required: false,
-            conditional: {
-              field: 'enableAlerts',
-              value: true
-            },
             validation: z.string().email().optional().or(z.literal(''))
           },
           {
@@ -620,7 +592,7 @@ const templates: WorkflowTemplate[] = [
       'Email service provider API credentials (SendGrid, Mailchimp, etc.)',
       'Customer data source connection',
       'HTML email templates',
-      'Optional: OpenAI API for content generation'
+      'Optional: OpenAI API key for content generation'
     ],
     configSteps: []
   }
@@ -698,23 +670,15 @@ export default function WorkflowTemplates() {
   const onSubmit = async (data: TemplateFormValues) => {
     try {
       // Here you would integrate with your workflow creation system
-      console.log('Creating workflow from template:', {
-        template: selectedTemplate,
-        name: data.workflowName,
-        // Add other form data here
-      });
-      
       toast({
-        title: 'Workflow Created',
+        title: "Workflow Created!",
         description: `${data.workflowName} has been created successfully.`,
       });
-      
-      // Redirect to workflow edit page or close modal
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to create workflow. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to create workflow.",
+        variant: "destructive",
       });
     }
   };
