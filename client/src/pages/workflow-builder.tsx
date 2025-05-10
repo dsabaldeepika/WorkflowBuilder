@@ -9,7 +9,8 @@ import { Link } from "wouter";
 import { 
   ArrowLeft, Save, Play, Cog, History, Repeat, Clock, Settings,
   FileText, Database, Webhook, Power, HelpCircle, Workflow, RefreshCw,
-  LayoutGrid, AlertCircle, BookOpen, Gift, Share2, PlusCircle, Sparkles
+  LayoutGrid, AlertCircle, BookOpen, Gift, Share2, PlusCircle, Sparkles,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -32,14 +33,18 @@ export default function WorkflowBuilder() {
     isModalOpen,
     isAIAssistantOpen,
     isTemplateGalleryOpen,
+    isAgentBuilderOpen,
     openNodePicker,
     closeNodePicker,
     openAIAssistant,
     closeAIAssistant,
     openTemplateGallery,
     closeTemplateGallery,
+    openAgentBuilder,
+    closeAgentBuilder,
     generateWorkflowFromDescription,
-    applyWorkflowTemplate
+    applyWorkflowTemplate,
+    createAgent
   } = useWorkflowStore();
 
   const handleSaveDraft = () => {
@@ -372,6 +377,13 @@ export default function WorkflowBuilder() {
         isOpen={isTemplateGalleryOpen}
         onClose={closeTemplateGallery}
         onSelectTemplate={(template) => applyWorkflowTemplate(template.id)}
+      />
+      
+      {/* Agent Builder Modal */}
+      <AgentBuilder
+        isOpen={isAgentBuilderOpen}
+        onClose={closeAgentBuilder}
+        onCreateAgent={createAgent}
       />
     </div>
   );
