@@ -5,20 +5,17 @@ import { Loader2 } from 'lucide-react';
 
 const OAuthCallback: React.FC = () => {
   const [, navigate] = useLocation();
-  const { getUser } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const processCallback = async () => {
       try {
-        // The auth server will have already set cookies and session at this point
-        // We just need to get the user data
-        const user = await getUser();
-        
-        if (user) {
+        // Wait for auth to complete
+        if (!isLoading && isAuthenticated) {
           // Navigate to the dashboard on successful login
           navigate('/dashboard');
-        } else {
+        } else if (!isLoading && !isAuthenticated) {
           setError('Authentication failed. Please try again.');
           // Navigate back to login page after a delay
           setTimeout(() => navigate('/login'), 3000);
@@ -32,7 +29,7 @@ const OAuthCallback: React.FC = () => {
     };
 
     processCallback();
-  }, [getUser, navigate]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
