@@ -330,7 +330,14 @@ export type WorkflowRun = typeof workflowRuns.$inferSelect;
 
 export type InsertWorkflowTemplate = z.infer<typeof insertWorkflowTemplateSchema>;
 export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
+
+export type InsertNodeType = z.infer<typeof insertNodeTypeSchema>;
 export type NodeType = typeof nodeTypes.$inferSelect;
+
+export type InsertAppIntegration = z.infer<typeof insertAppIntegrationSchema>;
 export type AppIntegration = typeof appIntegrations.$inferSelect;
+
+export type InsertUserAppCredential = z.infer<typeof insertUserAppCredentialsSchema>;
 export type UserAppCredential = typeof userAppCredentials.$inferSelect;
+
 export type WorkflowNodeExecution = typeof workflowNodeExecutions.$inferSelect;

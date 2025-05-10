@@ -1,6 +1,11 @@
 import express from 'express';
 import { storage } from '../storage';
-import { insertWorkflowTemplateSchema, insertNodeTypeSchema } from '@shared/schema';
+import { 
+  insertWorkflowTemplateSchema, 
+  insertNodeTypeSchema,
+  type WorkflowTemplate,
+  type NodeType
+} from '@shared/schema';
 import { ZodError } from 'zod';
 
 const router = express.Router();

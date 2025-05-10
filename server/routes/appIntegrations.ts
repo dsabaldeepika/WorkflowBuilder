@@ -1,6 +1,11 @@
 import express from 'express';
 import { storage } from '../storage';
-import { insertAppIntegrationSchema, insertUserAppCredentialsSchema } from '@shared/schema';
+import { 
+  insertAppIntegrationSchema, 
+  insertUserAppCredentialsSchema,
+  type AppIntegration,
+  type UserAppCredential
+} from '@shared/schema';
 import { ZodError } from 'zod';
 
 const router = express.Router();
@@ -135,7 +140,11 @@ router.get('/credentials', async (req, res) => {
     // Don't return the actual credential values for security
     const safeCredentials = credentials.map(cred => ({
       ...cred,
-      credentials: { ...cred.credentials, isSecure: true }
+      credentials: { 
+        isSecure: true,
+        // Add a placeholder instead of the actual credentials
+        type: typeof cred.credentials === 'object' ? 'secured_credentials' : 'secured_value'
+      }
     }));
     
     res.json(safeCredentials);
