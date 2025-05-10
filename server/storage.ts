@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import { 
   users, 
@@ -13,6 +13,11 @@ import {
   workflowRuns,
   UserRole,
   WorkspacePermission,
+  workflowTemplates,
+  nodeTypes,
+  appIntegrations,
+  userAppCredentials,
+  workflowNodeExecutions,
   type User, 
   type InsertUser, 
   type Workflow, 
@@ -23,7 +28,16 @@ import {
   type OAuthProvider,
   type WorkflowRun,
   type Invitation,
-  type TestUserFlag
+  type TestUserFlag,
+  type WorkflowTemplate, 
+  type InsertWorkflowTemplate,
+  type NodeType, 
+  type InsertNodeType,
+  type AppIntegration, 
+  type InsertAppIntegration,
+  type UserAppCredential, 
+  type InsertUserAppCredential,
+  type WorkflowNodeExecution
 } from "@shared/schema";
 
 export interface IStorage {
@@ -753,8 +767,389 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(workflowRuns)
       .where(eq(workflowRuns.workflowId, workflowId))
-      .orderBy(workflowRuns.startTime)
+      .orderBy(desc(workflowRuns.startTime))
       .limit(limit);
+  }
+  
+  // Workflow template methods
+  async getWorkflowTemplate(id: number): Promise<WorkflowTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(workflowTemplates)
+      .where(eq(workflowTemplates.id, id));
+    
+    return template;
+  }
+  
+  async getWorkflowTemplates(filters?: {
+    category?: string;
+    tags?: string[];
+    isPublished?: boolean;
+    isOfficial?: boolean;
+    createdByUserId?: number;
+  }): Promise<WorkflowTemplate[]> {
+    let query = db.select().from(workflowTemplates);
+    
+    if (filters) {
+      if (filters.category) {
+        query = query.where(eq(workflowTemplates.category, filters.category));
+      }
+      
+      if (filters.isPublished !== undefined) {
+        query = query.where(eq(workflowTemplates.isPublished, filters.isPublished));
+      }
+      
+      if (filters.isOfficial !== undefined) {
+        query = query.where(eq(workflowTemplates.isOfficial, filters.isOfficial));
+      }
+      
+      if (filters.createdByUserId) {
+        query = query.where(eq(workflowTemplates.createdByUserId, filters.createdByUserId));
+      }
+      
+      // Note: In a real implementation, we would handle the tags array with a more sophisticated query
+      // For PostgreSQL, we could use the array containment operator
+    }
+    
+    return query.orderBy(desc(workflowTemplates.popularity));
+  }
+  
+  async createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate> {
+    const [newTemplate] = await db
+      .insert(workflowTemplates)
+      .values({
+        ...template,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newTemplate;
+  }
+  
+  async updateWorkflowTemplate(id: number, templateData: Partial<InsertWorkflowTemplate>): Promise<WorkflowTemplate | undefined> {
+    const [updatedTemplate] = await db
+      .update(workflowTemplates)
+      .set({
+        ...templateData,
+        updatedAt: new Date()
+      })
+      .where(eq(workflowTemplates.id, id))
+      .returning();
+    
+    return updatedTemplate;
+  }
+  
+  async deleteWorkflowTemplate(id: number): Promise<boolean> {
+    const result = await db
+      .delete(workflowTemplates)
+      .where(eq(workflowTemplates.id, id));
+    
+    return true; // If no error was thrown, the deletion was successful
+  }
+  
+  async incrementTemplatePopularity(id: number): Promise<boolean> {
+    const [updatedTemplate] = await db
+      .update(workflowTemplates)
+      .set({
+        popularity: sql`${workflowTemplates.popularity} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(workflowTemplates.id, id))
+      .returning();
+    
+    return !!updatedTemplate;
+  }
+  
+  // Node type methods
+  async getNodeType(id: number): Promise<NodeType | undefined> {
+    const [nodeType] = await db
+      .select()
+      .from(nodeTypes)
+      .where(eq(nodeTypes.id, id));
+    
+    return nodeType;
+  }
+  
+  async getNodeTypeByName(name: string): Promise<NodeType | undefined> {
+    const [nodeType] = await db
+      .select()
+      .from(nodeTypes)
+      .where(eq(nodeTypes.name, name));
+    
+    return nodeType;
+  }
+  
+  async getNodeTypes(category?: string): Promise<NodeType[]> {
+    let query = db.select().from(nodeTypes);
+    
+    if (category) {
+      query = query.where(eq(nodeTypes.category, category));
+    }
+    
+    return query.orderBy(nodeTypes.displayName);
+  }
+  
+  async createNodeType(nodeType: InsertNodeType): Promise<NodeType> {
+    const [newNodeType] = await db
+      .insert(nodeTypes)
+      .values({
+        ...nodeType,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newNodeType;
+  }
+  
+  async updateNodeType(id: number, nodeTypeData: Partial<InsertNodeType>): Promise<NodeType | undefined> {
+    const [updatedNodeType] = await db
+      .update(nodeTypes)
+      .set({
+        ...nodeTypeData,
+        updatedAt: new Date()
+      })
+      .where(eq(nodeTypes.id, id))
+      .returning();
+    
+    return updatedNodeType;
+  }
+  
+  async deleteNodeType(id: number): Promise<boolean> {
+    const result = await db
+      .delete(nodeTypes)
+      .where(eq(nodeTypes.id, id));
+    
+    return true; // If no error was thrown, the deletion was successful
+  }
+  
+  // App integration methods
+  async getAppIntegration(id: number): Promise<AppIntegration | undefined> {
+    const [appIntegration] = await db
+      .select()
+      .from(appIntegrations)
+      .where(eq(appIntegrations.id, id));
+    
+    return appIntegration;
+  }
+  
+  async getAppIntegrationByName(name: string): Promise<AppIntegration | undefined> {
+    const [appIntegration] = await db
+      .select()
+      .from(appIntegrations)
+      .where(eq(appIntegrations.name, name));
+    
+    return appIntegration;
+  }
+  
+  async getAppIntegrations(category?: string): Promise<AppIntegration[]> {
+    let query = db.select().from(appIntegrations).where(eq(appIntegrations.isActive, true));
+    
+    if (category) {
+      query = query.where(eq(appIntegrations.category, category));
+    }
+    
+    return query.orderBy(appIntegrations.displayName);
+  }
+  
+  async createAppIntegration(appIntegration: InsertAppIntegration): Promise<AppIntegration> {
+    const [newAppIntegration] = await db
+      .insert(appIntegrations)
+      .values({
+        ...appIntegration,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newAppIntegration;
+  }
+  
+  async updateAppIntegration(id: number, appIntegrationData: Partial<InsertAppIntegration>): Promise<AppIntegration | undefined> {
+    const [updatedAppIntegration] = await db
+      .update(appIntegrations)
+      .set({
+        ...appIntegrationData,
+        updatedAt: new Date()
+      })
+      .where(eq(appIntegrations.id, id))
+      .returning();
+    
+    return updatedAppIntegration;
+  }
+  
+  async deleteAppIntegration(id: number): Promise<boolean> {
+    const result = await db
+      .delete(appIntegrations)
+      .where(eq(appIntegrations.id, id));
+    
+    return true; // If no error was thrown, the deletion was successful
+  }
+  
+  // User app credentials methods
+  async getUserAppCredentials(userId: number, appIntegrationId?: number): Promise<UserAppCredential[]> {
+    let query = db.select().from(userAppCredentials)
+      .where(eq(userAppCredentials.userId, userId));
+    
+    if (appIntegrationId) {
+      query = query.where(eq(userAppCredentials.appIntegrationId, appIntegrationId));
+    }
+    
+    return query.orderBy(userAppCredentials.createdAt);
+  }
+  
+  async getUserAppCredential(id: number): Promise<UserAppCredential | undefined> {
+    const [credential] = await db
+      .select()
+      .from(userAppCredentials)
+      .where(eq(userAppCredentials.id, id));
+    
+    return credential;
+  }
+  
+  async createUserAppCredential(credential: InsertUserAppCredential): Promise<UserAppCredential> {
+    const [newCredential] = await db
+      .insert(userAppCredentials)
+      .values({
+        ...credential,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newCredential;
+  }
+  
+  async updateUserAppCredential(id: number, credentialData: Partial<InsertUserAppCredential>): Promise<UserAppCredential | undefined> {
+    const [updatedCredential] = await db
+      .update(userAppCredentials)
+      .set({
+        ...credentialData,
+        updatedAt: new Date()
+      })
+      .where(eq(userAppCredentials.id, id))
+      .returning();
+    
+    return updatedCredential;
+  }
+  
+  async deleteUserAppCredential(id: number): Promise<boolean> {
+    const result = await db
+      .delete(userAppCredentials)
+      .where(eq(userAppCredentials.id, id));
+    
+    return true; // If no error was thrown, the deletion was successful
+  }
+  
+  async validateUserAppCredential(id: number): Promise<boolean> {
+    // This method would contain real validation logic in a production environment
+    // For now, we just mark the credential as valid
+    const [updatedCredential] = await db
+      .update(userAppCredentials)
+      .set({
+        isValid: true,
+        lastValidatedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(userAppCredentials.id, id))
+      .returning();
+    
+    return !!updatedCredential;
+  }
+  
+  // Workflow node execution methods
+  async recordNodeExecution(
+    workflowRunId: number,
+    nodeId: string,
+    status: string,
+    executionOrder: number,
+    startTime: Date = new Date()
+  ): Promise<WorkflowNodeExecution> {
+    const [nodeExecution] = await db
+      .insert(workflowNodeExecutions)
+      .values({
+        workflowRunId,
+        nodeId,
+        status,
+        executionOrder,
+        startTime,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return nodeExecution;
+  }
+  
+  async completeNodeExecution(
+    nodeExecutionId: number,
+    status: string,
+    endTime: Date,
+    outputData?: any,
+    errorMessage?: string,
+    errorCategory?: string
+  ): Promise<WorkflowNodeExecution | undefined> {
+    const [updatedNodeExecution] = await db
+      .update(workflowNodeExecutions)
+      .set({
+        status,
+        endTime,
+        outputData,
+        errorMessage,
+        errorCategory,
+        updatedAt: new Date()
+      })
+      .where(eq(workflowNodeExecutions.id, nodeExecutionId))
+      .returning();
+    
+    return updatedNodeExecution;
+  }
+  
+  async updateNodeExecutionInputData(
+    nodeExecutionId: number,
+    inputData: any
+  ): Promise<boolean> {
+    const [updatedNodeExecution] = await db
+      .update(workflowNodeExecutions)
+      .set({
+        inputData,
+        updatedAt: new Date()
+      })
+      .where(eq(workflowNodeExecutions.id, nodeExecutionId))
+      .returning();
+    
+    return !!updatedNodeExecution;
+  }
+  
+  async getNodeExecutions(workflowRunId: number): Promise<WorkflowNodeExecution[]> {
+    return db
+      .select()
+      .from(workflowNodeExecutions)
+      .where(eq(workflowNodeExecutions.workflowRunId, workflowRunId))
+      .orderBy(workflowNodeExecutions.executionOrder);
+  }
+  
+  async retryNodeExecution(
+    nodeExecutionId: number,
+    startTime: Date
+  ): Promise<WorkflowNodeExecution | undefined> {
+    const [updatedNodeExecution] = await db
+      .update(workflowNodeExecutions)
+      .set({
+        status: 'pending',
+        startTime,
+        endTime: null,
+        outputData: null,
+        errorMessage: null,
+        errorCategory: null,
+        retryCount: sql`${workflowNodeExecutions.retryCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(workflowNodeExecutions.id, nodeExecutionId))
+      .returning();
+    
+    return updatedNodeExecution;
   }
 }
 
