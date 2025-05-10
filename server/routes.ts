@@ -5,6 +5,9 @@ import { storage } from "./storage";
 import { insertWorkflowSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import workflowMonitoringRoutes from "./routes/workflowMonitoring";
+import workflowTemplatesRoutes from "./routes/workflowTemplates";
+import appIntegrationsRoutes from "./routes/appIntegrations";
+import workflowExecutionRoutes from "./routes/workflowExecution";
 import { setupAuth } from "./replitAuth";
 import { pool } from "./db";
 
@@ -25,8 +28,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(req.user);
   });
   
-  // Add monitoring routes
+  // Add specialized workflow routes
   app.use('/api/monitoring', workflowMonitoringRoutes);
+  app.use('/api/workflow', workflowTemplatesRoutes);
+  app.use('/api/app', appIntegrationsRoutes);
+  app.use('/api/execution', workflowExecutionRoutes);
   
   // API Routes
   // Get all workflows for a user
