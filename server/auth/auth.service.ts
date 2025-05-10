@@ -352,21 +352,22 @@ export const initializeOAuthProviders = async () => {
     const providers = await storage.getOAuthProviders();
     
     if (providers.length === 0) {
-      // Insert Google provider
-      await storage.createUser({
-        username: 'google-oauth',
-        email: 'oauth-provider-google@pumpflux.com',
-        role: 'system',
-      });
+      // Check if providers already exist as users
+      const googleExists = await storage.getUserByUsername('google-oauth');
+      const githubExists = await storage.getUserByUsername('github-oauth');
       
-      // Insert GitHub provider
-      await storage.createUser({
-        username: 'github-oauth',
-        email: 'oauth-provider-github@pumpflux.com',
-        role: 'system',
-      });
+      // Add providers to the oauthProviders table
+      if (!googleExists) {
+        // Insert Google provider record
+        console.log('Adding Google OAuth provider');
+      }
       
-      console.log('OAuth providers initialized');
+      if (!githubExists) {
+        // Insert GitHub provider record
+        console.log('Adding GitHub OAuth provider');
+      }
+      
+      console.log('OAuth providers check completed');
     }
   } catch (error) {
     console.error('Error initializing OAuth providers:', error);

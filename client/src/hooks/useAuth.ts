@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiRequest } from '@/lib/queryClient';
 
+// Add explicit type for API responses
+interface AuthResponse {
+  user: User;
+  token: string;
+}
+
 export type UserRole = 'creator' | 'editor' | 'admin';
 
 export interface User {
@@ -67,10 +73,10 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           // Test login endpoint
-          const response = await apiRequest<{ user: User; token: string }>('/api/auth/test-login', {
+          const response = await apiRequest('/api/auth/test-login', {
             method: 'POST',
             body: JSON.stringify({ token }),
-          });
+          }) as AuthResponse;
           
           set({
             user: response.user,
@@ -114,11 +120,11 @@ export const useAuthStore = create<AuthState>()(
         }
         
         try {
-          const user = await apiRequest<User>('/api/auth/me', {
+          const user = await apiRequest('/api/auth/me', {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          });
+          }) as User;
           
           set({ user });
           return user;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import FlowingBackground from './FlowingBackground';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { GitHubLogoIcon } from '@radix-ui/react-icons';
+import { FaGithub } from 'react-icons/fa';
 import { Workflow, DropletIcon } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
@@ -132,7 +132,7 @@ const LoginPage: React.FC = () => {
               onClick={() => window.location.href = '/api/auth/github'}
               disabled={isLoading}
             >
-              <GitHubLogoIcon className="h-5 w-5" />
+              <FaGithub className="h-5 w-5" />
               Continue with GitHub
             </Button>
           </div>
