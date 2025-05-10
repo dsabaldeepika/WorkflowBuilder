@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { NodePickerModal } from "@/components/workflow/NodePickerModal";
+import { AIAssistant } from "@/components/workflow/AIAssistant";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
 import { 
   ArrowLeft, Save, Play, Cog, History, Repeat, Clock, Settings,
   FileText, Database, Webhook, Power, HelpCircle, Workflow, RefreshCw,
-  LayoutGrid, AlertCircle, BookOpen, Gift, Share2, PlusCircle
+  LayoutGrid, AlertCircle, BookOpen, Gift, Share2, PlusCircle, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -17,12 +18,23 @@ import { Separator } from "@/components/ui/separator";
 import { App } from "@/types/workflow";
 
 export default function WorkflowBuilder() {
-  const [isModalOpen, setModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [workflowName, setWorkflowName] = useState("My Workflow");
   const [activeTab, setActiveTab] = useState<string>("builder");
   const [workflowEnabled, setWorkflowEnabled] = useState(false);
-  const { saveWorkflow, clearWorkflow, nodes, edges } = useWorkflowStore();
+  const { 
+    saveWorkflow, 
+    clearWorkflow, 
+    nodes, 
+    edges,
+    isModalOpen,
+    isAIAssistantOpen,
+    openNodePicker,
+    closeNodePicker,
+    openAIAssistant,
+    closeAIAssistant,
+    generateWorkflowFromDescription
+  } = useWorkflowStore();
 
   const handleSaveDraft = () => {
     saveWorkflow();
