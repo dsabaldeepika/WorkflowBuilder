@@ -48,6 +48,26 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { 
+  Film, 
+  RssIcon, 
+  Sparkles, 
+  Share2, 
+  Video, 
+  Mail, 
+  Database, 
+  CalendarCheck,
+  Info,
+  HelpCircle,
+  CheckCircle2,
+  Code
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
