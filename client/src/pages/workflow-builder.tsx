@@ -3,6 +3,7 @@ import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { NodePickerModal } from "@/components/workflow/NodePickerModal";
 import { AIAssistant } from "@/components/workflow/AIAssistant";
 import { TemplateGallery } from "@/components/workflow/TemplateGallery";
+import { AgentBuilder } from "@/components/workflow/AgentBuilder";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
 import { 
@@ -30,11 +31,15 @@ export default function WorkflowBuilder() {
     edges,
     isModalOpen,
     isAIAssistantOpen,
+    isTemplateGalleryOpen,
     openNodePicker,
     closeNodePicker,
     openAIAssistant,
     closeAIAssistant,
-    generateWorkflowFromDescription
+    openTemplateGallery,
+    closeTemplateGallery,
+    generateWorkflowFromDescription,
+    applyWorkflowTemplate
   } = useWorkflowStore();
 
   const handleSaveDraft = () => {
@@ -91,6 +96,14 @@ export default function WorkflowBuilder() {
               >
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Node
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-gray-700 hover:text-blue-600 hover:border-blue-200"
+                onClick={openTemplateGallery}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Use Template
               </Button>
               <Button 
                 variant="outline" 
@@ -272,6 +285,10 @@ export default function WorkflowBuilder() {
             )}
           </div>
           <div className="flex items-center space-x-3">
+            <Button variant="outline" onClick={openAgentBuilder} className="gap-2">
+              <Bot className="h-4 w-4" />
+              AI Agent Builder
+            </Button>
             <Button variant="outline" onClick={openAIAssistant} className="gap-2">
               <Sparkles className="h-4 w-4" />
               AI Assistant
@@ -348,6 +365,13 @@ export default function WorkflowBuilder() {
         isOpen={isAIAssistantOpen}
         onClose={closeAIAssistant}
         onGenerateWorkflow={generateWorkflowFromDescription}
+      />
+      
+      {/* Template Gallery Modal */}
+      <TemplateGallery
+        isOpen={isTemplateGalleryOpen}
+        onClose={closeTemplateGallery}
+        onSelectTemplate={(template) => applyWorkflowTemplate(template.id)}
       />
     </div>
   );

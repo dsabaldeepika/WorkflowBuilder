@@ -8,6 +8,7 @@ interface WorkflowState {
   isModalOpen: boolean;
   isAIAssistantOpen: boolean;
   isTemplateGalleryOpen: boolean;
+  isAgentBuilderOpen: boolean;
   addNode: (node: Node) => void;
   setEdges: (edges: Edge[]) => void;
   removeNode: (nodeId: string) => void;
@@ -17,8 +18,11 @@ interface WorkflowState {
   closeAIAssistant: () => void;
   openTemplateGallery: () => void;
   closeTemplateGallery: () => void;
+  openAgentBuilder: () => void;
+  closeAgentBuilder: () => void;
   generateWorkflowFromDescription: (description: string) => void;
   applyWorkflowTemplate: (templateId: string) => void;
+  createAgent: (agentConfig: any) => void;
   saveWorkflow: () => void;
   loadWorkflow: () => void;
   clearWorkflow: () => void;
@@ -32,6 +36,7 @@ export const useWorkflowStore = create<WorkflowState>()(
       isModalOpen: false,
       isAIAssistantOpen: false,
       isTemplateGalleryOpen: false,
+      isAgentBuilderOpen: false,
       
       addNode: (node) => 
         set((state) => ({ 
@@ -66,6 +71,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       
       closeTemplateGallery: () => 
         set({ isTemplateGalleryOpen: false }),
+        
+      openAgentBuilder: () => 
+        set({ isAgentBuilderOpen: true }),
+      
+      closeAgentBuilder: () => 
+        set({ isAgentBuilderOpen: false }),
       
       generateWorkflowFromDescription: (description: string) => {
         // This would typically call an AI service to generate a workflow
@@ -288,6 +299,46 @@ export const useWorkflowStore = create<WorkflowState>()(
           edges: templateEdges,
           isTemplateGalleryOpen: false
         });
+      },
+      
+      createAgent: (agentConfig: any) => {
+        console.log('Creating agent with config:', agentConfig);
+        
+        // In a real app, this would create an AI agent that can be triggered and used in workflows
+        // For now, we'll just create a placeholder node for the agent
+        
+        const agentNode = {
+          id: `agent-${Date.now()}`,
+          type: 'workflowNode',
+          position: { x: 250, y: 100 },
+          data: {
+            app: {
+              id: 'ai-agent',
+              label: agentConfig.name || 'AI Agent',
+              description: agentConfig.description || 'Automated AI Agent',
+              icon: () => null,
+              iconBg: 'purple',
+              iconColor: 'purple',
+              modules: []
+            },
+            module: {
+              id: 'autonomous-agent',
+              label: 'Autonomous Agent',
+              description: 'AI-powered agent that performs tasks autonomously',
+              type: 'trigger',
+              icon: () => null
+            },
+            config: {
+              scheduleFrequency: 'daily',
+              agentConfig: agentConfig
+            }
+          }
+        };
+        
+        set((state) => ({
+          nodes: [...state.nodes, agentNode],
+          isAgentBuilderOpen: false
+        }));
       },
       
       saveWorkflow: () => {
