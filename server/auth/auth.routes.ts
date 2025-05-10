@@ -1,176 +1,171 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import passport from 'passport';
-import { storage } from '../storage';
-import { UserRole } from '@shared/schema';
+import { z } from 'zod';
 import { 
+  hashPassword, 
   generateToken, 
   isAuthenticated, 
-  hasRole, 
-  authenticateTestUser,
-  createInitialTestUser
+  registerSchema 
 } from './auth.service';
+import { storage } from '../storage';
+import { UserRole } from '@shared/schema';
 
 const router = Router();
 
-// Google OAuth routes
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-router.get(
-  '/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/login' }),
-  (req: Request, res: Response) => {
-    // Generate JWT token
-    const token = generateToken(req.user as any);
+// Register a new user with email and password
+router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Validate request body
+    const validatedData = registerSchema.parse(req.body);
     
-    // Send token to client (this could redirect to a client route that stores the token)
-    res.redirect(`/auth/callback?token=${token}`);
-  }
-);
-
-// GitHub OAuth routes
-router.get(
-  '/github',
-  passport.authenticate('github', { scope: ['user:email'] })
-);
-
-router.get(
-  '/github/callback',
-  passport.authenticate('github', { session: false, failureRedirect: '/login' }),
-  (req: Request, res: Response) => {
-    // Generate JWT token
-    const token = generateToken(req.user as any);
+    // Check if email already exists
+    const existingUser = await storage.getUserByEmail(validatedData.email);
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
     
-    // Send token to client
-    res.redirect(`/auth/callback?token=${token}`);
-  }
-);
-
-// Get current user
-router.get(
-  '/me',
-  isAuthenticated,
-  (req: Request, res: Response) => {
-    // User is already attached to req by isAuthenticated middleware
-    res.json(req.user);
-  }
-);
-
-// Test Login (development only)
-router.post('/test-login', authenticateTestUser);
-
-// Admin routes
-// Create a new user (admin only)
-router.post(
-  '/users',
-  isAuthenticated,
-  hasRole([UserRole.ADMIN]),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { username, email, firstName, lastName, role, password } = req.body;
-      
-      // Validate input
-      if (!username || !email || !role) {
-        return res.status(400).json({ message: 'Username, email, and role are required' });
-      }
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(409).json({ message: 'User with this email already exists' });
-      }
-      
-      // Create user
-      const user = await storage.createUser({
-        username,
-        email,
-        firstName,
-        lastName,
-        role,
-        password // For non-OAuth users
+    // Create new user
+    const hashedPassword = await hashPassword(validatedData.password);
+    const newUser = await storage.createUser({
+      username: validatedData.username,
+      email: validatedData.email,
+      password: hashedPassword,
+      firstName: validatedData.firstName,
+      lastName: validatedData.lastName,
+      role: UserRole.CREATOR // Default role for new users
+    });
+    
+    // Generate JWT token
+    const token = generateToken(newUser);
+    
+    // Return user data and token
+    return res.status(201).json({
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        role: newUser.role,
+        profileImageUrl: newUser.profileImageUrl
+      },
+      token
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: error.errors 
       });
-      
-      res.status(201).json(user);
-    } catch (error) {
-      next(error);
     }
+    
+    next(error);
   }
-);
+});
 
-// Get all users (admin only)
-router.get(
-  '/users',
-  isAuthenticated,
-  hasRole([UserRole.ADMIN]),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // This would be implemented in storage
-      // const users = await storage.getAllUsers();
-      // For now, return a stub
-      res.json({ message: 'User list endpoint (to be implemented)' });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// Update user role (admin only)
-router.patch(
-  '/users/:id/role',
-  isAuthenticated,
-  hasRole([UserRole.ADMIN]),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const { role } = req.body;
-      
-      if (!role || !Object.values(UserRole).includes(role as UserRole)) {
-        return res.status(400).json({ message: 'Valid role is required' });
+// Login with email and password
+router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    passport.authenticate('local', { session: false }, (err, user, info) => {
+      if (err) {
+        return next(err);
       }
-      
-      const user = await storage.updateUser(userId, { role });
       
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(401).json({ message: info?.message || 'Authentication failed' });
       }
       
-      res.json(user);
-    } catch (error) {
-      next(error);
-    }
+      // Generate JWT token
+      const token = generateToken(user);
+      
+      // Return user data and token
+      return res.status(200).json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          profileImageUrl: user.profileImageUrl
+        },
+        token
+      });
+    })(req, res, next);
+  } catch (error) {
+    next(error);
   }
-);
+});
 
-// Deactivate user (admin only)
-router.delete(
-  '/users/:id',
-  isAuthenticated,
-  hasRole([UserRole.ADMIN]),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = parseInt(req.params.id);
-      
-      // Don't allow admins to delete themselves
-      if (userId === (req.user as any).id) {
-        return res.status(400).json({ message: 'Cannot deactivate your own account' });
-      }
-      
-      const success = await storage.deactivateUser(userId);
-      
-      if (!success) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-      
-      res.status(204).end();
-    } catch (error) {
-      next(error);
-    }
+// Login with Google
+router.get('/google', (req: Request, res: Response, next: NextFunction) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({ message: 'Google authentication is not configured' });
   }
-);
+  
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
 
-// Initialize test user if needed
-createInitialTestUser();
+// Google callback
+router.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate('google', { session: false }, (err, user) => {
+    if (err) {
+      return next(err);
+    }
+    
+    if (!user) {
+      return res.redirect('/login?error=auth_failed');
+    }
+    
+    // Generate JWT token
+    const token = generateToken(user);
+    
+    // Redirect to frontend with token
+    return res.redirect(`/auth/callback?token=${token}`);
+  })(req, res, next);
+});
+
+// Login with Facebook
+router.get('/facebook', (req: Request, res: Response, next: NextFunction) => {
+  if (!process.env.FACEBOOK_APP_ID || !process.env.FACEBOOK_APP_SECRET) {
+    return res.status(503).json({ message: 'Facebook authentication is not configured' });
+  }
+  
+  passport.authenticate('facebook', { scope: ['email'] })(req, res, next);
+});
+
+// Facebook callback
+router.get('/facebook/callback', (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate('facebook', { session: false }, (err, user) => {
+    if (err) {
+      return next(err);
+    }
+    
+    if (!user) {
+      return res.redirect('/login?error=auth_failed');
+    }
+    
+    // Generate JWT token
+    const token = generateToken(user);
+    
+    // Redirect to frontend with token
+    return res.redirect(`/auth/callback?token=${token}`);
+  })(req, res, next);
+});
+
+// Get current user information
+router.get('/user', isAuthenticated, (req: Request, res: Response) => {
+  const user = req.user;
+  
+  res.status(200).json({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    profileImageUrl: user.profileImageUrl
+  });
+});
 
 export default router;

@@ -2,38 +2,48 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
 import cookieParser from "cookie-parser";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { insertWorkflowSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import workflowMonitoringRoutes from "./routes/workflowMonitoring";
 import authRoutes from "./auth/auth.routes";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { initializeOAuthProviders } from "./auth/auth.service";
+import { setupPassport, isAuthenticated, createInitialTestUser, initializeOAuthProviders } from "./auth/auth.service";
+import { pool } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup middleware
   app.use(cookieParser());
 
-  // Setup Replit Auth
-  await setupAuth(app);
+  // Configure session
+  const PgStore = connectPg(session);
+  app.use(session({
+    store: new PgStore({
+      pool,
+      tableName: 'sessions',
+      createTableIfMissing: true
+    }),
+    secret: process.env.SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    }
+  }));
+
+  // Initialize passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+  setupPassport();
   
-  // Initialize OAuth providers if needed
+  // Initialize OAuth providers and create test user
   await initializeOAuthProviders();
+  await createInitialTestUser();
   
   // Register auth routes
   app.use('/api/auth', authRoutes);
-
-  // Add user info endpoint for Replit Auth
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUserByUsername(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
   
   // Register monitoring routes
   app.use('/api/monitoring', workflowMonitoringRoutes);

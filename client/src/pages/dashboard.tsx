@@ -35,18 +35,18 @@ export default function Dashboard() {
               <div className="rounded-lg bg-muted p-4">
                 <h3 className="mb-2 font-medium">User Information</h3>
                 <div className="grid gap-2">
-                  {user.profileImageUrl && (
+                  {(user as any).profileImageUrl && (
                     <div className="flex justify-center">
                       <img 
-                        src={user.profileImageUrl} 
+                        src={(user as any).profileImageUrl} 
                         alt="Profile" 
                         className="h-16 w-16 rounded-full object-cover"
                       />
                     </div>
                   )}
-                  <p><span className="font-semibold">Username:</span> {user.username}</p>
-                  <p><span className="font-semibold">Email:</span> {user.email || 'Not provided'}</p>
-                  <p><span className="font-semibold">Role:</span> {user.role}</p>
+                  <p><span className="font-semibold">Username:</span> {(user as any).username || 'Unknown'}</p>
+                  <p><span className="font-semibold">Email:</span> {(user as any).email || 'Not provided'}</p>
+                  <p><span className="font-semibold">Role:</span> {(user as any).role || 'User'}</p>
                 </div>
               </div>
             )}
