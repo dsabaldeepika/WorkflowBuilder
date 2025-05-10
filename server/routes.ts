@@ -3,8 +3,12 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertWorkflowSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import workflowMonitoringRoutes from "./routes/workflowMonitoring";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register monitoring routes
+  app.use('/api/monitoring', workflowMonitoringRoutes);
+  
   // API Routes
   // Get all workflows for a user
   app.get("/api/workflows", async (req, res) => {

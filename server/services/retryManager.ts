@@ -26,7 +26,7 @@ interface RetryConfig {
   nonRetryableCategories: Array<keyof typeof ERROR_CATEGORIES>;
   
   // Callback to determine if an error is retryable
-  isRetryableError?: (error: Error, category: keyof typeof ERROR_CATEGORIES) => boolean;
+  isRetryableError?: (error: Error, category: keyof typeof ERROR_CATEGORIES) => boolean | null;
 }
 
 /**
@@ -65,7 +65,8 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
       return true;
     }
     
-    return undefined; // Let the category-based decision handle it
+    // Return null to let the category-based decision handle it
+    return null;
   }
 };
 
@@ -105,8 +106,8 @@ function shouldRetryError(
   // Check custom retry logic if provided
   if (config.isRetryableError) {
     const customDecision = config.isRetryableError(error, category);
-    if (customDecision !== undefined) {
-      return customDecision;
+    if (customDecision !== null) {
+      return customDecision as boolean;
     }
   }
   

@@ -1,114 +1,147 @@
-import { Router } from 'express';
+import express from 'express';
 import { WorkflowLogger } from '../services/workflowLogger';
-import fs from 'fs';
-import path from 'path';
-import { promisify } from 'util';
+import { RetryManager } from '../services/retryManager';
+import { storage } from '../storage';
 
-const readFile = promisify(fs.readFile);
-const router = Router();
+const router = express.Router();
 
-// Get logs for a specific workflow
-router.get('/workflows/:workflowId/logs', async (req, res) => {
-  try {
-    const { workflowId } = req.params;
-    const { limit = '100' } = req.query;
-    
-    // In a production system, you'd query logs from a database
-    // For now, we're parsing the log files directly
-    const logs = await WorkflowLogger.getWorkflowLogs(
-      workflowId, 
-      parseInt(limit as string, 10)
-    );
-    
-    res.json({ logs });
-  } catch (error) {
-    res.status(500).json({
-      error: 'Failed to retrieve workflow logs',
-      details: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-// Get all error logs for monitoring
+// Get error logs for a workflow
 router.get('/errors', async (req, res) => {
   try {
-    const { timeframe = 'day' } = req.query;
-    const logsDir = path.join(process.cwd(), 'logs');
+    const { workflowId, limit = 100, timeframe = 'day' } = req.query;
     
-    // Read error log file
-    const logFilePath = path.join(logsDir, 'error.log');
-    let errorLogs: any[] = [];
-    
-    if (fs.existsSync(logFilePath)) {
-      const content = await readFile(logFilePath, 'utf8');
-      
-      // Parse JSON lines
-      errorLogs = content
-        .split('\n')
-        .filter(line => line.trim())
-        .map(line => {
-          try {
-            return JSON.parse(line);
-          } catch (e) {
-            return null;
-          }
-        })
-        .filter(log => log !== null);
-      
-      // Filter by timeframe if needed
-      if (timeframe) {
-        const now = new Date();
-        let cutoff = now;
-        
-        switch (timeframe) {
-          case 'hour':
-            cutoff = new Date(now.getTime() - 60 * 60 * 1000);
-            break;
-          case 'day':
-            cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            break;
-          case 'week':
-            cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            break;
-          case 'month':
-            cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            break;
-        }
-        
-        errorLogs = errorLogs.filter(log => {
-          const logDate = new Date(log.timestamp);
-          return logDate >= cutoff;
-        });
-      }
+    // If workflowId is provided, get logs for that specific workflow
+    if (workflowId) {
+      const logs = await WorkflowLogger.getWorkflowLogs(workflowId as string, Number(limit));
+      return res.json({ errors: logs });
     }
     
-    res.json({ 
-      errors: errorLogs,
-      count: errorLogs.length,
-      timeframe
-    });
+    // Otherwise, get general error stats
+    const errorStats = await WorkflowLogger.getErrorStats(timeframe as 'day' | 'week' | 'month');
+    res.json(errorStats);
   } catch (error) {
-    res.status(500).json({
-      error: 'Failed to retrieve error logs',
-      details: error instanceof Error ? error.message : String(error)
-    });
+    console.error('Error fetching workflow logs:', error);
+    res.status(500).json({ message: 'Failed to fetch workflow logs' });
   }
 });
 
-// Get error statistics for dashboard
-router.get('/stats', async (req, res) => {
+// Get execution history for a workflow
+router.get('/executions/:workflowId', async (req, res) => {
+  try {
+    const { workflowId } = req.params;
+    const { limit = 10 } = req.query;
+    
+    // This would typically fetch from a database
+    // For now, we'll return a mock response
+    res.json({
+      executions: [
+        {
+          id: 'exec-1',
+          workflowId: Number(workflowId),
+          status: 'completed',
+          startTime: new Date(Date.now() - 3600000).toISOString(),
+          endTime: new Date(Date.now() - 3590000).toISOString(),
+          duration: 10000, // 10 seconds
+          tasksCompleted: 5,
+          tasksTotal: 5
+        },
+        {
+          id: 'exec-2',
+          workflowId: Number(workflowId),
+          status: 'failed',
+          startTime: new Date(Date.now() - 7200000).toISOString(),
+          endTime: new Date(Date.now() - 7195000).toISOString(),
+          duration: 5000, // 5 seconds
+          tasksCompleted: 2,
+          tasksTotal: 5,
+          error: 'Connection timeout when connecting to external API'
+        }
+      ]
+    });
+  } catch (error) {
+    console.error('Error fetching execution history:', error);
+    res.status(500).json({ message: 'Failed to fetch execution history' });
+  }
+});
+
+// Get workflow health metrics
+router.get('/health', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    // Get all workflows for the user
+    const workflows = await storage.getWorkflowsByUserId(Number(userId));
+    
+    // Generate mock health metrics - in a real app, this would come from monitoring data
+    const healthMetrics = workflows.map(workflow => ({
+      id: workflow.id,
+      name: workflow.name,
+      status: Math.random() > 0.7 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'error',
+      successRate: Math.floor(Math.random() * 40) + 60, // 60-100%
+      lastRun: new Date(Date.now() - Math.floor(Math.random() * 86400000)).toISOString(), // Within last 24h
+      totalExecutions: Math.floor(Math.random() * 100) + 1,
+      averageDuration: Math.floor(Math.random() * 60000) + 1000 // 1-61 seconds
+    }));
+    
+    res.json({ workflows: healthMetrics });
+  } catch (error) {
+    console.error('Error fetching workflow health:', error);
+    res.status(500).json({ message: 'Failed to fetch workflow health metrics' });
+  }
+});
+
+// Get error categories and distribution
+router.get('/error-stats', async (req, res) => {
   try {
     const { timeframe = 'day' } = req.query;
     
-    // Get error statistics from WorkflowLogger
-    const stats = await WorkflowLogger.getErrorStats(timeframe as any);
+    // In a real application, this would query a database
+    const errorStats = {
+      totalErrors: 12,
+      retryableErrors: 8,
+      categoryCounts: {
+        connection: 3,
+        auth: 2,
+        validation: 4,
+        timeout: 1,
+        rate_limit: 2,
+        system: 0,
+        unknown: 0
+      },
+      topFailingWorkflows: [
+        { name: 'Social Media Publishing', count: 5 },
+        { name: 'Inventory Sync', count: 4 },
+        { name: 'Invoice Generation', count: 3 }
+      ]
+    };
     
-    res.json(stats);
+    res.json(errorStats);
   } catch (error) {
-    res.status(500).json({
-      error: 'Failed to retrieve error statistics',
-      details: error instanceof Error ? error.message : String(error)
+    console.error('Error fetching error stats:', error);
+    res.status(500).json({ message: 'Failed to fetch error statistics' });
+  }
+});
+
+// Manual retry for a failed execution
+router.post('/retry/:executionId', async (req, res) => {
+  try {
+    const { executionId } = req.params;
+    
+    // In a real application, this would trigger a retry of the failed execution
+    // For demo purposes, we'll just return a success response
+    
+    res.json({
+      message: 'Execution retry initiated',
+      executionId,
+      status: 'pending'
     });
+  } catch (error) {
+    console.error('Error retrying execution:', error);
+    res.status(500).json({ message: 'Failed to retry execution' });
   }
 });
 
