@@ -1,216 +1,153 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  CheckCircle2, 
-  AlertCircle, 
+  Circle, 
   Clock, 
+  PlayCircle, 
   RefreshCw, 
-  PlayCircle,
-  XCircle,
-  Pause,
-  Hourglass
+  CheckCircle2, 
+  XCircle, 
+  PauseCircle, 
+  AlertCircle 
 } from 'lucide-react';
 
-export type WorkflowState = 
-  | 'idle'
-  | 'starting'
-  | 'running'
-  | 'paused'
-  | 'completed'
-  | 'failed'
-  | 'retrying';
+// Type definitions for workflow states
+export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying';
 
-interface StateChangeAnimationProps {
+// Define colors and icons for each state
+const stateConfig = {
+  idle: {
+    icon: Clock,
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-100',
+    pulseColor: 'bg-slate-200',
+    label: 'Idle',
+  },
+  starting: {
+    icon: PlayCircle,
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-100',
+    pulseColor: 'bg-blue-200',
+    label: 'Starting',
+  },
+  running: {
+    icon: RefreshCw,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
+    pulseColor: 'bg-blue-200',
+    label: 'Running',
+    animation: 'animate-spin-slow',
+  },
+  completed: {
+    icon: CheckCircle2,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-100',
+    pulseColor: 'bg-emerald-200',
+    label: 'Completed',
+  },
+  failed: {
+    icon: XCircle,
+    color: 'text-red-600',
+    bgColor: 'bg-red-100',
+    pulseColor: 'bg-red-200',
+    label: 'Failed',
+  },
+  paused: {
+    icon: PauseCircle,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
+    pulseColor: 'bg-amber-200',
+    label: 'Paused',
+  },
+  retrying: {
+    icon: AlertCircle,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
+    pulseColor: 'bg-purple-200',
+    label: 'Retrying',
+    animation: 'animate-pulse',
+  },
+};
+
+// Size configurations
+const sizeConfig = {
+  sm: {
+    icon: 'h-4 w-4',
+    container: 'h-6 w-6',
+    pulse: '-inset-1',
+    label: 'text-xs',
+  },
+  md: {
+    icon: 'h-6 w-6',
+    container: 'h-10 w-10',
+    pulse: '-inset-1.5',
+    label: 'text-sm',
+  },
+  lg: {
+    icon: 'h-8 w-8',
+    container: 'h-14 w-14',
+    pulse: '-inset-2',
+    label: 'text-base',
+  },
+};
+
+interface WorkflowStateIndicatorProps {
+  state: WorkflowState;
   previousState?: WorkflowState;
-  currentState: WorkflowState;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
-  onAnimationComplete?: () => void;
+  animate?: boolean;
 }
 
 /**
- * StateChangeAnimation Component
+ * WorkflowStateIndicator Component
  * 
- * A micro-animation component that visualizes workflow state transitions.
- * This component provides visual feedback when a workflow changes state,
- * improving the user experience by making state changes more noticeable.
+ * Displays a visual representation of a workflow state with animations for state transitions
  */
-export function StateChangeAnimation({
+export function WorkflowStateIndicator({
+  state,
   previousState,
-  currentState,
   size = 'md',
-  showLabel = true,
-  onAnimationComplete
-}: StateChangeAnimationProps) {
-  const [showAnimation, setShowAnimation] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
+  showLabel = false,
+  animate = true,
+}: WorkflowStateIndicatorProps) {
+  const config = stateConfig[state];
+  const sizeClasses = sizeConfig[size];
   
-  // Trigger animation when state changes
-  useEffect(() => {
-    if (previousState !== currentState) {
-      setShowAnimation(true);
-      setAnimationComplete(false);
-    }
-  }, [previousState, currentState]);
-  
-  // Determine icon size based on the size prop
-  const iconSize = {
-    sm: 16,
-    md: 24,
-    lg: 32
-  }[size];
-  
-  // Get appropriate icon and color for each state
-  const getStateDetails = (state: WorkflowState) => {
-    switch (state) {
-      case 'idle':
-        return { 
-          icon: <Clock size={iconSize} />, 
-          color: 'text-slate-400',
-          bgColor: 'bg-slate-100',
-          label: 'Idle'
-        };
-      case 'starting':
-        return { 
-          icon: <PlayCircle size={iconSize} />, 
-          color: 'text-blue-500',
-          bgColor: 'bg-blue-50',
-          label: 'Starting'
-        };
-      case 'running':
-        return { 
-          icon: <RefreshCw size={iconSize} className="animate-spin-slow" />, 
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          label: 'Running'
-        };
-      case 'paused':
-        return { 
-          icon: <Pause size={iconSize} />, 
-          color: 'text-amber-500',
-          bgColor: 'bg-amber-50',
-          label: 'Paused'
-        };
-      case 'completed':
-        return { 
-          icon: <CheckCircle2 size={iconSize} />, 
-          color: 'text-emerald-600',
-          bgColor: 'bg-emerald-50',
-          label: 'Completed'
-        };
-      case 'failed':
-        return { 
-          icon: <XCircle size={iconSize} />, 
-          color: 'text-red-600',
-          bgColor: 'bg-red-50',
-          label: 'Failed'
-        };
-      case 'retrying':
-        return { 
-          icon: <Hourglass size={iconSize} className="animate-pulse" />, 
-          color: 'text-amber-600',
-          bgColor: 'bg-amber-50',
-          label: 'Retrying'
-        };
-      default:
-        return { 
-          icon: <Clock size={iconSize} />, 
-          color: 'text-slate-400',
-          bgColor: 'bg-slate-100',
-          label: 'Unknown'
-        };
-    }
-  };
-  
-  const details = getStateDetails(currentState);
-
-  const handleAnimationComplete = () => {
-    setAnimationComplete(true);
-    setShowAnimation(false);
-    onAnimationComplete?.();
-  };
-  
-  // Basic animation for state change
-  const containerVariants = {
-    hidden: { 
-      opacity: 0,
-      scale: 0.8 
-    },
-    visible: { 
-      opacity: 1,
-      scale: 1,
-      transition: { 
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.8,
-      transition: {
-        duration: 0.2
-      }
-    }
-  };
-
-  // Pulse effect animation variants
-  const pulseVariants = {
-    initial: { 
-      scale: 1,
-      opacity: 0.7 
-    },
-    pulse: { 
-      scale: [1, 1.2, 1],
-      opacity: [0.7, 1, 0.7],
-      transition: { 
-        duration: 1.5,
-        repeat: 1,
-        ease: "easeInOut"
-      }
-    }
-  };
+  // Determine if we should show a transition animation
+  const shouldAnimate = animate && previousState && previousState !== state;
   
   return (
-    <div className="inline-flex items-center">
-      <AnimatePresence>
-        {showAnimation ? (
-          <motion.div
-            key="animation"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={containerVariants}
-            onAnimationComplete={handleAnimationComplete}
-            className="relative"
-          >
-            <motion.div
-              className={`rounded-full p-1 ${details.bgColor}`}
-              initial="initial"
-              animate="pulse"
-              variants={pulseVariants}
-            >
-              <div className={`${details.color}`}>
-                {details.icon}
-              </div>
-            </motion.div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="static"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className={`rounded-full p-1 ${details.bgColor}`}
-          >
-            <div className={`${details.color}`}>
-              {details.icon}
-            </div>
-          </motion.div>
+    <div className="flex flex-col items-center">
+      <div className="relative">
+        {/* Background pulse for active states */}
+        {['running', 'retrying', 'starting'].includes(state) && animate && (
+          <motion.div 
+            className={`absolute ${sizeClasses.pulse} ${config.pulseColor} rounded-full animate-pulse-ring`}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          />
         )}
-      </AnimatePresence>
+        
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={state}
+            className={`${sizeClasses.container} relative flex items-center justify-center rounded-full ${config.bgColor}`}
+            initial={shouldAnimate ? { opacity: 0, scale: 0.8 } : false}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Icon with optional animation */}
+            <config.icon className={`${sizeClasses.icon} ${config.color} ${config.animation ? config.animation : ''}`} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
       
       {showLabel && (
-        <span className={`ml-2 text-sm font-medium ${details.color}`}>
-          {details.label}
+        <span className={`mt-1 font-medium ${config.color} ${sizeClasses.label}`}>
+          {config.label}
         </span>
       )}
     </div>
@@ -218,8 +155,7 @@ export function StateChangeAnimation({
 }
 
 /**
- * This hook handles the workflow state transition with history.
- * It automatically triggers micro-animations when the state changes.
+ * Custom hook to manage workflow state with animation support
  */
 export function useWorkflowState(initialState: WorkflowState = 'idle') {
   const [currentState, setCurrentState] = useState<WorkflowState>(initialState);
@@ -232,134 +168,115 @@ export function useWorkflowState(initialState: WorkflowState = 'idle') {
     }
   };
   
-  return { 
-    currentState, 
-    previousState, 
-    changeState 
-  };
+  return { currentState, previousState, changeState };
 }
 
 /**
- * Primary UI component that combines workflow state indicator with animation
+ * WorkflowStateTransition Component
+ * 
+ * Visualizes a transition between two workflow states with an animated arrow
  */
-export function WorkflowStateIndicator({
-  state,
-  previousState,
+export function WorkflowStateTransition({
+  fromState,
+  toState,
+  onClick,
   size = 'md',
-  className = '',
-  animate = true
 }: {
-  state: WorkflowState;
-  previousState?: WorkflowState;
+  fromState: WorkflowState;
+  toState: WorkflowState;
+  onClick?: () => void;
   size?: 'sm' | 'md' | 'lg';
-  className?: string;
-  animate?: boolean;
 }) {
   return (
-    <div className={`inline-flex items-center ${className}`}>
-      {animate ? (
-        <StateChangeAnimation
-          currentState={state}
-          previousState={previousState}
-          size={size}
-          showLabel={true}
+    <div 
+      className="flex items-center gap-2 cursor-pointer"
+      onClick={onClick}
+    >
+      <WorkflowStateIndicator state={fromState} size={size} animate={false} />
+      
+      <motion.div 
+        className="text-slate-400"
+        initial={{ x: -5, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        whileHover={{ scale: 1.2 }}
+      >
+        →
+      </motion.div>
+      
+      <WorkflowStateIndicator state={toState} size={size} animate={false} />
+    </div>
+  );
+}
+
+/**
+ * WorkflowStateProgressBar Component
+ * 
+ * Displays a progress bar for workflow operations with state-based colors
+ */
+export function WorkflowStateProgressBar({
+  state,
+  progress,
+  showLabel = true,
+}: {
+  state: WorkflowState;
+  progress: number; // 0-100
+  showLabel?: boolean;
+}) {
+  // Limit progress value between 0-100
+  const clampedProgress = Math.min(100, Math.max(0, progress));
+  const config = stateConfig[state];
+  
+  return (
+    <div className="w-full space-y-1">
+      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+        <motion.div 
+          className={`h-full rounded-full ${state === 'failed' ? 'bg-red-500' : 'bg-blue-500'}`}
+          initial={{ width: '0%' }}
+          animate={{ width: `${clampedProgress}%` }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
         />
-      ) : (
-        <StaticStateIndicator state={state} size={size} />
+      </div>
+      
+      {showLabel && (
+        <div className="flex justify-between text-xs">
+          <span className={config.color}>{config.label}</span>
+          <span className="text-slate-600 font-medium">{clampedProgress}%</span>
+        </div>
       )}
     </div>
   );
 }
 
 /**
- * Static state indicator without animations
+ * WorkflowStateHistory Component
+ * 
+ * Shows a timeline of workflow state changes
  */
-function StaticStateIndicator({
-  state,
-  size = 'md'
+export function WorkflowStateHistory({
+  states,
+  currentStateIndex,
 }: {
-  state: WorkflowState;
-  size?: 'sm' | 'md' | 'lg';
+  states: { state: WorkflowState; timestamp: string }[];
+  currentStateIndex: number;
 }) {
-  const iconSize = {
-    sm: 16,
-    md: 24,
-    lg: 32
-  }[size];
-  
-  const getStateDetails = (state: WorkflowState) => {
-    switch (state) {
-      case 'idle':
-        return { 
-          icon: <Clock size={iconSize} />, 
-          color: 'text-slate-400',
-          bgColor: 'bg-slate-100',
-          label: 'Idle'
-        };
-      case 'starting':
-        return { 
-          icon: <PlayCircle size={iconSize} />, 
-          color: 'text-blue-500',
-          bgColor: 'bg-blue-50',
-          label: 'Starting'
-        };
-      case 'running':
-        return { 
-          icon: <RefreshCw size={iconSize} className="animate-spin-slow" />, 
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          label: 'Running'
-        };
-      case 'paused':
-        return { 
-          icon: <Pause size={iconSize} />, 
-          color: 'text-amber-500',
-          bgColor: 'bg-amber-50',
-          label: 'Paused'
-        };
-      case 'completed':
-        return { 
-          icon: <CheckCircle2 size={iconSize} />, 
-          color: 'text-emerald-600',
-          bgColor: 'bg-emerald-50',
-          label: 'Completed'
-        };
-      case 'failed':
-        return { 
-          icon: <XCircle size={iconSize} />, 
-          color: 'text-red-600',
-          bgColor: 'bg-red-50',
-          label: 'Failed'
-        };
-      case 'retrying':
-        return { 
-          icon: <Hourglass size={iconSize} className="animate-pulse" />, 
-          color: 'text-amber-600',
-          bgColor: 'bg-amber-50',
-          label: 'Retrying'
-        };
-      default:
-        return { 
-          icon: <Clock size={iconSize} />, 
-          color: 'text-slate-400',
-          bgColor: 'bg-slate-100',
-          label: 'Unknown'
-        };
-    }
-  };
-  
-  const details = getStateDetails(state);
-  
   return (
-    <>
-      <div className={`rounded-full p-1 ${details.bgColor}`}>
-        <div className={`${details.color}`}>
-          {details.icon}
+    <div className="space-y-3">
+      {states.map((item, index) => (
+        <div 
+          key={index}
+          className={`flex items-center gap-3 p-2 rounded-md ${index === currentStateIndex ? 'bg-slate-50 border' : ''}`}
+        >
+          <WorkflowStateIndicator 
+            state={item.state} 
+            size="sm" 
+            animate={index === currentStateIndex}
+          />
+          <div className="flex-1">
+            <div className="font-medium text-sm">{stateConfig[item.state].label}</div>
+            <div className="text-xs text-slate-500">{item.timestamp}</div>
+          </div>
         </div>
-      </div>
-      <span className={`ml-2 text-sm font-medium ${details.color}`}>
-        {details.label}
-      </span>
-    </>
+      ))}
+    </div>
   );
 }

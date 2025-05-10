@@ -19,7 +19,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { WorkflowStateIndicator, WorkflowState } from '@/components/workflow/StateChangeAnimation';
-import WorkflowAnimationCard from './workflow-animation-card';
+import WorkflowAnimationCard from '@/components/workflow/WorkflowAnimationCard';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
