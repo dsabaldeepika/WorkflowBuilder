@@ -9,6 +9,7 @@ import WorkflowBuilder from "@/pages/workflow-builder";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Callback from "@/pages/auth/callback";
+import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
 import { useAuth } from "@/hooks/useAuth";
 
 // Protected route component
@@ -54,6 +55,9 @@ function Router() {
       </Route>
       <Route path="/create">
         {(params) => <ProtectedRoute component={WorkflowBuilder} params={params} />}
+      </Route>
+      <Route path="/workflow-animations">
+        {(params) => <ProtectedRoute component={WorkflowAnimationsDemo} params={params} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
