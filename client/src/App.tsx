@@ -13,14 +13,15 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
   
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
   
   if (!isAuthenticated) {
-    window.location.href = "/login";
+    // Use the Replit Auth login method
+    login();
     return null;
   }
   
