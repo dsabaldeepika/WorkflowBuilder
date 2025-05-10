@@ -29,9 +29,24 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
 };
 
 function Router() {
+  // Check auth status for home route
+  const HomeRoute = () => {
+    const { isAuthenticated, isLoading } = useAuth();
+    
+    if (isLoading) {
+      return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    }
+    
+    if (isAuthenticated) {
+      return <Dashboard />;
+    } else {
+      return <Login />;
+    }
+  };
+  
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={HomeRoute} />
       <Route path="/login" component={Login} />
       <Route path="/auth/callback" component={Callback} />
       <Route path="/dashboard">
