@@ -1,251 +1,275 @@
-import React, { useState, useCallback } from 'react';
-import { useReactFlow } from 'reactflow';
+import React, { useCallback, useState, useRef } from 'react';
+import { Node, Edge } from 'reactflow';
+import { NodeData } from '@/store/useWorkflowStore';
 import { Button } from '@/components/ui/button';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
-import { ConnectionValidatorControl } from './ConnectionValidator';
-import { PerformanceOptimizer, OptimizationResult } from './PerformanceOptimizer';
-import { WorkflowExecutor } from './WorkflowExecutor';
-import { WorkflowState } from './StateChangeAnimation';
-import {
-  Play,
-  Zap,
-  CheckCircle2,
-  Wrench,
-  AlertCircle,
-  FileJson,
-  Download,
-  Upload,
-  Save
-} from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
+import { Download, Upload, FileUp, Play, CheckSquare, Zap, Trash, Info } from 'lucide-react';
 
-interface WorkflowControlsProps {
-  onNodeStateChange?: (nodeId: string, state: WorkflowState) => void;
-  onSave?: () => void;
-  onExport?: () => void;
-  onImport?: () => void;
+// Function to download workflow as JSON
+export function downloadJSONFile(data: any, filename: string = 'workflow.json'): void {
+  const jsonString = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const downloadLink = document.createElement('a');
+  downloadLink.href = url;
+  downloadLink.download = filename;
+  
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  
+  URL.revokeObjectURL(url);
 }
 
-export function WorkflowControls({ onNodeStateChange, onSave, onExport, onImport }: WorkflowControlsProps) {
-  const [showOptimizer, setShowOptimizer] = useState(false);
-  const [showExecutor, setShowExecutor] = useState(false);
-  const [optimizationApplied, setOptimizationApplied] = useState(false);
-  const { getNodes, setNodes, getEdges, setEdges } = useReactFlow();
-  
-  // Handle optimization result
-  const handleOptimize = useCallback((result: OptimizationResult) => {
-    // Get current nodes
-    const nodes = getNodes();
+// Function to read a JSON file
+export async function uploadJSONFile(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
     
-    // Apply visual changes to optimized nodes
-    const updatedNodes = nodes.map(node => {
-      if (result.optimizedNodeIds.includes(node.id)) {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            optimized: true
-          },
-          // Add a visual indicator for optimized nodes
-          className: 'optimized-node'
-        };
+    fileInput.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        reject(new Error('No file selected'));
+        return;
       }
-      return node;
-    });
-    
-    // Update nodes in the flow
-    setNodes(updatedNodes);
-    setOptimizationApplied(true);
-  }, [getNodes, setNodes]);
-  
-  return (
-    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-      <div className="bg-white rounded-full shadow-lg p-1 flex items-center gap-2">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <motion.button
-                className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center"
-                onClick={() => setShowExecutor(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Play className="h-5 w-5" />
-              </motion.button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              Execute Workflow
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <motion.button
-                className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center"
-                onClick={() => setShowOptimizer(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Zap className="h-5 w-5" />
-              </motion.button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              Optimize Performance
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        {onSave && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <motion.button
-                  className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center"
-                  onClick={onSave}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Save className="h-5 w-5" />
-                </motion.button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Save Workflow
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {onExport && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <motion.button
-                  className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center"
-                  onClick={onExport}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Download className="h-5 w-5" />
-                </motion.button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Export Workflow
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {onImport && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <motion.button
-                  className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center"
-                  onClick={onImport}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Upload className="h-5 w-5" />
-                </motion.button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Import Workflow
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {optimizationApplied && (
-          <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full flex items-center text-sm">
-            <CheckCircle2 className="h-4 w-4 mr-1" />
-            Optimized
-          </div>
-        )}
-      </div>
       
-      {/* Connection validator control - positioned separately */}
-      <ConnectionValidatorControl />
-      
-      {/* Modals */}
-      <PerformanceOptimizer 
-        isOpen={showOptimizer} 
-        onClose={() => setShowOptimizer(false)}
-        onOptimize={handleOptimize}
-      />
-      
-      <WorkflowExecutor
-        isOpen={showExecutor}
-        onClose={() => setShowExecutor(false)}
-        onNodeStateChange={onNodeStateChange}
-      />
-    </div>
-  );
-}
-
-// Utility function to handle JSON file upload
-export function uploadJSONFile(onUpload: (data: any) => void) {
-  // Create a file input element
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = '.json';
-  fileInput.style.display = 'none';
-  document.body.appendChild(fileInput);
-  
-  // Set up file change handler
-  fileInput.onchange = (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    
-    if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const jsonData = JSON.parse(e.target?.result as string);
-          onUpload(jsonData);
+          const json = JSON.parse(e.target?.result as string);
+          resolve(json);
         } catch (error) {
-          console.error('Error parsing JSON file:', error);
-          alert('Invalid JSON file format');
+          reject(new Error('Invalid JSON file'));
         }
       };
+      reader.onerror = () => reject(new Error('Error reading file'));
       reader.readAsText(file);
-    }
+    };
     
-    // Clean up
-    document.body.removeChild(fileInput);
-  };
-  
-  // Trigger file dialog
-  fileInput.click();
+    fileInput.click();
+  });
 }
 
-// Utility function to download JSON data as a file
-export function downloadJSONFile(data: any, filename: string = 'workflow.json') {
-  try {
-    const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+// Component for workflow manipulation controls
+export const WorkflowControls: React.FC<{
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  onSave?: () => void;
+  onLoad?: (nodes: Node<NodeData>[], edges: Edge[]) => void;
+  onClear?: () => void;
+  onValidate?: () => void;
+  showInfoPanel?: () => void;
+}> = ({ 
+  nodes, 
+  edges, 
+  onSave, 
+  onLoad, 
+  onClear,
+  onValidate,
+  showInfoPanel
+}) => {
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  
+  // Handle saving workflow
+  const handleSave = useCallback(() => {
+    if (nodes.length === 0) {
+      toast({
+        title: 'Nothing to save',
+        description: 'Add some nodes to your workflow first.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
+    const workflowData = {
+      nodes,
+      edges,
+      metadata: {
+        exportedAt: new Date().toISOString(),
+        version: '1.0.0'
+      }
+    };
     
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-  } catch (error) {
-    console.error('Error downloading JSON file:', error);
-    alert('Failed to download workflow');
-  }
-}
+    downloadJSONFile(workflowData, 'pumpflux-workflow.json');
+    
+    toast({
+      title: 'Workflow Saved',
+      description: 'Your workflow has been exported as a JSON file.',
+    });
+    
+    if (onSave) onSave();
+  }, [nodes, edges, onSave]);
+  
+  // Handle loading workflow
+  const handleLoad = useCallback(async () => {
+    try {
+      const data = await uploadJSONFile();
+      
+      if (!data.nodes || !data.edges) {
+        toast({
+          title: 'Invalid Workflow File',
+          description: 'The file does not contain valid workflow data.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (onLoad) {
+        onLoad(data.nodes, data.edges);
+        
+        toast({
+          title: 'Workflow Loaded',
+          description: `Loaded workflow with ${data.nodes.length} nodes.`,
+          variant: 'success',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error Loading Workflow',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
+  }, [onLoad]);
+  
+  // Handle clearing workflow
+  const handleClearConfirm = useCallback(() => {
+    if (onClear) onClear();
+    setShowClearDialog(false);
+    
+    toast({
+      title: 'Workflow Cleared',
+      description: 'All nodes and connections have been removed.',
+    });
+  }, [onClear]);
+  
+  // Handle validating workflow
+  const handleValidate = useCallback(() => {
+    if (onValidate) onValidate();
+  }, [onValidate]);
+  
+  return (
+    <>
+      <div className="flex items-center gap-1">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                size="icon" 
+                variant="outline" 
+                onClick={handleSave}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Export workflow as JSON
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                size="icon" 
+                variant="outline" 
+                onClick={handleLoad}
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Import workflow from JSON
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => setShowClearDialog(true)}
+                className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              >
+                <Trash className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Clear workflow
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        {onValidate && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleValidate}
+                  className="border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                >
+                  <CheckSquare className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Validate connections
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
+        {showInfoPanel && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={showInfoPanel}
+                  className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Workflow information
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+      
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Workflow</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all nodes and connections from your workflow. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearConfirm}
+              className="bg-rose-500 hover:bg-rose-600"
+            >
+              Clear Workflow
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};

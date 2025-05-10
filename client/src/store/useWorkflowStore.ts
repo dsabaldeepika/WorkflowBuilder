@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge } from 'reactflow';
 import { App, NodeCategory, Workflow, WorkflowTemplate, NodeType } from '@/types/workflow';
-import { WorkflowState } from '@/components/workflow/StateChangeAnimation';
+import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
 
 export type NodeData = {
   label: string;
@@ -14,8 +14,9 @@ export type NodeData = {
   icon?: string;
   description?: string;
   configuration?: Record<string, any>;
-  state?: WorkflowState;
+  state?: NodeState;
   optimized?: boolean;
+  module?: any; // Support for module property used in some components
   ports?: Array<{
     id: string;
     type: 'input' | 'output';
@@ -25,7 +26,7 @@ export type NodeData = {
   }>;
 };
 
-interface WorkflowState {
+interface WorkflowStoreState {
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
@@ -34,7 +35,7 @@ interface WorkflowState {
   isAIAssistantOpen: boolean;
   isTemplateGalleryOpen: boolean;
   isAgentBuilderOpen: boolean;
-  nodeStates: Record<string, WorkflowState>;
+  nodeStates: Record<string, NodeState>;
   connectionValidations: Record<string, {
     isValid: boolean;
     message?: string;
@@ -72,7 +73,7 @@ interface WorkflowState {
   createAgent: (agentConfig: any) => void;
   
   // Node state management
-  setNodeState: (nodeId: string, state: WorkflowState) => void;
+  setNodeState: (nodeId: string, state: NodeState) => void;
   
   // Connection validation
   validateConnection: (connection: Connection) => boolean;

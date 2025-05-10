@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 // Type definitions for workflow states
-export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying';
+export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying' | string;
 
 // Define colors and icons for each state
 const stateConfig = {
