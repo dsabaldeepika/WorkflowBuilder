@@ -1,51 +1,31 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import passport from "passport";
 import cookieParser from "cookie-parser";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { insertWorkflowSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import workflowMonitoringRoutes from "./routes/workflowMonitoring";
-import authRoutes from "./auth/auth.routes";
-import { setupPassport, isAuthenticated, createInitialTestUser, initializeOAuthProviders } from "./auth/auth.service";
+import { setupAuth } from "./replitAuth";
 import { pool } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup middleware
   app.use(cookieParser());
 
-  // Configure session
-  const PgStore = connectPg(session);
-  app.use(session({
-    store: new PgStore({
-      pool,
-      tableName: 'sessions',
-      createTableIfMissing: true
-    }),
-    secret: process.env.SESSION_SECRET!,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  // Set up Replit Auth
+  await setupAuth(app);
+  
+  // Setup API route to get user info
+  app.get('/api/auth/user', (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
-  }));
-
-  // Initialize passport
-  app.use(passport.initialize());
-  app.use(passport.session());
-  setupPassport();
+    
+    // Return the Replit Auth user info
+    return res.json(req.user);
+  });
   
-  // Initialize OAuth providers and create test user
-  await initializeOAuthProviders();
-  await createInitialTestUser();
-  
-  // Register auth routes
-  app.use('/api/auth', authRoutes);
-  
-  // Register monitoring routes
+  // Add monitoring routes
   app.use('/api/monitoring', workflowMonitoringRoutes);
   
   // API Routes
