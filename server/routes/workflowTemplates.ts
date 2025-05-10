@@ -16,27 +16,45 @@ const router = express.Router();
 
 // == Template Routes ==
 
-// Get all templates with optional filtering
+// Get all templates with optional filtering and search
 router.get('/templates', async (req, res) => {
   try {
-    const { category, published, official, userId } = req.query;
+    const { 
+      category, 
+      published, 
+      official, 
+      userId, 
+      search, 
+      complexity, 
+      tag,
+      sort 
+    } = req.query;
     
     const filters: any = {};
     
+    // Apply category filter
     if (category) {
       filters.category = category as string;
     }
     
+    // Apply published status filter
     if (published !== undefined) {
       filters.isPublished = published === 'true';
     }
     
+    // Apply official status filter
     if (official !== undefined) {
       filters.isOfficial = official === 'true';
     }
     
+    // Apply creator filter
     if (userId) {
       filters.createdByUserId = parseInt(userId as string);
+    }
+    
+    // Apply complexity filter
+    if (complexity) {
+      filters.complexity = complexity as string;
     }
     
     // Parse tags if provided
@@ -49,7 +67,47 @@ router.get('/templates', async (req, res) => {
       }
     }
     
-    const templates = await storage.getWorkflowTemplates(filters);
+    // Single tag filter (alternative to tags)
+    if (tag) {
+      filters.tags = [tag as string];
+    }
+    
+    // Get templates based on filters
+    let templates = await storage.getWorkflowTemplates(filters);
+    
+    // Apply search if provided
+    if (search) {
+      const searchTerm = (search as string).toLowerCase();
+      templates = templates.filter(template => 
+        template.name.toLowerCase().includes(searchTerm) || 
+        (template.description && template.description.toLowerCase().includes(searchTerm)) ||
+        template.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
+      );
+    }
+    
+    // Apply sorting if specified
+    if (sort) {
+      const sortParam = sort as string;
+      if (sortParam === 'popular') {
+        templates.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+      } else if (sortParam === 'recent') {
+        templates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } else if (sortParam === 'name') {
+        templates.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortParam === 'complexity') {
+        // Sort by complexity (simple, medium, complex)
+        const complexityOrder: Record<string, number> = { 
+          simple: 1, 
+          medium: 2, 
+          complex: 3 
+        };
+        templates.sort((a, b) => 
+          (complexityOrder[a.complexity || 'medium'] || 2) - 
+          (complexityOrder[b.complexity || 'medium'] || 2)
+        );
+      }
+    }
+    
     res.json(templates);
   } catch (error) {
     console.error('Error fetching workflow templates:', error);
