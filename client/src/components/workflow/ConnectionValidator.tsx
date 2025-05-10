@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Node, Edge } from 'reactflow';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Node, Edge, EdgeProps, getBezierPath } from 'reactflow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -7,6 +7,70 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { NodeData } from '@/store/useWorkflowStore';
 import { ConnectionValidation } from '@/types/workflow';
+
+// Custom edge component for validated connections
+export const ValidatedEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  data,
+  markerEnd,
+}: EdgeProps) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  // Use different colors based on validation status or condition type
+  const getEdgeColor = () => {
+    if (data?.invalid) return '#ef4444'; // Red for invalid connections
+    if (data?.condition === 'true') return '#22c55e'; // Green for true conditions
+    if (data?.condition === 'false') return '#f97316'; // Orange for false conditions
+    return '#94a3b8'; // Default edge color
+  };
+
+  return (
+    <>
+      <path
+        id={id}
+        style={{
+          ...style,
+          strokeWidth: 2,
+          stroke: getEdgeColor(),
+        }}
+        className="react-flow__edge-path"
+        d={edgePath}
+        markerEnd={markerEnd}
+      />
+      {data?.condition && (
+        <text
+          x={labelX}
+          y={labelY}
+          className="text-xs fill-current"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          style={{
+            fontSize: '10px',
+            fontWeight: 'bold',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          {data.condition.charAt(0).toUpperCase() + data.condition.slice(1)}
+        </text>
+      )}
+    </>
+  );
+};
 
 interface ConnectionValidatorProps {
   nodes: Node<NodeData>[];

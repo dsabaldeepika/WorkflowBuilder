@@ -366,4 +366,46 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
   );
 };
 
+// Helper functions for downloading and uploading JSON files
+export const downloadJSONFile = (data: any, filename: string): void => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+export const uploadJSONFile = (fileInputRef: React.RefObject<HTMLInputElement>, onFileLoaded: (data: any) => void): void => {
+  if (!fileInputRef.current) return;
+  
+  fileInputRef.current.click();
+  fileInputRef.current.onchange = (event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsed = JSON.parse(content);
+        onFileLoaded(parsed);
+        
+        // Reset the input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } catch (err) {
+        console.error('Failed to parse JSON from file', err);
+      }
+    };
+    
+    reader.readAsText(file);
+  };
+};
+
 export default WorkflowControls;

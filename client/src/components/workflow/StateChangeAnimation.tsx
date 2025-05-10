@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle, 
@@ -12,6 +12,88 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+
+// Context for workflow state management
+interface WorkflowStateContextType {
+  state: WorkflowState;
+  history: WorkflowState[];
+  setState: (state: WorkflowState) => void;
+  resetState: () => void;
+}
+
+const WorkflowStateContext = createContext<WorkflowStateContextType | undefined>(undefined);
+
+// Hook to use workflow state within components
+export const useWorkflowState = () => {
+  const context = useContext(WorkflowStateContext);
+  if (context === undefined) {
+    throw new Error('useWorkflowState must be used within a WorkflowStateProvider');
+  }
+  return context;
+};
+
+// Provider component for workflow state
+export const WorkflowStateProvider: React.FC<{ 
+  children: React.ReactNode,
+  initialState?: WorkflowState 
+}> = ({ 
+  children, 
+  initialState = 'idle'
+}) => {
+  const [state, setCurrentState] = useState<WorkflowState>(initialState);
+  const [history, setHistory] = useState<WorkflowState[]>([initialState]);
+  
+  const setState = useCallback((newState: WorkflowState) => {
+    setCurrentState(newState);
+    setHistory(prev => [...prev, newState]);
+  }, []);
+  
+  const resetState = useCallback(() => {
+    setCurrentState('idle');
+    setHistory(['idle']);
+  }, []);
+  
+  return (
+    <WorkflowStateContext.Provider value={{ state, history, setState, resetState }}>
+      {children}
+    </WorkflowStateContext.Provider>
+  );
+};
+
+// Transition component to visualize state changes
+export const WorkflowStateTransition: React.FC<{ className?: string }> = ({ className }) => {
+  const { state, history } = useWorkflowState();
+  
+  return (
+    <div className={cn("space-y-2", className)}>
+      <StateChangeAnimation state={state} showLabel />
+      <div className="text-xs text-muted-foreground">
+        {history.length > 1 && (
+          <span>Previous: {stateConfig[history[history.length - 2]].label}</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// History component to show state transition history
+export const WorkflowStateHistory: React.FC<{ className?: string }> = ({ className }) => {
+  const { history } = useWorkflowState();
+  
+  return (
+    <div className={cn("space-y-2", className)}>
+      <h3 className="text-sm font-medium">Workflow History</h3>
+      <div className="space-y-1">
+        {history.map((state, index) => (
+          <div key={index} className="flex items-center text-xs">
+            <span className="text-muted-foreground w-10">{index + 1}.</span>
+            <WorkflowStateIndicator state={state} size="sm" showLabel />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying';
 
