@@ -2,6 +2,12 @@ import { pgTable, text, serial, jsonb, varchar, timestamp, boolean, integer, pri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+/**
+ * Schema definitions for the PumpFlux workflow automation platform.
+ * This file contains all database table definitions, insert schemas, and TypeScript types
+ * needed for the application's data model.
+ */
+
 // User role enum
 export enum UserRole {
   CREATOR = 'creator',
@@ -188,7 +194,143 @@ export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 
+// Workflow templates table
+export const workflowTemplates = pgTable("workflow_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+  tags: text("tags").array(),
+  nodes: jsonb("nodes").notNull(),
+  edges: jsonb("edges").notNull(),
+  coverImage: text("cover_image"),
+  complexity: text("complexity").notNull().default('medium'), // simple, medium, complex
+  estimatedDuration: text("estimated_duration"),
+  popularity: integer("popularity").notNull().default(0),
+  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  isPublished: boolean("is_published").notNull().default(false),
+  isOfficial: boolean("is_official").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Node types table for workflow nodes
+export const nodeTypes = pgTable("node_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  category: text("category").notNull(), // trigger, action, condition, etc.
+  description: text("description"),
+  icon: text("icon"),
+  color: text("color"),
+  inputFields: jsonb("input_fields"), // Schema for the input fields
+  outputFields: jsonb("output_fields"), // Schema for the output fields
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// App integrations table
+export const appIntegrations = pgTable("app_integrations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  icon: text("icon"),
+  category: text("category"),
+  website: text("website"),
+  authType: text("auth_type"), // api_key, oauth2, basic_auth, etc.
+  authConfig: jsonb("auth_config"), // Auth configuration (depends on authType)
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// User app credentials table
+export const userAppCredentials = pgTable("user_app_credentials", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  appIntegrationId: integer("app_integration_id").references(() => appIntegrations.id).notNull(),
+  credentials: jsonb("credentials").notNull(), // Encrypted credentials
+  name: text("name"), // Optional friendly name for these credentials
+  isValid: boolean("is_valid").notNull().default(true),
+  lastValidatedAt: timestamp("last_validated_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Workflow Node Executions table
+export const workflowNodeExecutions = pgTable("workflow_node_executions", {
+  id: serial("id").primaryKey(),
+  workflowRunId: integer("workflow_run_id").references(() => workflowRuns.id, { onDelete: 'cascade' }).notNull(),
+  nodeId: text("node_id").notNull(), // ID of the node in the workflow
+  status: text("status").notNull(), // pending, running, completed, failed, skipped
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  inputData: jsonb("input_data"),
+  outputData: jsonb("output_data"),
+  errorMessage: text("error_message"),
+  errorCategory: text("error_category"),
+  retryCount: integer("retry_count").default(0),
+  executionOrder: integer("execution_order").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Schemas for inserting data
+export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates).pick({
+  name: true,
+  description: true,
+  category: true,
+  tags: true,
+  nodes: true,
+  edges: true,
+  coverImage: true,
+  complexity: true,
+  estimatedDuration: true,
+  createdByUserId: true,
+  isPublished: true,
+  isOfficial: true,
+});
+
+export const insertNodeTypeSchema = createInsertSchema(nodeTypes).pick({
+  name: true,
+  displayName: true,
+  category: true,
+  description: true,
+  icon: true,
+  color: true,
+  inputFields: true,
+  outputFields: true,
+});
+
+export const insertAppIntegrationSchema = createInsertSchema(appIntegrations).pick({
+  name: true,
+  displayName: true,
+  description: true,
+  icon: true,
+  category: true,
+  website: true,
+  authType: true,
+  authConfig: true,
+  isActive: true,
+});
+
+export const insertUserAppCredentialsSchema = createInsertSchema(userAppCredentials).pick({
+  userId: true,
+  appIntegrationId: true,
+  credentials: true,
+  name: true,
+  isValid: true,
+});
+
 export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
 export type Workflow = typeof workflows.$inferSelect;
 export type WorkflowPermission = typeof workflowPermissions.$inferSelect;
 export type WorkflowRun = typeof workflowRuns.$inferSelect;
+
+export type InsertWorkflowTemplate = z.infer<typeof insertWorkflowTemplateSchema>;
+export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
+export type NodeType = typeof nodeTypes.$inferSelect;
+export type AppIntegration = typeof appIntegrations.$inferSelect;
+export type UserAppCredential = typeof userAppCredentials.$inferSelect;
+export type WorkflowNodeExecution = typeof workflowNodeExecutions.$inferSelect;

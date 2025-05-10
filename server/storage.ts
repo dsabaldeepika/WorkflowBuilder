@@ -118,6 +118,70 @@ export interface IStorage {
     errorCategory?: string
   ): Promise<WorkflowRun | undefined>;
   getWorkflowRuns(workflowId: number, limit?: number): Promise<WorkflowRun[]>;
+
+  // Workflow template methods
+  getWorkflowTemplate(id: number): Promise<WorkflowTemplate | undefined>;
+  getWorkflowTemplates(filters?: {
+    category?: string;
+    tags?: string[];
+    isPublished?: boolean;
+    isOfficial?: boolean;
+    createdByUserId?: number;
+  }): Promise<WorkflowTemplate[]>;
+  createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate>;
+  updateWorkflowTemplate(id: number, templateData: Partial<InsertWorkflowTemplate>): Promise<WorkflowTemplate | undefined>;
+  deleteWorkflowTemplate(id: number): Promise<boolean>;
+  incrementTemplatePopularity(id: number): Promise<boolean>;
+  
+  // Node type methods
+  getNodeType(id: number): Promise<NodeType | undefined>;
+  getNodeTypeByName(name: string): Promise<NodeType | undefined>;
+  getNodeTypes(category?: string): Promise<NodeType[]>;
+  createNodeType(nodeType: InsertNodeType): Promise<NodeType>;
+  updateNodeType(id: number, nodeTypeData: Partial<InsertNodeType>): Promise<NodeType | undefined>;
+  deleteNodeType(id: number): Promise<boolean>;
+  
+  // App integration methods
+  getAppIntegration(id: number): Promise<AppIntegration | undefined>;
+  getAppIntegrationByName(name: string): Promise<AppIntegration | undefined>;
+  getAppIntegrations(category?: string): Promise<AppIntegration[]>;
+  createAppIntegration(appIntegration: InsertAppIntegration): Promise<AppIntegration>;
+  updateAppIntegration(id: number, appIntegrationData: Partial<InsertAppIntegration>): Promise<AppIntegration | undefined>;
+  deleteAppIntegration(id: number): Promise<boolean>;
+  
+  // User app credentials methods
+  getUserAppCredentials(userId: number, appIntegrationId?: number): Promise<UserAppCredential[]>;
+  getUserAppCredential(id: number): Promise<UserAppCredential | undefined>;
+  createUserAppCredential(credential: InsertUserAppCredential): Promise<UserAppCredential>;
+  updateUserAppCredential(id: number, credentialData: Partial<InsertUserAppCredential>): Promise<UserAppCredential | undefined>;
+  deleteUserAppCredential(id: number): Promise<boolean>;
+  validateUserAppCredential(id: number): Promise<boolean>;
+  
+  // Workflow node execution methods
+  recordNodeExecution(
+    workflowRunId: number,
+    nodeId: string,
+    status: string,
+    executionOrder: number,
+    startTime?: Date
+  ): Promise<WorkflowNodeExecution>;
+  completeNodeExecution(
+    nodeExecutionId: number,
+    status: string,
+    endTime: Date,
+    outputData?: any,
+    errorMessage?: string,
+    errorCategory?: string
+  ): Promise<WorkflowNodeExecution | undefined>;
+  updateNodeExecutionInputData(
+    nodeExecutionId: number,
+    inputData: any
+  ): Promise<boolean>;
+  getNodeExecutions(workflowRunId: number): Promise<WorkflowNodeExecution[]>;
+  retryNodeExecution(
+    nodeExecutionId: number,
+    startTime: Date
+  ): Promise<WorkflowNodeExecution | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
