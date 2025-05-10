@@ -6,12 +6,35 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import WorkflowBuilder from "@/pages/workflow-builder";
+import Login from "@/pages/login";
+import Callback from "@/pages/auth/callback";
+import { useAuth } from "@/hooks/useAuth";
+
+// Protected route component
+const ProtectedRoute = ({ component: Component, ...rest }: any) => {
+  const { isLoggedIn, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+  
+  if (!isLoggedIn) {
+    window.location.href = "/login";
+    return null;
+  }
+  
+  return <Component {...rest} />;
+};
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/create" component={WorkflowBuilder} />
+      <Route path="/login" component={Login} />
+      <Route path="/auth/callback" component={Callback} />
+      <Route path="/create">
+        {(params) => <ProtectedRoute component={WorkflowBuilder} params={params} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

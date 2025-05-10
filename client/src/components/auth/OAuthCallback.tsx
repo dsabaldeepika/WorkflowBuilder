@@ -1,79 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import FlowingBackground from './FlowingBackground';
 
-/**
- * Component to handle OAuth callbacks
- * This catches the redirect from the OAuth provider with the token
- * and stores it in auth state before redirecting to the dashboard
- */
 const OAuthCallback: React.FC = () => {
-  const [location, navigate] = useLocation();
-  const { loginWithToken, isLoggedIn } = useAuth();
+  const [, navigate] = useLocation();
+  const { getUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
-    const handleCallback = async () => {
+    const processCallback = async () => {
       try {
-        // Extract token from URL
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
+        // The auth server will have already set cookies and session at this point
+        // We just need to get the user data
+        const user = await getUser();
         
-        if (!token) {
-          setError('No authentication token received');
-          return;
+        if (user) {
+          // Navigate to the dashboard on successful login
+          navigate('/dashboard');
+        } else {
+          setError('Authentication failed. Please try again.');
+          // Navigate back to login page after a delay
+          setTimeout(() => navigate('/login'), 3000);
         }
-        
-        // Login with the token
-        await loginWithToken(token);
-        
-        // Clear the token from URL (for security)
-        window.history.replaceState({}, document.title, '/auth/callback');
       } catch (err) {
-        console.error('Error during OAuth callback:', err);
-        setError('Failed to authenticate. Please try again.');
+        console.error('OAuth callback error:', err);
+        setError('Authentication failed. Please try again.');
+        // Navigate back to login page after a delay
+        setTimeout(() => navigate('/login'), 3000);
       }
     };
-    
-    handleCallback();
-  }, []);
-  
-  // Redirect to dashboard once logged in
-  useEffect(() => {
-    if (isLoggedIn) {
-      navigate('/dashboard');
-    }
-  }, [isLoggedIn]);
-  
+
+    processCallback();
+  }, [getUser, navigate]);
+
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <FlowingBackground />
-      
-      <Card className="w-full max-w-md z-10 bg-white/95 backdrop-blur-sm shadow-xl">
-        <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
-          {error ? (
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-red-600 mb-2">Authentication Error</h2>
-              <p className="text-gray-600">{error}</p>
-              <button 
-                onClick={() => navigate('/login')}
-                className="mt-4 text-primary hover:text-primary/80 underline"
-              >
-                Return to login
-              </button>
-            </div>
-          ) : (
-            <div className="text-center">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Authenticating...</h2>
-              <p className="text-gray-600">Please wait while we log you in.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+      <div className="w-full max-w-md space-y-8 p-8 text-center">
+        {error ? (
+          <div className="rounded-lg bg-destructive/10 p-4 text-destructive">
+            <p>{error}</p>
+            <p className="mt-2 text-sm">Redirecting to login page...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <h2 className="text-2xl font-bold">Completing authentication</h2>
+            <p className="text-muted-foreground">Please wait while we log you in...</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
