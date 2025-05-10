@@ -266,6 +266,29 @@ export class DatabaseStorage implements IStorage {
       .where(eq(oauthProviders.name, name));
     return provider;
   }
+
+  async createOAuthProvider(provider: { name: string, displayName: string, enabled: boolean }): Promise<OAuthProvider> {
+    const [newProvider] = await db
+      .insert(oauthProviders)
+      .values({
+        name: provider.name,
+        displayName: provider.displayName,
+        enabled: provider.enabled
+      })
+      .returning();
+    
+    return newProvider;
+  }
+  
+  async updateOAuthProvider(id: number, data: Partial<{ name: string, displayName: string, enabled: boolean }>): Promise<OAuthProvider | undefined> {
+    const [updatedProvider] = await db
+      .update(oauthProviders)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(oauthProviders.id, id))
+      .returning();
+    
+    return updatedProvider;
+  }
   
   async linkUserToOAuthProvider(
     userId: number,

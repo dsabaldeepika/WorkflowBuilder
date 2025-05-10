@@ -23,7 +23,11 @@ export const sessions = pgTable(
 // OAuth providers
 export const oauthProviders = pgTable("oauth_providers", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(), // 'google', 'github', etc.
+  name: text("name").notNull().unique(), // 'google', 'facebook', etc.
+  displayName: text("display_name").notNull(), // 'Google', 'Facebook', etc.
+  enabled: boolean("enabled").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // User schema

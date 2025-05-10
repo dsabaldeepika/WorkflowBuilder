@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User ID is required" });
       }
       
-      const workflows = await storage.getWorkflowsByUserId(parseInt(userId));
+      const workflows = await storage.getWorkflowsByCreator(parseInt(userId));
       res.json(workflows);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch workflows" });

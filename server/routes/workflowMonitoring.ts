@@ -74,7 +74,7 @@ router.get('/health', async (req, res) => {
     }
     
     // Get all workflows for the user
-    const workflows = await storage.getWorkflowsByUserId(Number(userId));
+    const workflows = await storage.getWorkflowsByCreator(Number(userId));
     
     // Generate mock health metrics - in a real app, this would come from monitoring data
     const healthMetrics = workflows.map(workflow => ({
