@@ -1,64 +1,42 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Node, Edge } from 'reactflow';
-import { NodeData } from '@/store/useWorkflowStore';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { Download, Upload, FileUp, Play, CheckSquare, Zap, Trash, Info } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Save, 
+  UploadCloud, 
+  DownloadCloud, 
+  ChevronDown, 
+  Share2, 
+  Trash2, 
+  FilePlus, 
+  CheckCircle2, 
+  AlertOctagon 
+} from 'lucide-react';
+import { NodeData } from '@/store/useWorkflowStore';
 
-// Function to download workflow as JSON
-export function downloadJSONFile(data: any, filename: string = 'workflow.json'): void {
-  const jsonString = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonString], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  
-  const downloadLink = document.createElement('a');
-  downloadLink.href = url;
-  downloadLink.download = filename;
-  
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
-  document.body.removeChild(downloadLink);
-  
-  URL.revokeObjectURL(url);
-}
-
-// Function to read a JSON file
-export async function uploadJSONFile(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.json';
-    
-    fileInput.onchange = (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (!file) {
-        reject(new Error('No file selected'));
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const json = JSON.parse(e.target?.result as string);
-          resolve(json);
-        } catch (error) {
-          reject(new Error('Invalid JSON file'));
-        }
-      };
-      reader.onerror = () => reject(new Error('Error reading file'));
-      reader.readAsText(file);
-    };
-    
-    fileInput.click();
-  });
-}
-
-// Component for workflow manipulation controls
-export const WorkflowControls: React.FC<{
+interface WorkflowControlsProps {
   nodes: Node<NodeData>[];
   edges: Edge[];
   onSave?: () => void;
@@ -66,210 +44,326 @@ export const WorkflowControls: React.FC<{
   onClear?: () => void;
   onValidate?: () => void;
   showInfoPanel?: () => void;
-}> = ({ 
-  nodes, 
-  edges, 
-  onSave, 
-  onLoad, 
+}
+
+export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
+  nodes,
+  edges,
+  onSave,
+  onLoad,
   onClear,
   onValidate,
   showInfoPanel
 }) => {
-  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
   
-  // Handle saving workflow
-  const handleSave = useCallback(() => {
-    if (nodes.length === 0) {
-      toast({
-        title: 'Nothing to save',
-        description: 'Add some nodes to your workflow first.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    const workflowData = {
-      nodes,
-      edges,
-      metadata: {
-        exportedAt: new Date().toISOString(),
-        version: '1.0.0'
-      }
-    };
-    
-    downloadJSONFile(workflowData, 'pumpflux-workflow.json');
-    
-    toast({
-      title: 'Workflow Saved',
-      description: 'Your workflow has been exported as a JSON file.',
-    });
-    
-    if (onSave) onSave();
-  }, [nodes, edges, onSave]);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportName, setExportName] = useState('my-workflow');
+  const [exportDescription, setExportDescription] = useState('');
+  const [exportText, setExportText] = useState('');
   
-  // Handle loading workflow
-  const handleLoad = useCallback(async () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Import from text
+  const handleImport = () => {
     try {
-      const data = await uploadJSONFile();
+      const parsed = JSON.parse(importText);
       
-      if (!data.nodes || !data.edges) {
-        toast({
-          title: 'Invalid Workflow File',
-          description: 'The file does not contain valid workflow data.',
-          variant: 'destructive',
-        });
+      if (!parsed.nodes || !parsed.edges || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+        setImportError('Invalid workflow format. Missing nodes or edges arrays.');
         return;
       }
       
       if (onLoad) {
-        onLoad(data.nodes, data.edges);
-        
-        toast({
-          title: 'Workflow Loaded',
-          description: `Loaded workflow with ${data.nodes.length} nodes.`,
-          variant: 'success',
-        });
+        onLoad(parsed.nodes, parsed.edges);
       }
-    } catch (error) {
-      toast({
-        title: 'Error Loading Workflow',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred',
-        variant: 'destructive',
-      });
+      
+      setImportText('');
+      setImportError(null);
+      setShowImportDialog(false);
+    } catch (err) {
+      setImportError('Failed to parse JSON. Please check the format.');
     }
-  }, [onLoad]);
+  };
   
-  // Handle clearing workflow
-  const handleClearConfirm = useCallback(() => {
-    if (onClear) onClear();
-    setShowClearDialog(false);
+  // Import from file
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     
-    toast({
-      title: 'Workflow Cleared',
-      description: 'All nodes and connections have been removed.',
-    });
-  }, [onClear]);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        
+        if (!parsed.nodes || !parsed.edges || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+          setImportError('Invalid workflow format in file. Missing nodes or edges arrays.');
+          return;
+        }
+        
+        if (onLoad) {
+          onLoad(parsed.nodes, parsed.edges);
+        }
+        
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } catch (err) {
+        setImportError('Failed to parse JSON from file. Please check the format.');
+      }
+    };
+    
+    reader.readAsText(file);
+  };
   
-  // Handle validating workflow
-  const handleValidate = useCallback(() => {
-    if (onValidate) onValidate();
-  }, [onValidate]);
+  // Export workflow
+  const handleExport = () => {
+    const workflow = {
+      name: exportName,
+      description: exportDescription,
+      nodes,
+      edges,
+      createdAt: new Date().toISOString(),
+    };
+    
+    setExportText(JSON.stringify(workflow, null, 2));
+    setShowExportDialog(true);
+  };
+  
+  // Save to file
+  const handleSaveToFile = () => {
+    const workflow = {
+      name: exportName,
+      description: exportDescription,
+      nodes,
+      edges,
+      createdAt: new Date().toISOString(),
+    };
+    
+    const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${exportName.toLowerCase().replace(/\s+/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setShowExportDialog(false);
+  };
+  
+  // Validate workflow
+  const validateWorkflow = () => {
+    if (onValidate) {
+      onValidate();
+    }
+  };
+  
+  // Clear workflow
+  const clearWorkflow = () => {
+    if (onClear) {
+      onClear();
+    }
+  };
   
   return (
     <>
-      <div className="flex items-center gap-1">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="icon" 
-                variant="outline" 
-                onClick={handleSave}
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Export workflow as JSON
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="icon" 
-                variant="outline" 
-                onClick={handleLoad}
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Import workflow from JSON
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => setShowClearDialog(true)}
-                className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Clear workflow
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        {onValidate && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={handleValidate}
-                  className="border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                >
-                  <CheckSquare className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Validate connections
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {showInfoPanel && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={showInfoPanel}
-                  className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  <Info className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Workflow information
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="gap-1">
+            <Save className="h-4 w-4" />
+            <span className="hidden md:inline">Actions</span>
+            <ChevronDown className="h-3 w-3 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[200px]">
+          <DropdownMenuLabel>Workflow Actions</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem onSelect={() => onSave && onSave()} disabled={nodes.length === 0}>
+            <Save className="mr-2 h-4 w-4" />
+            <span>Save</span>
+            {nodes.length > 0 && 
+              <Badge variant="success" className="ml-auto">
+                <CheckCircle2 className="h-3 w-3" />
+              </Badge>
+            }
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onSelect={() => setShowImportDialog(true)}>
+            <UploadCloud className="mr-2 h-4 w-4" />
+            <span>Import</span>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onSelect={handleExport} disabled={nodes.length === 0}>
+            <DownloadCloud className="mr-2 h-4 w-4" />
+            <span>Export</span>
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem onSelect={validateWorkflow} disabled={nodes.length === 0}>
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            <span>Validate</span>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onSelect={clearWorkflow} disabled={nodes.length === 0} className="text-destructive focus:text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Clear All</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       
-      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear Workflow</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove all nodes and connections from your workflow. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleClearConfirm}
-              className="bg-rose-500 hover:bg-rose-600"
+      {/* Import Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Workflow</DialogTitle>
+            <DialogDescription>
+              Upload a workflow file or paste JSON to import a workflow.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="file-upload" className="col-span-4">
+                Upload Workflow File
+              </Label>
+              <div className="col-span-4">
+                <Input 
+                  id="file-upload"
+                  type="file"
+                  accept=".json"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="import-json" className="col-span-4">
+                Or Paste Workflow JSON
+              </Label>
+              <div className="col-span-4">
+                <Textarea
+                  id="import-json"
+                  placeholder="Paste JSON here..."
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  rows={8}
+                />
+              </div>
+            </div>
+            
+            {importError && (
+              <div className="col-span-4 text-destructive text-sm flex items-center gap-1">
+                <AlertOctagon className="h-4 w-4" />
+                {importError}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleImport}
+              disabled={!importText.trim()}
             >
-              Clear Workflow
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Import
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Export Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Export Workflow</DialogTitle>
+            <DialogDescription>
+              Save your workflow as a JSON file or copy to clipboard.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="export-name" className="col-span-1">
+                Name
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="export-name"
+                  value={exportName}
+                  onChange={(e) => setExportName(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="export-description" className="col-span-1">
+                Description
+              </Label>
+              <div className="col-span-3">
+                <Textarea
+                  id="export-description"
+                  value={exportDescription}
+                  onChange={(e) => setExportDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="export-json" className="col-span-4">
+                Workflow JSON
+              </Label>
+              <div className="col-span-4">
+                <ScrollArea className="h-[200px] w-full rounded-md border">
+                  <div className="p-4 font-mono text-sm">
+                    {exportText}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-between">
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(exportText)}
+              >
+                <Share2 className="h-4 w-4 mr-1" />
+                Copy
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={handleSaveToFile}
+              >
+                <FilePlus className="h-4 w-4 mr-1" />
+                Save As File
+              </Button>
+            </div>
+            <Button onClick={() => setShowExportDialog(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
+
+export default WorkflowControls;

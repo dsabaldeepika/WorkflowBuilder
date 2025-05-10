@@ -80,7 +80,7 @@ interface WorkflowStoreState {
   setConnectionValidation: (edgeId: string, isValid: boolean, message?: string) => void;
 }
 
-export const useWorkflowStore = create<WorkflowState>((set, get) => ({
+export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,

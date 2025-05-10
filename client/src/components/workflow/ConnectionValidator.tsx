@@ -1,257 +1,186 @@
-import React, { useCallback, useMemo } from 'react';
-import { EdgeProps, getBezierPath, EdgeText } from 'reactflow';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { ConnectionValidation } from '@/types/workflow';
+import React, { useState, useEffect } from 'react';
+import { Node, Edge } from 'reactflow';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { NodeData } from '@/store/useWorkflowStore';
+import { ConnectionValidation } from '@/types/workflow';
 
-const connectionRules = {
-  // Define which node types can be connected to which node types
-  'trigger': ['action', 'condition', 'integration'],
-  'action': ['action', 'condition', 'integration', 'data', 'agent'],
-  'condition': ['action', 'condition', 'integration', 'data', 'agent'],
-  'data': ['action', 'condition', 'integration', 'data'],
-  'integration': ['action', 'condition', 'integration', 'data', 'agent'],
-  'agent': ['action', 'condition', 'integration', 'data'],
-  'default': ['action', 'condition', 'integration', 'data', 'agent']
-};
+interface ConnectionValidatorProps {
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  onValidationComplete?: (validations: ConnectionValidation[]) => void;
+  className?: string;
+}
 
-// The function that validates a connection
-export const validateConnection = (
-  sourceNodeType: string, 
-  targetNodeType: string
-): ConnectionValidation => {
-  // Get allowed connections for source node type
-  const allowedTargets = connectionRules[sourceNodeType as keyof typeof connectionRules] || connectionRules.default;
-  
-  const isValid = allowedTargets.includes(targetNodeType);
-  
-  let message = isValid 
-    ? 'Connection valid'
-    : `Cannot connect ${sourceNodeType} node to ${targetNodeType} node`;
-  
-  return {
-    isValid,
-    message,
-    source: sourceNodeType,
-    target: targetNodeType
+export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({
+  nodes,
+  edges,
+  onValidationComplete,
+  className
+}) => {
+  const [validations, setValidations] = useState<ConnectionValidation[]>([]);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationComplete, setValidationComplete] = useState(false);
+
+  // Perform validation when requested
+  const validateConnections = () => {
+    setIsValidating(true);
+    setValidationComplete(false);
+    setValidations([]);
+    
+    // Short delay to show loading state
+    setTimeout(() => {
+      const newValidations = edges.map(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const targetNode = nodes.find(n => n.id === edge.target);
+        
+        if (!sourceNode || !targetNode) {
+          return {
+            isValid: false,
+            message: 'Connected node does not exist',
+            source: edge.source,
+            target: edge.target
+          };
+        }
+        
+        // Check if source node is a trigger and has multiple outgoing connections
+        if (sourceNode.data.nodeType === 'trigger' || sourceNode.data.type === 'trigger') {
+          const outgoingEdges = edges.filter(e => e.source === sourceNode.id);
+          if (outgoingEdges.length > 1) {
+            return {
+              isValid: false,
+              message: 'Trigger nodes should have only one outgoing connection',
+              source: edge.source,
+              target: edge.target
+            };
+          }
+        }
+        
+        // Check if source is a condition and the edge has no condition data
+        if ((sourceNode.data.nodeType === 'condition' || sourceNode.data.type === 'condition') && 
+            !edge.data?.condition) {
+          return {
+            isValid: false,
+            message: 'Condition nodes require condition values on connections',
+            source: edge.source,
+            target: edge.target
+          };
+        }
+        
+        // Check for compatible data types (basic implementation)
+        // In a real scenario, we'd check output fields of source against input fields of target
+        if (sourceNode.data.outputFields && targetNode.data.inputFields) {
+          // This is just a placeholder for real type checking logic
+          const hasIncompatibleTypes = false; 
+          
+          if (hasIncompatibleTypes) {
+            return {
+              isValid: false,
+              message: 'Incompatible data types between connected nodes',
+              source: edge.source,
+              target: edge.target
+            };
+          }
+        }
+        
+        // Pass validation
+        return {
+          isValid: true,
+          source: edge.source,
+          target: edge.target
+        };
+      });
+      
+      setValidations(newValidations);
+      setIsValidating(false);
+      setValidationComplete(true);
+      
+      if (onValidationComplete) {
+        onValidationComplete(newValidations);
+      }
+    }, 1000);
   };
-};
-
-// Edge component that shows validation feedback
-export const ValidatedEdge = ({
-  id,
-  source,
-  target,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  selected,
-  style = {},
-  markerEnd,
-  data
-}: EdgeProps) => {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-
-  // Memoized validation state
-  const validation = useMemo(() => {
-    // Default to valid
-    if (!data || !data.sourceNodeType || !data.targetNodeType) {
-      return { isValid: true, message: 'Connection valid' };
-    }
-    
-    return validateConnection(data.sourceNodeType, data.targetNodeType);
-  }, [data]);
   
-  // Path styles based on validation and selection
-  const pathStyles = useMemo(() => {
-    if (!validation.isValid) {
-      return {
-        stroke: '#f43f5e', // rose-500
-        strokeWidth: selected ? 3 : 2,
-        strokeDasharray: '5,5',
-      };
-    }
-    
-    if (selected) {
-      return {
-        stroke: '#06b6d4', // cyan-500
-        strokeWidth: 3,
-      };
-    }
-    
-    // Default style
-    return {
-      stroke: '#94a3b8', // slate-400
-      strokeWidth: 2,
-    };
-  }, [validation.isValid, selected]);
-
+  // Calculate validation stats
+  const validCount = validations.filter(v => v.isValid).length;
+  const invalidCount = validations.length - validCount;
+  const hasErrors = invalidCount > 0;
+  
   return (
-    <>
-      <path
-        id={id}
-        className="react-flow__edge-path"
-        d={edgePath}
-        style={{ ...style, ...pathStyles }}
-        markerEnd={markerEnd}
-      />
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <AlertTriangle className="mr-2 h-5 w-5 text-primary" />
+          Connection Validator
+        </CardTitle>
+        <CardDescription>
+          Validate connections between workflow nodes
+        </CardDescription>
+      </CardHeader>
       
-      {/* Only show validations when edge is selected or invalid */}
-      {(selected || !validation.isValid) && (
-        <EdgeText
-          x={labelX}
-          y={labelY}
-          label={
-            <div className={cn(
-              "px-2 py-1 rounded-md shadow-sm",
-              validation.isValid ? "bg-white/95" : "bg-white/95"
-            )}>
-              <Badge variant={validation.isValid ? "success" : "destructive"} className="flex items-center gap-1 whitespace-nowrap">
-                {validation.isValid ? (
-                  <>
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Valid Connection</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>Invalid Connection</span>
-                  </>
-                )}
-              </Badge>
-              
-              {!validation.isValid && (
-                <p className="text-xs text-rose-600 mt-1">
-                  {validation.message}
-                </p>
-              )}
-            </div>
-          }
-          labelStyle={{ fill: 'white' }}
-          labelShowBg={false}
-        />
-      )}
-    </>
+      <CardContent className="space-y-4">
+        {edges.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No connections to validate.</p>
+            <p className="text-sm">Add connections between nodes first.</p>
+          </div>
+        ) : (
+          <>
+            <Button 
+              onClick={validateConnections} 
+              disabled={isValidating || edges.length === 0}
+              className="w-full"
+            >
+              {isValidating ? 'Validating...' : 'Validate Connections'}
+            </Button>
+            
+            {validationComplete && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline">{validations.length} Connection{validations.length !== 1 ? 's' : ''}</Badge>
+                    <Badge variant={hasErrors ? 'destructive' : 'success'}>
+                      {hasErrors ? `${invalidCount} Issue${invalidCount !== 1 ? 's' : ''}` : 'All Valid'}
+                    </Badge>
+                  </div>
+                </div>
+                
+                {validations.map((validation, index) => {
+                  const sourceNode = nodes.find(n => n.id === validation.source);
+                  const targetNode = nodes.find(n => n.id === validation.target);
+                  
+                  return (
+                    <Alert key={index} variant={validation.isValid ? 'default' : 'destructive'}>
+                      <div className="flex items-start">
+                        {validation.isValid ? (
+                          <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 mr-2" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-rose-500 mt-0.5 mr-2" />
+                        )}
+                        <div>
+                          <AlertTitle>
+                            {sourceNode?.data.label || validation.source} → {targetNode?.data.label || validation.target}
+                          </AlertTitle>
+                          <AlertDescription>
+                            {validation.isValid
+                              ? 'Connection is valid'
+                              : validation.message || 'Connection has validation issues'}
+                          </AlertDescription>
+                        </div>
+                      </div>
+                    </Alert>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
-// Edge with a fix button for invalid connections
-export const FixableEdge = ({
-  id,
-  source,
-  target,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  selected,
-  style = {},
-  markerEnd,
-  data,
-  onFix,
-}: EdgeProps & { onFix?: (edgeId: string) => void }) => {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-
-  // Validation state
-  const validation = useMemo(() => {
-    if (!data || !data.sourceNodeType || !data.targetNodeType) {
-      return { isValid: true, message: 'Connection valid' };
-    }
-    
-    return validateConnection(data.sourceNodeType, data.targetNodeType);
-  }, [data]);
-  
-  // Handle fix button click
-  const handleFixClick = useCallback(() => {
-    if (onFix) {
-      onFix(id);
-    }
-  }, [id, onFix]);
-
-  // Path styles based on validation and selection
-  const pathStyles = useMemo(() => {
-    if (!validation.isValid) {
-      return {
-        stroke: '#f43f5e', // rose-500
-        strokeWidth: selected ? 3 : 2,
-        strokeDasharray: '5,5',
-      };
-    }
-    
-    if (selected) {
-      return {
-        stroke: '#06b6d4', // cyan-500
-        strokeWidth: 3,
-      };
-    }
-    
-    // Default style
-    return {
-      stroke: '#94a3b8', // slate-400
-      strokeWidth: 2,
-    };
-  }, [validation.isValid, selected]);
-
-  return (
-    <>
-      <path
-        id={id}
-        className="react-flow__edge-path"
-        d={edgePath}
-        style={{ ...style, ...pathStyles }}
-        markerEnd={markerEnd}
-      />
-      
-      {!validation.isValid && (
-        <EdgeText
-          x={labelX}
-          y={labelY}
-          label={
-            <div className="px-3 py-2 rounded-md bg-white/95 shadow-sm">
-              <Badge variant="destructive" className="flex items-center gap-1 whitespace-nowrap">
-                <AlertTriangle className="w-3 h-3" />
-                <span>Invalid Connection</span>
-              </Badge>
-              
-              <p className="text-xs text-rose-600 mt-1">
-                {validation.message}
-              </p>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full mt-2 text-xs" 
-                onClick={handleFixClick}
-              >
-                Fix Connection
-              </Button>
-            </div>
-          }
-          labelStyle={{ fill: 'white' }}
-          labelShowBg={false}
-        />
-      )}
-    </>
-  );
-};
+export default ConnectionValidator;

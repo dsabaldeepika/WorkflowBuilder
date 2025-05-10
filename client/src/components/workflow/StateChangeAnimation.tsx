@@ -1,282 +1,252 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Circle, 
+  CheckCircle, 
+  XCircle, 
   Clock, 
   PlayCircle, 
-  RefreshCw, 
-  CheckCircle2, 
-  XCircle, 
   PauseCircle, 
-  AlertCircle 
+  AlertCircle, 
+  RefreshCcw,
+  Loader2
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
-// Type definitions for workflow states
-export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying' | string;
+export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying';
 
-// Define colors and icons for each state
-const stateConfig = {
+// Configuration for each workflow state
+export const stateConfig = {
   idle: {
     icon: Clock,
     color: 'text-slate-400',
     bgColor: 'bg-slate-100',
-    pulseColor: 'bg-slate-200',
+    borderColor: 'border-slate-200',
     label: 'Idle',
+    description: 'Waiting to start'
   },
   starting: {
     icon: PlayCircle,
     color: 'text-blue-500',
     bgColor: 'bg-blue-100',
-    pulseColor: 'bg-blue-200',
+    borderColor: 'border-blue-200',
     label: 'Starting',
+    description: 'Initializing workflow'
   },
   running: {
-    icon: RefreshCw,
-    color: 'text-blue-600',
+    icon: Loader2,
+    color: 'text-blue-500',
     bgColor: 'bg-blue-100',
-    pulseColor: 'bg-blue-200',
+    borderColor: 'border-blue-200',
     label: 'Running',
-    animation: 'animate-spin-slow',
+    description: 'Workflow in progress',
+    animate: true
   },
   completed: {
-    icon: CheckCircle2,
-    color: 'text-emerald-600',
+    icon: CheckCircle,
+    color: 'text-emerald-500',
     bgColor: 'bg-emerald-100',
-    pulseColor: 'bg-emerald-200',
+    borderColor: 'border-emerald-200',
     label: 'Completed',
+    description: 'Successfully completed'
   },
   failed: {
     icon: XCircle,
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
-    pulseColor: 'bg-red-200',
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-100',
+    borderColor: 'border-rose-200',
     label: 'Failed',
+    description: 'Error encountered'
   },
   paused: {
     icon: PauseCircle,
-    color: 'text-amber-600',
+    color: 'text-amber-500',
     bgColor: 'bg-amber-100',
-    pulseColor: 'bg-amber-200',
+    borderColor: 'border-amber-200',
     label: 'Paused',
+    description: 'Execution paused'
   },
   retrying: {
-    icon: AlertCircle,
-    color: 'text-purple-600',
+    icon: RefreshCcw,
+    color: 'text-purple-500',
     bgColor: 'bg-purple-100',
-    pulseColor: 'bg-purple-200',
+    borderColor: 'border-purple-200',
     label: 'Retrying',
-    animation: 'animate-pulse',
-  },
-};
-
-// Size configurations
-const sizeConfig = {
-  sm: {
-    icon: 'h-4 w-4',
-    container: 'h-6 w-6',
-    pulse: '-inset-1',
-    label: 'text-xs',
-  },
-  md: {
-    icon: 'h-6 w-6',
-    container: 'h-10 w-10',
-    pulse: '-inset-1.5',
-    label: 'text-sm',
-  },
-  lg: {
-    icon: 'h-8 w-8',
-    container: 'h-14 w-14',
-    pulse: '-inset-2',
-    label: 'text-base',
-  },
+    description: 'Attempting again after failure',
+    animate: true
+  }
 };
 
 interface WorkflowStateIndicatorProps {
   state: WorkflowState;
   previousState?: WorkflowState;
   size?: 'sm' | 'md' | 'lg';
-  showLabel?: boolean;
   animate?: boolean;
+  showLabel?: boolean;
+  className?: string;
 }
 
-/**
- * WorkflowStateIndicator Component
- * 
- * Displays a visual representation of a workflow state with animations for state transitions
- */
-export function WorkflowStateIndicator({
-  state,
+export const WorkflowStateIndicator: React.FC<WorkflowStateIndicatorProps> = ({ 
+  state, 
   previousState,
   size = 'md',
-  showLabel = false,
   animate = true,
-}: WorkflowStateIndicatorProps) {
+  showLabel = false,
+  className 
+}) => {
   const config = stateConfig[state];
-  const sizeClasses = sizeConfig[size];
+  const Icon = config.icon;
   
-  // Determine if we should show a transition animation
-  const shouldAnimate = animate && previousState && previousState !== state;
+  const sizeClasses = {
+    sm: 'h-4 w-4',
+    md: 'h-5 w-5',
+    lg: 'h-6 w-6'
+  };
   
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative">
-        {/* Background pulse for active states */}
-        {['running', 'retrying', 'starting'].includes(state) && animate && (
-          <motion.div 
-            className={`absolute ${sizeClasses.pulse} ${config.pulseColor} rounded-full animate-pulse-ring`}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          />
+    <div className={cn("flex items-center", className)}>
+      <motion.div
+        initial={{ scale: previousState ? 0.8 : 1, opacity: previousState ? 0 : 1 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className={cn(
+          "rounded-full p-1 flex items-center justify-center",
+          config.bgColor,
+          size === 'sm' ? 'p-0.5' : size === 'lg' ? 'p-1.5' : 'p-1'
         )}
-        
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={state}
-            className={`${sizeClasses.container} relative flex items-center justify-center rounded-full ${config.bgColor}`}
-            initial={shouldAnimate ? { opacity: 0, scale: 0.8 } : false}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* Icon with optional animation */}
-            <config.icon className={`${sizeClasses.icon} ${config.color} ${config.animation ? config.animation : ''}`} />
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      >
+        <Icon 
+          className={cn(
+            sizeClasses[size],
+            config.color,
+            (config.animate && animate) && "animate-spin"
+          )} 
+        />
+      </motion.div>
       
       {showLabel && (
-        <span className={`mt-1 font-medium ${config.color} ${sizeClasses.label}`}>
+        <span className={cn(
+          "ml-2 font-medium",
+          size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm',
+          config.color
+        )}>
           {config.label}
         </span>
       )}
     </div>
   );
-}
+};
 
-/**
- * Custom hook to manage workflow state with animation support
- */
-export function useWorkflowState(initialState: WorkflowState = 'idle') {
-  const [currentState, setCurrentState] = useState<WorkflowState>(initialState);
-  const [previousState, setPreviousState] = useState<WorkflowState | undefined>(undefined);
-  
-  const changeState = (newState: WorkflowState) => {
-    if (newState !== currentState) {
-      setPreviousState(currentState);
-      setCurrentState(newState);
-    }
-  };
-  
-  return { currentState, previousState, changeState };
-}
-
-/**
- * WorkflowStateTransition Component
- * 
- * Visualizes a transition between two workflow states with an animated arrow
- */
-export function WorkflowStateTransition({
-  fromState,
-  toState,
-  onClick,
-  size = 'md',
-}: {
-  fromState: WorkflowState;
-  toState: WorkflowState;
-  onClick?: () => void;
-  size?: 'sm' | 'md' | 'lg';
-}) {
-  return (
-    <div 
-      className="flex items-center gap-2 cursor-pointer"
-      onClick={onClick}
-    >
-      <WorkflowStateIndicator state={fromState} size={size} animate={false} />
-      
-      <motion.div 
-        className="text-slate-400"
-        initial={{ x: -5, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        whileHover={{ scale: 1.2 }}
-      >
-        →
-      </motion.div>
-      
-      <WorkflowStateIndicator state={toState} size={size} animate={false} />
-    </div>
-  );
-}
-
-/**
- * WorkflowStateProgressBar Component
- * 
- * Displays a progress bar for workflow operations with state-based colors
- */
-export function WorkflowStateProgressBar({
-  state,
-  progress,
-  showLabel = true,
-}: {
+interface StateChangeAnimationProps {
   state: WorkflowState;
-  progress: number; // 0-100
+  size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
-}) {
-  // Limit progress value between 0-100
-  const clampedProgress = Math.min(100, Math.max(0, progress));
+  className?: string;
+}
+
+export const StateChangeAnimation: React.FC<StateChangeAnimationProps> = ({
+  state,
+  size = 'md',
+  showLabel = false,
+  className
+}) => {
+  const [previousState, setPreviousState] = useState<WorkflowState | undefined>(undefined);
+  const [currentState, setCurrentState] = useState<WorkflowState>(state);
+  
+  useEffect(() => {
+    if (state !== currentState) {
+      setPreviousState(currentState);
+      setCurrentState(state);
+    }
+  }, [state, currentState]);
+  
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={currentState}
+        initial={{ y: -10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 10, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className={className}
+      >
+        <WorkflowStateIndicator 
+          state={currentState}
+          previousState={previousState}
+          size={size}
+          showLabel={showLabel}
+        />
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+interface WorkflowStateProgressBarProps {
+  state: WorkflowState;
+  progress?: number;
+  className?: string;
+}
+
+export const WorkflowStateProgressBar: React.FC<WorkflowStateProgressBarProps> = ({
+  state,
+  progress = 0,
+  className
+}) => {
   const config = stateConfig[state];
   
   return (
-    <div className="w-full space-y-1">
-      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-        <motion.div 
-          className={`h-full rounded-full ${state === 'failed' ? 'bg-red-500' : 'bg-blue-500'}`}
-          initial={{ width: '0%' }}
-          animate={{ width: `${clampedProgress}%` }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-        />
+    <div className={cn("space-y-1", className)}>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          <StateChangeAnimation state={state} size="sm" />
+          <span className="ml-2 text-sm font-medium">{config.label}</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
       </div>
       
-      {showLabel && (
-        <div className="flex justify-between text-xs">
-          <span className={config.color}>{config.label}</span>
-          <span className="text-slate-600 font-medium">{clampedProgress}%</span>
-        </div>
-      )}
+      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+        <motion.div 
+          className={cn("h-full rounded-full", config.bgColor)}
+          initial={{ width: '0%' }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.5 }}
+        />
+      </div>
     </div>
   );
+};
+
+interface WorkflowStateBadgeProps {
+  state: WorkflowState;
+  className?: string;
 }
 
-/**
- * WorkflowStateHistory Component
- * 
- * Shows a timeline of workflow state changes
- */
-export function WorkflowStateHistory({
-  states,
-  currentStateIndex,
-}: {
-  states: { state: WorkflowState; timestamp: string }[];
-  currentStateIndex: number;
-}) {
+export const WorkflowStateBadge: React.FC<WorkflowStateBadgeProps> = ({
+  state,
+  className
+}) => {
+  const badgeVariant = useMemo(() => {
+    switch (state) {
+      case 'completed':
+        return 'success';
+      case 'failed':
+        return 'destructive';
+      case 'running':
+      case 'starting':
+        return 'default';
+      case 'paused':
+      case 'retrying':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  }, [state]);
+  
   return (
-    <div className="space-y-3">
-      {states.map((item, index) => (
-        <div 
-          key={index}
-          className={`flex items-center gap-3 p-2 rounded-md ${index === currentStateIndex ? 'bg-slate-50 border' : ''}`}
-        >
-          <WorkflowStateIndicator 
-            state={item.state} 
-            size="sm" 
-            animate={index === currentStateIndex}
-          />
-          <div className="flex-1">
-            <div className="font-medium text-sm">{stateConfig[item.state].label}</div>
-            <div className="text-xs text-slate-500">{item.timestamp}</div>
-          </div>
-        </div>
-      ))}
-    </div>
+    <Badge variant={badgeVariant as any} className={className}>
+      <StateChangeAnimation state={state} size="sm" />
+      <span className="ml-1">{stateConfig[state].label}</span>
+    </Badge>
   );
-}
+};
+
+export default StateChangeAnimation;
