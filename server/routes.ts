@@ -1,11 +1,53 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import passport from "passport";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import cookieParser from "cookie-parser";
+import { pool } from "./db";
 import { storage } from "./storage";
 import { insertWorkflowSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import workflowMonitoringRoutes from "./routes/workflowMonitoring";
+import authRoutes from "./auth/auth.routes";
+import { setupPassport, initializeOAuthProviders } from "./auth/auth.service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure session store
+  const PgSessionStore = connectPgSimple(session);
+  const sessionStore = new PgSessionStore({
+    pool,
+    tableName: 'sessions',
+    createTableIfMissing: true
+  });
+
+  // Setup middleware
+  app.use(cookieParser());
+  app.use(
+    session({
+      store: sessionStore,
+      secret: process.env.SESSION_SECRET || 'development-session-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      }
+    })
+  );
+
+  // Initialize passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+  setupPassport();
+
+  // Initialize OAuth providers if needed
+  await initializeOAuthProviders();
+  
+  // Register auth routes
+  app.use('/api/auth', authRoutes);
+  
   // Register monitoring routes
   app.use('/api/monitoring', workflowMonitoringRoutes);
   
