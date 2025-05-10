@@ -7,7 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import WorkflowBuilder from "@/pages/workflow-builder";
 import Login from "@/pages/login";
-import Dashboard from "@/pages/dashboard";
+import Dashboard from "@/pages/dashboard-new";
 import Callback from "@/pages/auth/callback";
 import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
 import { useAuth } from "@/hooks/useAuth";
