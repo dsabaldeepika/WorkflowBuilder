@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { NodePickerModal } from "@/components/workflow/NodePickerModal";
 import { AIAssistant } from "@/components/workflow/AIAssistant";
+import { TemplateGallery } from "@/components/workflow/TemplateGallery";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
 import { 
@@ -86,7 +87,7 @@ export default function WorkflowBuilder() {
               <Button 
                 variant="outline" 
                 className="w-full justify-start text-gray-700 hover:text-primary hover:border-primary"
-                onClick={() => setModalOpen(true)}
+                onClick={openNodePicker}
               >
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Node
@@ -271,6 +272,10 @@ export default function WorkflowBuilder() {
             )}
           </div>
           <div className="flex items-center space-x-3">
+            <Button variant="outline" onClick={openAIAssistant} className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              AI Assistant
+            </Button>
             <Button variant="outline" onClick={handleSaveDraft}>
               <Save className="h-4 w-4 mr-2" />
               Save Draft
@@ -323,7 +328,7 @@ export default function WorkflowBuilder() {
 
         {/* Workflow Canvas */}
         <WorkflowCanvas 
-          onAddNodeClick={() => setModalOpen(true)} 
+          onAddNodeClick={openNodePicker} 
         />
       </div>
 
@@ -331,11 +336,18 @@ export default function WorkflowBuilder() {
       <NodePickerModal 
         isOpen={isModalOpen} 
         onClose={() => {
-          setModalOpen(false);
+          closeNodePicker();
           setSelectedApp(null);
         }} 
         selectedApp={selectedApp}
         onSelectApp={setSelectedApp}
+      />
+      
+      {/* AI Assistant Modal */}
+      <AIAssistant
+        isOpen={isAIAssistantOpen}
+        onClose={closeAIAssistant}
+        onGenerateWorkflow={generateWorkflowFromDescription}
       />
     </div>
   );
