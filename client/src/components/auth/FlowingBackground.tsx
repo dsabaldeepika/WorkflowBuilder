@@ -1,123 +1,144 @@
 import React, { useEffect, useRef } from 'react';
 
+// Particle interface
+interface Particle {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  angle: number;
+  color: string;
+  alpha: number;
+}
+
 const FlowingBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
+  const particles = useRef<Particle[]>([]);
+  const animationRef = useRef<number | null>(null);
+  
+  // Initialize particles and animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    // Set canvas dimensions
+    
+    // Set canvas to full screen
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initParticles();
+      }
     };
-
-    // Initial resize
-    resizeCanvas();
-
-    // Handle window resize
+    
     window.addEventListener('resize', resizeCanvas);
-
-    // Create particles
-    class Particle {
-      x: number;
-      y: number;
-      radius: number;
-      color: string;
-      speedX: number;
-      speedY: number;
-      opacity: number;
-
-      constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.radius = Math.random() * 5 + 1;
-        this.color = `hsl(${Math.random() * 60 + 200}, 80%, 60%)`;
-        this.speedX = Math.random() * 2 - 1;
-        this.speedY = Math.random() * 2 - 1;
-        this.opacity = Math.random() * 0.5 + 0.1;
-      }
-
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = this.opacity;
-        ctx.fill();
-      }
-
-      update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-
-        // Boundary check
-        if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
-          this.speedX = -this.speedX;
-        }
-        if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
-          this.speedY = -this.speedY;
-        }
+    resizeCanvas();
+    
+    // Initialize particles
+    function initParticles() {
+      particles.current = [];
+      const particleCount = Math.min(50, Math.floor((canvas.width * canvas.height) / 25000));
+      
+      for (let i = 0; i < particleCount; i++) {
+        particles.current.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2 + 1,
+          speed: Math.random() * 0.7 + 0.1,
+          angle: Math.random() * 2 * Math.PI,
+          color: getGradientColor(Math.random()),
+          alpha: Math.random() * 0.5 + 0.2
+        });
       }
     }
-
-    const particles: Particle[] = [];
-    const particleCount = Math.min(Math.floor(window.innerWidth / 10), 100);
-
-    // Create particles
-    for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle());
+    
+    // Generate gradient colors
+    function getGradientColor(value: number): string {
+      // Purple to Cyan gradient
+      const r = Math.floor(125 * (1 - value) + 64 * value);
+      const g = Math.floor(50 * (1 - value) + 224 * value);
+      const b = Math.floor(200 * (1 - value) + 208 * value);
+      return `rgb(${r}, ${g}, ${b})`;
     }
-
-    // Draw the flowing background
-    const drawFlowingBackground = () => {
+    
+    // Animation loop
+    function animate() {
+      if (!canvas || !ctx) return;
+      
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw all particles
-      particles.forEach(particle => {
-        particle.update();
-        particle.draw();
+      
+      // Update and draw particles
+      particles.current.forEach(particle => {
+        // Update position
+        particle.x += Math.cos(particle.angle) * particle.speed;
+        particle.y += Math.sin(particle.angle) * particle.speed;
+        
+        // Boundary check and bounce
+        if (particle.x < 0 || particle.x > canvas.width) {
+          particle.angle = Math.PI - particle.angle;
+        }
+        if (particle.y < 0 || particle.y > canvas.height) {
+          particle.angle = -particle.angle;
+        }
+        
+        // Draw particle
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fillStyle = particle.color;
+        ctx.globalAlpha = particle.alpha;
+        ctx.fill();
       });
-
-      // Connect particles with lines if they're close enough
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
+      
+      // Draw connecting lines
+      ctx.globalAlpha = 0.1;
+      ctx.strokeStyle = '#a3a8c3';
+      ctx.lineWidth = 0.5;
+      
+      for (let i = 0; i < particles.current.length; i++) {
+        for (let j = i + 1; j < particles.current.length; j++) {
+          const p1 = particles.current[i];
+          const p2 = particles.current[j];
+          
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          // Connect particles if they're close
-          if (distance < 120) {
+          // Only connect nearby particles
+          if (distance < canvas.width / 10) {
+            const opacity = 1 - (distance / (canvas.width / 10));
+            ctx.globalAlpha = opacity * 0.2;
             ctx.beginPath();
-            ctx.strokeStyle = `hsla(220, 80%, 50%, ${0.1 * (1 - distance / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
           }
         }
       }
-
-      requestAnimationFrame(drawFlowingBackground);
-    };
-
-    // Start animation
-    drawFlowingBackground();
-
+      
+      animationRef.current = requestAnimationFrame(animate);
+    }
+    
+    initParticles();
+    animate();
+    
     // Cleanup
     return () => {
       window.removeEventListener('resize', resizeCanvas);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
   }, []);
-
+  
   return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 -z-10 h-full w-full"
-      style={{ background: 'linear-gradient(to bottom right, #0f172a, #1e293b)' }}
+    <canvas 
+      ref={canvasRef} 
+      className="absolute top-0 left-0 w-full h-full -z-10"
+      style={{ 
+        background: 'linear-gradient(145deg, rgba(10,10,30,1) 0%, rgba(20,20,55,1) 100%)' 
+      }}
     />
   );
 };
