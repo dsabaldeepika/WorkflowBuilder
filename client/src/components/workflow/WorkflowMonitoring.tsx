@@ -156,7 +156,11 @@ const formatDate = (dateString: string) => {
 };
 
 // Main component
-export default function WorkflowMonitoring() {
+interface WorkflowMonitoringProps {
+  className?: string;
+}
+
+export default function WorkflowMonitoring({ className = '' }: WorkflowMonitoringProps) {
   const [timeframe, setTimeframe] = useState<'hour' | 'day' | 'week' | 'month'>('day');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
@@ -217,7 +221,7 @@ export default function WorkflowMonitoring() {
   }, [timeframe]);
   
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className={`container mx-auto px-4 py-6 ${className}`}>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Workflow Monitoring Dashboard</h1>
         <div className="flex items-center space-x-4">

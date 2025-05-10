@@ -4,6 +4,7 @@ import { NodePickerModal } from "@/components/workflow/NodePickerModal";
 import { AIAssistant } from "@/components/workflow/AIAssistant";
 import { TemplateGallery } from "@/components/workflow/TemplateGallery";
 import { AgentBuilder } from "@/components/workflow/AgentBuilder";
+import WorkflowMonitoring from "@/components/workflow/WorkflowMonitoring";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
 import { 
@@ -214,6 +215,12 @@ export default function WorkflowBuilder() {
             </div>
           </div>
         );
+      case 'monitoring':
+        return (
+          <div className="p-0 h-full overflow-auto">
+            <WorkflowMonitoring />
+          </div>
+        );
       case 'run':
         return (
           <div className="p-4">
@@ -313,31 +320,37 @@ export default function WorkflowBuilder() {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <aside className={`${activeTab === 'monitoring' ? 'w-[580px]' : 'w-64'} transition-all duration-300 bg-white border-r border-gray-200 flex flex-col`}>
           <div className="p-3 border-b border-gray-200">
             <h2 className="font-semibold text-gray-700">Workflow Tools</h2>
           </div>
-          <div className="flex border-b border-gray-200">
+          <div className="flex flex-wrap border-b border-gray-200">
             <button 
-              className={`flex-1 py-2 text-sm font-medium ${activeTab === 'builder' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`px-3 py-2 text-sm font-medium ${activeTab === 'builder' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
               onClick={() => setActiveTab('builder')}
             >
               Builder
             </button>
             <button 
-              className={`flex-1 py-2 text-sm font-medium ${activeTab === 'settings' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`px-3 py-2 text-sm font-medium ${activeTab === 'settings' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
               onClick={() => setActiveTab('settings')}
             >
               Settings
             </button>
             <button 
-              className={`flex-1 py-2 text-sm font-medium ${activeTab === 'history' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`px-3 py-2 text-sm font-medium ${activeTab === 'history' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
               onClick={() => setActiveTab('history')}
             >
               History
             </button>
             <button 
-              className={`flex-1 py-2 text-sm font-medium ${activeTab === 'run' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`px-3 py-2 text-sm font-medium ${activeTab === 'monitoring' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
+              onClick={() => setActiveTab('monitoring')}
+            >
+              Monitoring
+            </button>
+            <button 
+              className={`px-3 py-2 text-sm font-medium ${activeTab === 'run' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-800'}`}
               onClick={() => setActiveTab('run')}
             >
               Run
