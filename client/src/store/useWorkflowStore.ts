@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge } from 'reactflow';
-import { App, NodeCategory, Workflow, WorkflowTemplate, NodeType } from '@/types/workflow';
+import { 
+  App, 
+  NodeCategory, 
+  Workflow, 
+  WorkflowTemplate, 
+  NodeType, 
+  NodeTemplate 
+} from '@/types/workflow';
 import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
 import type { ScheduleOptions, ScheduleFrequency } from '@/components/workflow/ScheduleOptions';
 

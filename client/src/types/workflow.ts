@@ -54,13 +54,13 @@ export interface Option {
 }
 
 // Node category definitions
-export type NodeCategory = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer';
+export type NodeCategory = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer' | 'custom' | 'automation' | 'ai' | 'messaging' | 'crm' | 'social' | 'ecommerce' | 'utility';
 
 // For picker tabs
 export type PickerTab = 'all' | 'popular' | 'new';
 
 // Node type definitions
-export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer';
+export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer' | 'connector' | 'api';
 
 // Data type definitions
 export type DataType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'any';
@@ -87,6 +87,31 @@ export interface WorkflowTemplate {
   useCases?: string[];
   requirements?: string[];
   documentation?: string;
+}
+
+// Node template definitions for custom node templates
+export interface NodeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: NodeCategory;
+  nodeType: NodeType;
+  icon: string;
+  configuration: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+  isFavorite: boolean;
+  isCustom: boolean;
+  // Optional fields
+  inputs?: Record<string, any>;
+  outputs?: Record<string, any>;
+  ports?: Array<{
+    id: string;
+    type: 'input' | 'output';
+    dataType: DataType;
+    required?: boolean;
+    allowedConnections?: string[];
+  }>;
 }
 
 // Workflow execution definitions
