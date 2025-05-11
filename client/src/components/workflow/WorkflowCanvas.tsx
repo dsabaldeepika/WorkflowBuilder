@@ -364,7 +364,7 @@ function WorkflowCanvasContent() {
     <div className="h-full w-full">
       {isEmpty ? (
         <EmptyWorkflowPlaceholder 
-          onAddNodeClick={onAddNodeClick}
+          onAddNodeClick={() => setShowNodePicker(true)}
           onScheduleChange={handleScheduleChange}
           onCreateWorkflow={handleCreateWorkflow}
         />

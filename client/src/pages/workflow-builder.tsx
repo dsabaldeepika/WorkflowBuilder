@@ -50,12 +50,9 @@ export default function WorkflowBuilder() {
 
   const handleSaveDraft = async () => {
     try {
-      const savedWorkflow = await saveWorkflow();
-      if (savedWorkflow) {
-        // We'll rely on the updated saveWorkflow function which now handles alerts 
-        // and navigation internally. No need for additional UI feedback here.
-        console.log('Workflow saved successfully', savedWorkflow);
-      }
+      // Saving the workflow - function handles alerts and navigation internally
+      await saveWorkflow();
+      console.log('Workflow saved successfully');
     } catch (error) {
       console.error('Error in handleSaveDraft:', error);
       // The error alert is already handled in the saveWorkflow function
