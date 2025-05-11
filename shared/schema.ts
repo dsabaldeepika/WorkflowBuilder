@@ -1,4 +1,4 @@
-import { pgTable, text, serial, jsonb, varchar, timestamp, boolean, integer, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, jsonb, varchar, timestamp, boolean, integer, primaryKey, index, uniqueIndex, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -36,6 +36,38 @@ export const oauthProviders = pgTable("oauth_providers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Subscription plan tiers
+export enum SubscriptionTier {
+  FREE = 'free',
+  BASIC = 'basic',
+  PRO = 'pro',
+  ENTERPRISE = 'enterprise'
+}
+
+// Subscription plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  tier: text("tier").notNull(),
+  description: text("description").notNull(),
+  priceMonthly: decimal("price_monthly", { precision: 10, scale: 2 }).notNull(),
+  priceYearly: decimal("price_yearly", { precision: 10, scale: 2 }).notNull(),
+  stripePriceIdMonthly: text("stripe_price_id_monthly").notNull(),
+  stripePriceIdYearly: text("stripe_price_id_yearly").notNull(),
+  maxWorkflows: integer("max_workflows").notNull(),
+  maxWorkspaces: integer("max_workspaces").notNull(),
+  maxExecutionsPerMonth: integer("max_executions_per_month").notNull(),
+  maxTeamMembers: integer("max_team_members").notNull(),
+  hasAdvancedIntegrations: boolean("has_advanced_integrations").notNull().default(false),
+  hasAiFeatures: boolean("has_ai_features").notNull().default(false),
+  hasCustomBranding: boolean("has_custom_branding").notNull().default(false),
+  hasPrioritySuppport: boolean("has_priority_support").notNull().default(false),
+  features: text("features").array(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -48,6 +80,13 @@ export const users = pgTable("users", {
   role: text("role").notNull().default(UserRole.CREATOR), // creator, editor, admin
   isActive: boolean("is_active").notNull().default(true),
   lastLogin: timestamp("last_login"),
+  // Subscription and billing fields
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionTier: text("subscription_tier").notNull().default(SubscriptionTier.FREE),
+  subscriptionStatus: text("subscription_status"),
+  subscriptionPeriodEnd: timestamp("subscription_period_end"),
+  // Base timestamp fields
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -94,6 +133,32 @@ export const insertUserSchema = createInsertSchema(users).pick({
   profileImageUrl: true,
   password: true,
   role: true,
+  stripeCustomerId: true,
+  stripeSubscriptionId: true,
+  subscriptionTier: true,
+  subscriptionStatus: true,
+  subscriptionPeriodEnd: true,
+});
+
+// Schema for inserting subscription plans
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).pick({
+  name: true,
+  tier: true,
+  description: true,
+  priceMonthly: true,
+  priceYearly: true,
+  stripePriceIdMonthly: true,
+  stripePriceIdYearly: true,
+  maxWorkflows: true,
+  maxWorkspaces: true,
+  maxExecutionsPerMonth: true,
+  maxTeamMembers: true,
+  hasAdvancedIntegrations: true,
+  hasAiFeatures: true,
+  hasCustomBranding: true,
+  hasPrioritySuppport: true,
+  features: true,
+  isActive: true,
 });
 
 // Workspace schema
@@ -258,6 +323,25 @@ export const userAppCredentials = pgTable("user_app_credentials", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Subscription history records table
+export const subscriptionHistory = pgTable("subscription_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  subscriptionPlanId: integer("subscription_plan_id").references(() => subscriptionPlans.id).notNull(),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeInvoiceId: text("stripe_invoice_id"),
+  billingPeriod: text("billing_period").notNull(), // monthly, yearly
+  status: text("status").notNull(), // active, canceled, past_due, trialing, incomplete
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull(),
+  canceledAt: timestamp("canceled_at"),
+  cancelReason: text("cancel_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Workflow Node Executions table
 export const workflowNodeExecutions = pgTable("workflow_node_executions", {
   id: serial("id").primaryKey(),
@@ -323,6 +407,21 @@ export const insertUserAppCredentialsSchema = createInsertSchema(userAppCredenti
   isValid: true,
 });
 
+export const insertSubscriptionHistorySchema = createInsertSchema(subscriptionHistory).pick({
+  userId: true,
+  subscriptionPlanId: true,
+  stripeSubscriptionId: true,
+  stripeInvoiceId: true,
+  billingPeriod: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  amount: true,
+  currency: true,
+  canceledAt: true,
+  cancelReason: true,
+});
+
 export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
 export type Workflow = typeof workflows.$inferSelect;
 export type WorkflowPermission = typeof workflowPermissions.$inferSelect;
@@ -341,3 +440,7 @@ export type InsertUserAppCredential = z.infer<typeof insertUserAppCredentialsSch
 export type UserAppCredential = typeof userAppCredentials.$inferSelect;
 
 export type WorkflowNodeExecution = typeof workflowNodeExecutions.$inferSelect;
+
+// Subscription plan type
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
