@@ -56,7 +56,7 @@ export function WorkflowCanvas({ onAddNodeClick }: WorkflowCanvasProps) {
   );
 }
 
-function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
+function WorkflowCanvasContent({ onAddNodeClick: _onAddNodeClick }: WorkflowCanvasProps) {
   // State for onboarding and guided tour
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
@@ -172,6 +172,12 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
     updateSchedule(newSchedule);
   }, [updateSchedule]);
   
+  // Function to show our custom node picker
+  const handleAddNode = useCallback(() => {
+    console.log('Opening custom node picker');
+    setShowNodePicker(true);
+  }, []);
+  
   // Create workflow with pre-selected schedule or open node picker
   const handleCreateWorkflow = useCallback((useSchedule: boolean) => {
     if (useSchedule) {
@@ -194,12 +200,12 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       });
       
       // Show node picker to start building
-      onAddNodeClick();
+      handleAddNode();
     } else {
       // Just open the node picker without schedule
-      onAddNodeClick();
+      handleAddNode();
     }
-  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, onAddNodeClick]);
+  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, handleAddNode]);
   
   // Handle node selection from the picker
   const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
@@ -366,7 +372,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
     <div className="h-full w-full">
       {isEmpty ? (
         <EmptyWorkflowPlaceholder 
-          onAddNodeClick={onAddNodeClick}
+          onAddNodeClick={handleAddNode}
           onScheduleChange={handleScheduleChange}
           onCreateWorkflow={handleCreateWorkflow}
         />
