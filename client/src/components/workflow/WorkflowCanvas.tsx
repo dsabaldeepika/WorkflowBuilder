@@ -44,19 +44,15 @@ const customEdgeTypes = {
   default: ValidatedEdge,
 };
 
-interface WorkflowCanvasProps {
-  onAddNodeClick: () => void;
-}
-
-export function WorkflowCanvas({ onAddNodeClick }: WorkflowCanvasProps) {
+export function WorkflowCanvas() {
   return (
     <ReactFlowProvider>
-      <WorkflowCanvasContent onAddNodeClick={onAddNodeClick} />
+      <WorkflowCanvasContent />
     </ReactFlowProvider>
   );
 }
 
-function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
+function WorkflowCanvasContent() {
   // State for onboarding and guided tour
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
@@ -196,12 +192,12 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       });
       
       // Show node picker to start building
-      onAddNodeClick();
+      setShowNodePicker(true);
     } else {
       // Just open the node picker without schedule
-      onAddNodeClick();
+      setShowNodePicker(true);
     }
-  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, onAddNodeClick]);
+  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, setShowNodePicker]);
   
   // Handle node selection from the picker
   const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
@@ -467,7 +463,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
         }}
         onStartWorkflow={() => {
           // Start a new workflow by showing the node picker
-          onAddNodeClick();
+          setShowNodePicker(true);
           // Setup initial guide if needed
           setShowGuide(true);
           setOnboardingSteps([
