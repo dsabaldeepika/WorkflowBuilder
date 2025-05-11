@@ -44,19 +44,18 @@ const customEdgeTypes = {
   default: ValidatedEdge,
 };
 
-interface WorkflowCanvasProps {
-  onAddNodeClick: () => void;
-}
+// Props are no longer needed since we handle node picking internally
+interface WorkflowCanvasProps {}
 
-export function WorkflowCanvas({ onAddNodeClick }: WorkflowCanvasProps) {
+export function WorkflowCanvas({}: WorkflowCanvasProps) {
   return (
     <ReactFlowProvider>
-      <WorkflowCanvasContent onAddNodeClick={onAddNodeClick} />
+      <WorkflowCanvasContent />
     </ReactFlowProvider>
   );
 }
 
-function WorkflowCanvasContent({ onAddNodeClick: _onAddNodeClick }: WorkflowCanvasProps) {
+function WorkflowCanvasContent() {
   // State for onboarding and guided tour
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
@@ -287,7 +286,7 @@ function WorkflowCanvasContent({ onAddNodeClick: _onAddNodeClick }: WorkflowCanv
       data: nodeData,
     };
     
-    setNodes((prevNodes: Node<NodeData>[]) => [...prevNodes, newNode as Node<NodeData>]);
+    setNodes([...nodes, newNode as Node<NodeData>]);
     setSelectedNode(newNodeId); // Select the newly created node
     
     // Show toast notification
@@ -323,7 +322,7 @@ function WorkflowCanvasContent({ onAddNodeClick: _onAddNodeClick }: WorkflowCanv
       },
     };
     
-    setNodes((prevNodes: Node<NodeData>[]) => [...prevNodes, newNode as Node<NodeData>]);
+    setNodes([...nodes, newNode as Node<NodeData>]);
     setSelectedNode(newNodeId);
     
     toast({
@@ -471,7 +470,7 @@ function WorkflowCanvasContent({ onAddNodeClick: _onAddNodeClick }: WorkflowCanv
         }}
         onStartWorkflow={() => {
           // Start a new workflow by showing the node picker
-          onAddNodeClick();
+          handleAddNode();
           // Setup initial guide if needed
           setShowGuide(true);
           setOnboardingSteps([
