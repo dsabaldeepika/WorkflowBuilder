@@ -444,3 +444,7 @@ export type WorkflowNodeExecution = typeof workflowNodeExecutions.$inferSelect;
 // Subscription plan type
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+// Subscription history type
+export type InsertSubscriptionHistory = z.infer<typeof insertSubscriptionHistorySchema>;
+export type SubscriptionHistory = typeof subscriptionHistory.$inferSelect;

@@ -18,6 +18,9 @@ import {
   appIntegrations,
   userAppCredentials,
   workflowNodeExecutions,
+  subscriptionPlans,
+  subscriptionHistory,
+  SubscriptionTier,
   type User, 
   type InsertUser, 
   type Workflow, 
@@ -37,7 +40,11 @@ import {
   type InsertAppIntegration,
   type UserAppCredential, 
   type InsertUserAppCredential,
-  type WorkflowNodeExecution
+  type WorkflowNodeExecution,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
+  type SubscriptionHistory,
+  type InsertSubscriptionHistory
 } from "@shared/schema";
 
 export interface IStorage {
@@ -50,6 +57,19 @@ export interface IStorage {
   deactivateUser(id: number): Promise<boolean>;
   // Replit Auth user method
   upsertUser(user: { id: string, email: string | null, firstName: string | null, lastName: string | null, profileImageUrl: string | null }): Promise<User>;
+  
+  // Subscription methods
+  updateUserStripeInfo(userId: number, stripeInfo: { customerId: string, subscriptionId?: string }): Promise<User | undefined>;
+  updateUserSubscription(userId: number, subscriptionData: { 
+    tier: string, 
+    status: string, 
+    subscriptionId?: string, 
+    periodEnd?: Date
+  }): Promise<User | undefined>;
+  getSubscriptionPlans(isActive?: boolean): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined>;
+  getSubscriptionPlanByTier(tier: string): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionHistory(record: InsertSubscriptionHistory): Promise<SubscriptionHistory>;
   
   // Test user methods
   createTestUser(username: string, email: string): Promise<{user: User, testFlag: TestUserFlag}>;
@@ -1150,6 +1170,92 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedNodeExecution;
+  }
+
+  // Subscription methods
+  async updateUserStripeInfo(userId: number, stripeInfo: { customerId: string, subscriptionId?: string }): Promise<User | undefined> {
+    const updateData: Partial<User> = {
+      stripeCustomerId: stripeInfo.customerId,
+      updatedAt: new Date()
+    };
+    
+    if (stripeInfo.subscriptionId) {
+      updateData.stripeSubscriptionId = stripeInfo.subscriptionId;
+    }
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+  
+  async updateUserSubscription(userId: number, subscriptionData: { 
+    tier: string, 
+    status: string, 
+    subscriptionId?: string, 
+    periodEnd?: Date
+  }): Promise<User | undefined> {
+    const updateData: Partial<User> = {
+      subscriptionTier: subscriptionData.tier,
+      subscriptionStatus: subscriptionData.status,
+      updatedAt: new Date()
+    };
+    
+    if (subscriptionData.subscriptionId) {
+      updateData.stripeSubscriptionId = subscriptionData.subscriptionId;
+    }
+    
+    if (subscriptionData.periodEnd) {
+      updateData.subscriptionPeriodEnd = subscriptionData.periodEnd;
+    }
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+  
+  async getSubscriptionPlans(isActive?: boolean): Promise<SubscriptionPlan[]> {
+    let query = db.select().from(subscriptionPlans);
+    
+    if (isActive !== undefined) {
+      query = query.where(eq(subscriptionPlans.isActive, isActive));
+    }
+    
+    return await query.orderBy(subscriptionPlans.priceMonthly);
+  }
+  
+  async getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, id));
+    
+    return plan;
+  }
+  
+  async getSubscriptionPlanByTier(tier: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.tier, tier));
+    
+    return plan;
+  }
+  
+  async createSubscriptionHistory(record: InsertSubscriptionHistory): Promise<SubscriptionHistory> {
+    const [historyRecord] = await db
+      .insert(subscriptionHistory)
+      .values(record)
+      .returning();
+    
+    return historyRecord;
   }
 }
 
