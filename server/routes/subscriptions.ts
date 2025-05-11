@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replitAuth";
 import { SubscriptionTier } from "../../shared/schema";
+import { STRIPE_CONFIG, API_ENDPOINTS } from "../../shared/config";
 
 // Initialize Stripe client
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -10,7 +11,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
+  apiVersion: STRIPE_CONFIG.apiVersion,
 });
 
 export const subscriptionsRouter = Router();
@@ -119,8 +120,8 @@ subscriptionsRouter.post("/create-checkout-session", isAuthenticated, async (req
         },
       ],
       mode: "subscription",
-      success_url: `${req.protocol}://${req.get("host")}/account/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.protocol}://${req.get("host")}/pricing?canceled=true`,
+      success_url: STRIPE_CONFIG.successUrl + '&session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: STRIPE_CONFIG.cancelUrl,
       metadata: {
         userId: user.id.toString(),
         planId: planId?.toString() || "",
@@ -138,7 +139,7 @@ subscriptionsRouter.post("/create-checkout-session", isAuthenticated, async (req
 // Handle subscription webhooks from Stripe
 subscriptionsRouter.post("/webhook", async (req, res) => {
   const sig = req.headers["stripe-signature"] as string;
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const endpointSecret = STRIPE_CONFIG.webhookSecret;
 
   // Only verify the signature if an endpoint secret is configured
   let event;

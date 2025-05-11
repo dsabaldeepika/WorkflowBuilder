@@ -12,6 +12,7 @@ import { useState } from "react";
 import { CheckCircle2, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { SubscriptionTier } from "@/../../shared/schema";
+import { API_ENDPOINTS, ROUTES } from "@/../../shared/config";
 
 type SubscriptionPlan = {
   id: number;
@@ -45,10 +46,10 @@ export default function PricingPage() {
 
   // Get user subscription info if logged in
   const { data: subscription } = useQuery({
-    queryKey: ["/api/subscriptions/current"],
+    queryKey: [API_ENDPOINTS.subscriptions.current],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", "/api/subscriptions/current");
+        const res = await apiRequest("GET", API_ENDPOINTS.subscriptions.current);
         return await res.json();
       } catch (error) {
         // Return free tier as default if there's an error
@@ -60,9 +61,9 @@ export default function PricingPage() {
 
   // Get all subscription plans
   const { data: plans, isLoading: plansLoading } = useQuery({
-    queryKey: ["/api/subscriptions/plans"],
+    queryKey: [API_ENDPOINTS.subscriptions.plans],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/subscriptions/plans");
+      const res = await apiRequest("GET", API_ENDPOINTS.subscriptions.plans);
       return await res.json();
     }
   });
@@ -94,7 +95,7 @@ export default function PricingPage() {
     try {
       const priceId = billingPeriod === "yearly" ? plan.stripePriceIdYearly : plan.stripePriceIdMonthly;
       
-      const res = await apiRequest("POST", "/api/subscriptions/create-checkout-session", {
+      const res = await apiRequest("POST", API_ENDPOINTS.subscriptions.createSubscription, {
         planId: plan.id,
         priceId,
         billingPeriod
