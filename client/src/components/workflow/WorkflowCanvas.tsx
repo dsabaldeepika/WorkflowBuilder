@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -20,6 +20,9 @@ import { useWorkflowStore } from '@/store/useWorkflowStore';
 import { WorkflowState } from './StateChangeAnimation';
 import { toast } from '@/hooks/use-toast';
 import EmptyWorkflowPlaceholder from './EmptyWorkflowPlaceholder';
+import WorkflowOnboarding, { OnboardingStep } from './WorkflowOnboarding';
+import OnboardingGuide from './OnboardingGuide';
+import TriggerScheduleDialog from './TriggerScheduleDialog';
 
 // Define custom node types outside of component to avoid recreation on each render
 const customNodeTypes = {
@@ -51,6 +54,15 @@ export function WorkflowCanvas({ onAddNodeClick }: WorkflowCanvasProps) {
 }
 
 function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
+  // State for onboarding and guided tour
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [showGuide, setShowGuide] = useState(false);
+  
+  // State for schedule dialog
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  
   const { 
     nodes, 
     edges, 
@@ -94,6 +106,68 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       description: 'Your workflow has been exported to a JSON file.',
     });
   }, [exportWorkflow]);
+  
+  // Handle onboarding 
+  const handleStartWorkflow = useCallback((steps: OnboardingStep[]) => {
+    setOnboardingSteps(steps);
+    setShowGuide(true);
+    setCurrentStepIndex(0);
+  }, []);
+  
+  // Handle completing a step in the guide
+  const handleCompleteStep = useCallback((index: number) => {
+    const updatedSteps = [...onboardingSteps];
+    updatedSteps[index].completed = true;
+    setOnboardingSteps(updatedSteps);
+    
+    // Move to next step if available
+    if (index < updatedSteps.length - 1) {
+      setCurrentStepIndex(index + 1);
+    } else {
+      // All steps completed
+      setShowGuide(false);
+      toast({
+        title: 'Onboarding Completed',
+        description: 'You\'ve successfully completed the workflow onboarding!',
+      });
+    }
+  }, [onboardingSteps]);
+  
+  // Handle schedule dialog change
+  const handleScheduleChange = useCallback((newSchedule: any) => {
+    updateSchedule(newSchedule);
+  }, [updateSchedule]);
+  
+  // Handle adding schedule to workflow
+  const handleAddScheduleToWorkflow = useCallback(() => {
+    // Create a trigger node with the schedule configuration
+    const triggerNode = {
+      id: `trigger-${Date.now()}`,
+      type: 'trigger',
+      position: { x: 100, y: 100 },
+      data: {
+        label: `Schedule (${schedule.frequency})`,
+        description: 'Triggers workflow on a schedule',
+        type: 'trigger',
+        nodeType: 'trigger',
+        category: 'triggers',
+        icon: 'clock',
+        configuration: { schedule },
+      }
+    };
+    
+    // Add the node to the workflow
+    setNodes([...nodes, triggerNode]);
+    
+    // Close the dialog
+    setShowScheduleDialog(false);
+    
+    // Show toast notification
+    toast({
+      title: 'Schedule Trigger Added',
+      description: `Added a new trigger that runs ${schedule.frequency}.`,
+    });
+  }, [schedule, nodes, setNodes]);
   
   // Handle workflow import
   const handleImport = useCallback(() => {
