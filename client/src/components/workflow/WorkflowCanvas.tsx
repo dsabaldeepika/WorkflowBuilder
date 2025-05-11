@@ -280,7 +280,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       data: nodeData,
     };
     
-    setNodes(prevNodes => [...prevNodes, newNode]);
+    setNodes((prevNodes: Node<NodeData>[]) => [...prevNodes, newNode as Node<NodeData>]);
     setSelectedNode(newNodeId); // Select the newly created node
     
     // Show toast notification
@@ -316,7 +316,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       },
     };
     
-    setNodes(prevNodes => [...prevNodes, newNode]);
+    setNodes((prevNodes: Node<NodeData>[]) => [...prevNodes, newNode as Node<NodeData>]);
     setSelectedNode(newNodeId);
     
     toast({
