@@ -68,9 +68,8 @@ export default function WorkflowNode({
               )}
             </div>
             
-            <button className="p-1 rounded-full hover:bg-slate-100">
-              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-            </button>
+            {/* Removed "Run it" option per user request */}
+            {/* Node operations will be handled at workflow level instead */}
           </div>
         </CardContent>
       </Card>

@@ -19,13 +19,15 @@ import { WorkflowControls, downloadJSONFile, uploadJSONFile } from './WorkflowCo
 import { useWorkflowStore } from '@/store/useWorkflowStore';
 import { WorkflowState } from './StateChangeAnimation';
 import { toast } from '@/hooks/use-toast';
+import EmptyWorkflowPlaceholder from './EmptyWorkflowPlaceholder';
 
 // Define custom node types outside of component to avoid recreation on each render
 const customNodeTypes = {
   default: WorkflowNode,
+  workflowNode: WorkflowNode, // Added to fix the node type error
   trigger: WorkflowNode,
   action: WorkflowNode,
-  condition: WorkflowNode,
+  condition: WorkflowNode, 
   data: WorkflowNode,
   integration: WorkflowNode,
   agent: WorkflowNode,
@@ -118,55 +120,62 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
     });
   }, [setNodes, setEdges]);
   
+  // Check if there are any nodes in the workflow
+  const isEmpty = nodes.length === 0;
+
   return (
     <div className="h-full w-full">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={customNodeTypes}
-        edgeTypes={customEdgeTypes}
-        onNodeClick={onNodeClick}
-        onEdgeClick={onEdgeClick}
-        connectionLineType={ConnectionLineType.SmoothStep}
-        fitView
-        minZoom={0.2}
-        maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        snapToGrid
-        snapGrid={[20, 20]}
-        className="workflow-canvas"
-      >
-        <Background />
-        <Controls />
-        <MiniMap
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-        />
-        <Panel position="top-left" className="p-4">
-          <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
-          <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
-        </Panel>
-        
-        {/* Add workflow controls */}
-        <WorkflowControls 
-          onNodeStateChange={handleNodeStateChange}
-          onSave={async () => {
-            try {
-              await saveWorkflow();
-              // Toast message is now handled in the saveWorkflow function
-            } catch (error) {
-              console.error('Error saving workflow', error);
-              // Error handling is also done in the saveWorkflow function
-            }
-          }}
-          onExport={handleExport}
-          onImport={handleImport}
-        />
-      </ReactFlow>
+      {isEmpty ? (
+        <EmptyWorkflowPlaceholder onAddNodeClick={onAddNodeClick} />
+      ) : (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={customNodeTypes}
+          edgeTypes={customEdgeTypes}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          connectionLineType={ConnectionLineType.SmoothStep}
+          fitView
+          minZoom={0.2}
+          maxZoom={2}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          snapToGrid
+          snapGrid={[20, 20]}
+          className="workflow-canvas"
+        >
+          <Background />
+          <Controls />
+          <MiniMap
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+          />
+          <Panel position="top-left" className="p-4">
+            <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
+            <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
+          </Panel>
+          
+          {/* Add workflow controls */}
+          <WorkflowControls 
+            onNodeStateChange={handleNodeStateChange}
+            onSave={async () => {
+              try {
+                await saveWorkflow();
+                // Toast message is now handled in the saveWorkflow function
+              } catch (error) {
+                console.error('Error saving workflow', error);
+                // Error handling is also done in the saveWorkflow function
+              }
+            }}
+            onExport={handleExport}
+            onImport={handleImport}
+          />
+        </ReactFlow>
+      )}
     </div>
   );
 }
