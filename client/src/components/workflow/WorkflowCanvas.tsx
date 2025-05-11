@@ -23,7 +23,8 @@ import EmptyWorkflowPlaceholder from './EmptyWorkflowPlaceholder';
 import { NodeCategory } from '@/types/workflow';
 import WorkflowOnboarding, { OnboardingStep } from './WorkflowOnboarding';
 import OnboardingGuide from './OnboardingGuide';
-import TriggerScheduleDialog from './TriggerScheduleDialog';
+import TriggerScheduleDialog, { ScheduleOptions } from './TriggerScheduleDialog';
+import { Clock } from 'lucide-react';
 
 // Define custom node types outside of component to avoid recreation on each render
 const customNodeTypes = {
@@ -32,12 +33,11 @@ const customNodeTypes = {
   trigger: WorkflowNode,
   action: WorkflowNode,
   condition: WorkflowNode, 
-  data: WorkflowNode,
-  integration: WorkflowNode,
-  agent: WorkflowNode,
+  transformer: WorkflowNode,
+  api: WorkflowNode,
+  connector: WorkflowNode,
 };
 
-// Define custom edge types outside of component to avoid recreation on each render
 const customEdgeTypes = {
   default: ValidatedEdge,
 };
@@ -108,13 +108,6 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
     });
   }, [exportWorkflow]);
   
-  // Handle onboarding 
-  const handleStartWorkflow = useCallback((steps: OnboardingStep[]) => {
-    setOnboardingSteps(steps);
-    setShowGuide(true);
-    setCurrentStepIndex(0);
-  }, []);
-  
   // Handle completing a step in the guide
   const handleCompleteStep = useCallback((index: number) => {
     const updatedSteps = [...onboardingSteps];
@@ -133,11 +126,6 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       });
     }
   }, [onboardingSteps]);
-  
-  // Handle schedule dialog change
-  const handleScheduleChange = useCallback((newSchedule: any) => {
-    updateSchedule(newSchedule);
-  }, [updateSchedule]);
   
   // Handle adding schedule to workflow
   const handleAddScheduleToWorkflow = useCallback(() => {
@@ -173,6 +161,40 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       setCurrentStepIndex(0);
     }
   }, [schedule, nodes, updateSchedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex]);
+  
+  // Handle direct schedule creation from the empty state
+  const handleScheduleChange = useCallback((newSchedule: ScheduleOptions) => {
+    updateSchedule(newSchedule);
+  }, [updateSchedule]);
+  
+  // Create workflow with pre-selected schedule or open node picker
+  const handleCreateWorkflow = useCallback((useSchedule: boolean) => {
+    if (useSchedule) {
+      // If we already set up a schedule, show guide for next steps
+      setShowGuide(true);
+      setOnboardingSteps([
+        {
+          title: 'Add your first action node',
+          description: 'Click the canvas or use the + button to add an action node',
+          completed: false,
+          type: 'action'
+        }
+      ]);
+      setCurrentStepIndex(0);
+      
+      // Show confirmation toast
+      toast({
+        title: 'Workflow Schedule Set',
+        description: `Your workflow will run ${schedule.frequency}. Now add your first action.`,
+      });
+      
+      // Show node picker to start building
+      onAddNodeClick();
+    } else {
+      // Just open the node picker without schedule
+      onAddNodeClick();
+    }
+  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, onAddNodeClick]);
   
   // Handle workflow import
   const handleImport = useCallback(() => {
@@ -213,7 +235,11 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   return (
     <div className="h-full w-full">
       {isEmpty ? (
-        <EmptyWorkflowPlaceholder onAddNodeClick={() => setShowScheduleDialog(true)} />
+        <EmptyWorkflowPlaceholder 
+          onAddNodeClick={onAddNodeClick}
+          onScheduleChange={handleScheduleChange}
+          onCreateWorkflow={handleCreateWorkflow}
+        />
       ) : (
         <ReactFlow
           nodes={nodes}
@@ -248,10 +274,8 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
                 <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
               </div>
               {schedule?.enabled && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="ml-4 flex items-center gap-1"
+                <div 
+                  className="ml-4 flex items-center gap-1 border rounded-md px-3 py-1 text-sm bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100"
                   onClick={() => setShowScheduleDialog(true)}
                 >
                   <Clock className="h-4 w-4 text-blue-500" />
@@ -263,7 +287,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
                     schedule.frequency === 'monthly' ? 'Run monthly' :
                     'Custom'}
                   </span>
-                </Button>
+                </div>
               )}
             </div>
           </Panel>
@@ -309,7 +333,21 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
           // Save preference in local storage
           localStorage.setItem('pumpflux_hasSeenOnboarding', 'true');
         }}
-        onStartWorkflow={handleStartWorkflow}
+        onStartWorkflow={() => {
+          // Start a new workflow by showing the node picker
+          onAddNodeClick();
+          // Setup initial guide if needed
+          setShowGuide(true);
+          setOnboardingSteps([
+            {
+              title: 'Add your first trigger node',
+              description: 'Start by adding a trigger node to your workflow',
+              completed: false,
+              type: 'trigger'
+            }
+          ]);
+          setCurrentStepIndex(0);
+        }}
       />
       
       {/* Schedule configuration dialog */}
