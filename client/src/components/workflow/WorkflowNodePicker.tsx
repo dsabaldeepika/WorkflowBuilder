@@ -386,7 +386,7 @@ export function WorkflowNodePicker({
   // Get filtered utility nodes based on active category
   const filteredUtilityNodes = utilityNodes
     .filter(node => 
-      (activeCategory === 'all' || node.category === activeCategory) &&
+      node.category === activeCategory &&
       (searchQuery === '' || 
         node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -395,7 +395,7 @@ export function WorkflowNodePicker({
   // Get filtered schedule triggers
   const filteredScheduleTriggers = scheduleTriggers
     .filter(node => 
-      (activeCategory === 'all' || node.category === 'trigger') &&
+      activeCategory === 'trigger' &&
       (searchQuery === '' || 
         node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -404,7 +404,7 @@ export function WorkflowNodePicker({
   // Get filtered webhook triggers
   const filteredWebhookTriggers = webhookTriggers
     .filter(node => 
-      (activeCategory === 'all' || node.category === activeCategory) &&
+      node.category === activeCategory &&
       (searchQuery === '' || 
         node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.description.toLowerCase().includes(searchQuery.toLowerCase()))

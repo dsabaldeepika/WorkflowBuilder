@@ -203,9 +203,9 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   
   // Handle node selection from the picker
   const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
-    // Create a node at the center of the viewport
-    const centerX = reactFlowInstance.getWidth() / 2;
-    const centerY = reactFlowInstance.getHeight() / 2;
+    // Create a node at a fixed position in the viewport
+    const centerX = 250;
+    const centerY = 150;
     
     // Get a unique ID for the new node
     const newNodeId = `node-${Date.now()}`;
@@ -292,9 +292,9 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   
   // Handle creating an AI agent
   const handleCreateAgent = useCallback((agentData: any) => {
-    // Create a node at the center of the viewport
-    const centerX = reactFlowInstance.getWidth() / 2;
-    const centerY = reactFlowInstance.getHeight() / 2;
+    // Create a node at a fixed position in the viewport
+    const centerX = 250;
+    const centerY = 150;
     
     // Get a unique ID for the new node
     const newNodeId = `agent-${Date.now()}`;
