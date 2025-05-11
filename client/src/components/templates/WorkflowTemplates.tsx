@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Card, 
@@ -44,6 +44,21 @@ export default function WorkflowTemplates() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplate | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  
+  // Load favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favoriteTemplates');
+    if (savedFavorites) {
+      try {
+        const favorites = JSON.parse(savedFavorites);
+        setFavoriteIds(favorites);
+      } catch (e) {
+        console.error('Error parsing favorites from localStorage:', e);
+        setFavoriteIds([]);
+      }
+    }
+  }, []);
 
   // Build query string based on filters
   const buildQueryString = () => {
@@ -162,7 +177,16 @@ export default function WorkflowTemplates() {
                       {template.description}
                     </CardDescription>
                   </div>
-                  <TemplateFavoriteButton templateId={template.id} />
+                  <TemplateFavoriteButton 
+                    templateId={template.id} 
+                    initialFavorited={favoriteIds.includes(template.id)}
+                    onFavoriteChange={(templateId, isFavorited) => {
+                      const newFavorites = isFavorited 
+                        ? [...favoriteIds, templateId]
+                        : favoriteIds.filter(id => id !== templateId);
+                      setFavoriteIds(newFavorites);
+                    }}
+                  />
                 </div>
               </CardHeader>
               

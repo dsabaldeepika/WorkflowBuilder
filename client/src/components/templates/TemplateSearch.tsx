@@ -249,7 +249,13 @@ export function TemplateSearch() {
                     </div>
                     <TemplateFavoriteButton 
                       templateId={template.id} 
-                      initialFavorited={favoriteIds.includes(template.id)} 
+                      initialFavorited={favoriteIds.includes(template.id)}
+                      onFavoriteChange={(templateId, isFavorited) => {
+                        const newFavorites = isFavorited 
+                          ? [...favoriteIds, templateId]
+                          : favoriteIds.filter(id => id !== templateId);
+                        setFavoriteIds(newFavorites);
+                      }}
                     />
                   </div>
                 </CardHeader>
