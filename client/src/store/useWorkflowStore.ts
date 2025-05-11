@@ -11,6 +11,19 @@ import {
 import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
 import type { ScheduleOptions, ScheduleFrequency } from '@/components/workflow/ScheduleOptions';
 
+// Load custom node templates from localStorage
+const loadCustomTemplates = (): NodeTemplate[] => {
+  try {
+    const savedTemplates = localStorage.getItem('customNodeTemplates');
+    if (savedTemplates) {
+      return JSON.parse(savedTemplates);
+    }
+  } catch (error) {
+    console.error('Failed to load custom templates from localStorage:', error);
+  }
+  return [];
+};
+
 export type NodeData = {
   label: string;
   type?: string;
@@ -43,12 +56,14 @@ interface WorkflowStoreState {
   isAIAssistantOpen: boolean;
   isTemplateGalleryOpen: boolean;
   isAgentBuilderOpen: boolean;
+  isCustomTemplatesOpen: boolean;
   nodeStates: Record<string, NodeState>;
   schedule: ScheduleOptions;
   connectionValidations: Record<string, {
     isValid: boolean;
     message?: string;
   }>;
+  customTemplates: NodeTemplate[];
   
   // Actions
   addNode: (node: Node<NodeData>) => void;
@@ -90,6 +105,15 @@ interface WorkflowStoreState {
   
   // Schedule management
   updateSchedule: (schedule: ScheduleOptions) => void;
+  
+  // Custom templates management
+  openCustomTemplates: () => void;
+  closeCustomTemplates: () => void;
+  addCustomTemplate: (template: NodeTemplate) => void;
+  updateCustomTemplate: (id: string, template: Partial<NodeTemplate>) => void;
+  removeCustomTemplate: (id: string) => void;
+  duplicateCustomTemplate: (id: string) => void;
+  applyNodeTemplate: (template: NodeTemplate) => void;
 }
 
 export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
@@ -101,8 +125,10 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   isAIAssistantOpen: false,
   isTemplateGalleryOpen: false,
   isAgentBuilderOpen: false,
+  isCustomTemplatesOpen: false,
   nodeStates: {},
   connectionValidations: {},
+  customTemplates: loadCustomTemplates(),
   schedule: {
     enabled: false,
     frequency: 'once',
@@ -561,5 +587,137 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   
   updateSchedule: (newSchedule) => {
     set({ schedule: newSchedule });
+  },
+  
+  // Custom templates management
+  openCustomTemplates: () => {
+    set({ isCustomTemplatesOpen: true });
+  },
+  
+  closeCustomTemplates: () => {
+    set({ isCustomTemplatesOpen: false });
+  },
+  
+  addCustomTemplate: (template) => {
+    set((state) => ({
+      customTemplates: [...state.customTemplates, template]
+    }));
+    
+    // Store in localStorage for persistence
+    try {
+      const existingTemplates = JSON.parse(localStorage.getItem('customNodeTemplates') || '[]');
+      localStorage.setItem('customNodeTemplates', JSON.stringify([...existingTemplates, template]));
+    } catch (error) {
+      console.error('Failed to save template to localStorage:', error);
+    }
+  },
+  
+  updateCustomTemplate: (id, templateUpdate) => {
+    set((state) => {
+      const updatedTemplates = state.customTemplates.map(template => 
+        template.id === id 
+          ? { 
+              ...template, 
+              ...templateUpdate, 
+              updatedAt: new Date().toISOString() 
+            } 
+          : template
+      );
+      
+      // Update localStorage
+      try {
+        localStorage.setItem('customNodeTemplates', JSON.stringify(updatedTemplates));
+      } catch (error) {
+        console.error('Failed to update template in localStorage:', error);
+      }
+      
+      return { customTemplates: updatedTemplates };
+    });
+  },
+  
+  removeCustomTemplate: (id) => {
+    set((state) => {
+      const filteredTemplates = state.customTemplates.filter(template => template.id !== id);
+      
+      // Update localStorage
+      try {
+        localStorage.setItem('customNodeTemplates', JSON.stringify(filteredTemplates));
+      } catch (error) {
+        console.error('Failed to remove template from localStorage:', error);
+      }
+      
+      return { customTemplates: filteredTemplates };
+    });
+  },
+  
+  duplicateCustomTemplate: (id) => {
+    set((state) => {
+      const templateToDuplicate = state.customTemplates.find(template => template.id === id);
+      
+      if (!templateToDuplicate) return state;
+      
+      const duplicatedTemplate: NodeTemplate = {
+        ...templateToDuplicate,
+        id: `custom-${Date.now()}`,
+        name: `${templateToDuplicate.name} (Copy)`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isFavorite: false
+      };
+      
+      const updatedTemplates = [...state.customTemplates, duplicatedTemplate];
+      
+      // Update localStorage
+      try {
+        localStorage.setItem('customNodeTemplates', JSON.stringify(updatedTemplates));
+      } catch (error) {
+        console.error('Failed to save duplicated template to localStorage:', error);
+      }
+      
+      return { customTemplates: updatedTemplates };
+    });
+  },
+  
+  applyNodeTemplate: (template) => {
+    const { nodes, addNode } = get();
+    
+    // Create a position that doesn't overlap with existing nodes
+    const position = { 
+      x: Math.random() * 300 + 100, 
+      y: Math.random() * 300 + 100 
+    };
+    
+    // If there are existing nodes, position relative to them
+    if (nodes.length > 0) {
+      const lastNode = nodes[nodes.length - 1];
+      position.x = lastNode.position.x + 250;
+      position.y = lastNode.position.y;
+    }
+    
+    // Create a new node from the template
+    const newNode: Node<NodeData> = {
+      id: `node-${Date.now()}`,
+      type: template.nodeType,
+      position,
+      data: {
+        label: template.name,
+        nodeType: template.nodeType,
+        category: template.category,
+        description: template.description,
+        icon: template.icon,
+        configuration: template.configuration,
+        inputs: template.inputs || {},
+        outputs: template.outputs || {},
+        ports: template.ports || []
+      }
+    };
+    
+    // Add the node to the canvas
+    addNode(newNode);
+    
+    // Mark template as recently used
+    if (template.isCustom) {
+      get().updateCustomTemplate(template.id, { updatedAt: new Date().toISOString() });
+    }
   }
 }));
