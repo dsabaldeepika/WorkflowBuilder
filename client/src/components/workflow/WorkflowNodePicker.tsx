@@ -8,12 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { NodeCategory, PickerTab } from '@/types/workflow';
 
-interface NodeType {
+interface PickerNodeType {
   id: string;
   name: string;
   description: string;
   icon: string;
-  category: ExtendedNodeCategory;
+  category: NodeCategory;
   popular?: boolean;
   new?: boolean;
 }
@@ -284,7 +284,7 @@ export function WorkflowNodePicker({
   ];
 
   // Built-in utility nodes
-  const utilityNodes: NodeType[] = [
+  const utilityNodes: PickerNodeType[] = [
     {
       id: 'code',
       name: 'Code',
@@ -319,7 +319,7 @@ export function WorkflowNodePicker({
   ];
 
   // Specialized schedule triggers
-  const scheduleTriggers: NodeType[] = [
+  const scheduleTriggers: PickerNodeType[] = [
     {
       id: 'schedule-once',
       name: 'Run Once',
@@ -345,7 +345,7 @@ export function WorkflowNodePicker({
     },
   ];
 
-  const webhookTriggers: NodeType[] = [
+  const webhookTriggers: PickerNodeType[] = [
     {
       id: 'webhook',
       name: 'Webhook',

@@ -63,8 +63,11 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showGuide, setShowGuide] = useState(false);
   
-  // State for schedule dialog
+  // State for dialogs
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showNodePicker, setShowNodePicker] = useState(false);
+  const [showAgentBuilder, setShowAgentBuilder] = useState(false);
+  const [nodePickerCategory, setNodePickerCategory] = useState<NodeCategory>('trigger');
   
   const { 
     nodes, 
@@ -197,6 +200,130 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
       onAddNodeClick();
     }
   }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, onAddNodeClick]);
+  
+  // Handle node selection from the picker
+  const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
+    // Create a node at the center of the viewport
+    const centerX = reactFlowInstance.getWidth() / 2;
+    const centerY = reactFlowInstance.getHeight() / 2;
+    
+    // Get a unique ID for the new node
+    const newNodeId = `node-${Date.now()}`;
+    
+    // Set node data based on type
+    let nodeData: NodeData = {
+      label: 'New Node',
+      description: 'Node description',
+      category: category,
+      icon: '📋',
+      state: 'default' as WorkflowState,
+      inputs: {},
+      outputs: {},
+    };
+    
+    // Customize based on node type
+    if (nodeType.startsWith('google-sheets')) {
+      nodeData.label = 'Google Sheets';
+      nodeData.icon = '📊';
+      nodeData.description = nodeType.includes('add-row') 
+        ? 'Add a row to Google Sheets' 
+        : nodeType.includes('get-rows')
+          ? 'Get rows from Google Sheets'
+          : nodeType.includes('update-row')
+            ? 'Update a row in Google Sheets'
+            : 'Google Sheets action';
+    } else if (nodeType.startsWith('slack')) {
+      nodeData.label = 'Slack';
+      nodeData.icon = '💬';
+      nodeData.description = nodeType.includes('send-message')
+        ? 'Send a message to Slack'
+        : 'Slack action';
+    } else if (nodeType.startsWith('schedule')) {
+      nodeData.label = 'Schedule';
+      nodeData.icon = '⏰';
+      nodeData.description = nodeType.includes('once')
+        ? 'Run once at a specific time'
+        : nodeType.includes('interval')
+          ? 'Run at intervals'
+          : 'Run on a schedule';
+    } else if (nodeType === 'webhook') {
+      nodeData.label = 'Webhook';
+      nodeData.icon = '🌐';
+      nodeData.description = 'Triggered by an HTTP request';
+    } else if (nodeType === 'filter') {
+      nodeData.label = 'Filter';
+      nodeData.icon = '🔍';
+      nodeData.description = 'Filter data based on conditions';
+    } else if (nodeType === 'code') {
+      nodeData.label = 'Code';
+      nodeData.icon = '🧩';
+      nodeData.description = 'Run custom code';
+    } else if (nodeType === 'delay') {
+      nodeData.label = 'Delay';
+      nodeData.icon = '⏱️';
+      nodeData.description = 'Add a delay between steps';
+    } else if (nodeType.startsWith('openai')) {
+      nodeData.label = 'OpenAI';
+      nodeData.icon = '🤖';
+      nodeData.description = nodeType.includes('generate-text')
+        ? 'Generate text with AI'
+        : nodeType.includes('create-image')
+          ? 'Generate an image with AI'
+          : 'AI-powered action';
+    }
+    
+    // Add a new node at the center of the viewport
+    const newNode = {
+      id: newNodeId,
+      type: 'default', // Use the custom node type
+      position: { x: centerX - 75, y: centerY - 40 },
+      data: nodeData,
+    };
+    
+    setNodes(prevNodes => [...prevNodes, newNode]);
+    setSelectedNode(newNodeId); // Select the newly created node
+    
+    // Show toast notification
+    toast({
+      title: 'Node Added',
+      description: `A new ${nodeData.label} node has been added to the workflow.`,
+    });
+  }, [reactFlowInstance, setNodes, setSelectedNode, toast]);
+  
+  // Handle creating an AI agent
+  const handleCreateAgent = useCallback((agentData: any) => {
+    // Create a node at the center of the viewport
+    const centerX = reactFlowInstance.getWidth() / 2;
+    const centerY = reactFlowInstance.getHeight() / 2;
+    
+    // Get a unique ID for the new node
+    const newNodeId = `agent-${Date.now()}`;
+    
+    // Create an agent node
+    const newNode = {
+      id: newNodeId,
+      type: 'default',
+      position: { x: centerX - 75, y: centerY - 40 },
+      data: {
+        label: agentData.name,
+        description: agentData.description || 'AI Agent',
+        category: 'agent' as NodeCategory,
+        icon: '🤖',
+        state: 'default' as WorkflowState,
+        agentSettings: agentData.settings,
+        inputs: {},
+        outputs: {},
+      },
+    };
+    
+    setNodes(prevNodes => [...prevNodes, newNode]);
+    setSelectedNode(newNodeId);
+    
+    toast({
+      title: 'Agent Created',
+      description: `Agent "${agentData.name}" has been added to your workflow.`,
+    });
+  }, [reactFlowInstance, setNodes, setSelectedNode, toast]);
   
   // Handle workflow import
   const handleImport = useCallback(() => {
