@@ -54,10 +54,13 @@ export interface Option {
 }
 
 // Node category definitions
-export type NodeCategory = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent';
+export type NodeCategory = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer';
+
+// For picker tabs
+export type PickerTab = 'all' | 'popular' | 'new';
 
 // Node type definitions
-export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent';
+export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer';
 
 // Data type definitions
 export type DataType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'any';

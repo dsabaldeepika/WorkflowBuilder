@@ -24,7 +24,9 @@ import { NodeCategory } from '@/types/workflow';
 import WorkflowOnboarding, { OnboardingStep } from './WorkflowOnboarding';
 import OnboardingGuide from './OnboardingGuide';
 import TriggerScheduleDialog, { ScheduleOptions } from './TriggerScheduleDialog';
-import { Clock } from 'lucide-react';
+import { WorkflowNodePicker } from './WorkflowNodePicker';
+import { AgentBuilder } from '../agent/AgentBuilder';
+import { Clock, Plus, Sparkles } from 'lucide-react';
 
 // Define custom node types outside of component to avoid recreation on each render
 const customNodeTypes = {

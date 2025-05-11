@@ -6,14 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { NodeCategory } from '@/types/workflow';
+import { NodeCategory, PickerTab } from '@/types/workflow';
 
 interface NodeType {
   id: string;
   name: string;
   description: string;
   icon: string;
-  category: NodeCategory;
+  category: ExtendedNodeCategory;
   popular?: boolean;
   new?: boolean;
 }
@@ -54,7 +54,7 @@ export function WorkflowNodePicker({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<NodeCategory>(initialCategory);
   const [activeApp, setActiveApp] = useState<AppNodeType | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'popular' | 'new'>('all');
+  const [activeTab, setActiveTab] = useState<PickerTab>('all');
 
   // Reset state when dialog opens
   useEffect(() => {
