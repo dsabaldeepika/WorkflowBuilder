@@ -141,12 +141,12 @@ export default function Dashboard() {
           <Card className="col-span-1 hover:shadow-md transition-shadow">
             <CardContent className="p-6 flex flex-col items-center text-center">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <LayoutGrid className="h-6 w-6 text-primary" />
+                <CreditCard className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-medium">Connections</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Manage your integrations</p>
-              <Button className="w-full" variant="outline">
-                Connections
+              <h3 className="font-medium">Subscription Plans</h3>
+              <p className="text-muted-foreground text-sm mt-1 mb-4">Explore premium features</p>
+              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/pricing'}>
+                View Plans
               </Button>
             </CardContent>
           </Card>
@@ -379,6 +379,21 @@ export default function Dashboard() {
                     )}
                   </div>
                   
+                  <div>
+                    <h3 className="text-md font-medium mb-2">Subscription & Billing</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Manage your subscription plan, payment methods, and billing history.
+                    </p>
+                    <div className="flex items-center justify-between p-3 border rounded-md">
+                      <span>Manage subscription</span>
+                      <Button variant="outline" size="sm">
+                        <Link href="/account/billing">
+                          Billing Settings
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="text-md font-medium mb-2">Workflow Animation Settings</h3>
                     <p className="text-sm text-muted-foreground mb-3">
