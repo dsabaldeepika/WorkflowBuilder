@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge } from 'reactflow';
 import { App, NodeCategory, Workflow, WorkflowTemplate, NodeType } from '@/types/workflow';
 import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
-import type { ScheduleOptions } from '@/components/workflow/ScheduleOptions';
+import type { ScheduleOptions, ScheduleFrequency } from '@/components/workflow/ScheduleOptions';
 
 export type NodeData = {
   label: string;

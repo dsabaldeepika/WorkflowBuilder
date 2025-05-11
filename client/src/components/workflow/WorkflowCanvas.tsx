@@ -175,6 +175,11 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
             }}
             onExport={handleExport}
             onImport={handleImport}
+            schedule={schedule}
+            onScheduleChange={updateSchedule}
+            subscriptionTier="PROFESSIONAL"
+            maxRunsPerMonth={1000}
+            currentRunCount={42}
           />
         </ReactFlow>
       )}
