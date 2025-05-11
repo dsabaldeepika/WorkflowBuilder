@@ -95,7 +95,7 @@ export const WorkflowStateHistory: React.FC<{ className?: string }> = ({ classNa
   );
 };
 
-export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying';
+export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying' | 'waiting';
 
 // Configuration for each workflow state
 export const stateConfig = {
@@ -106,6 +106,14 @@ export const stateConfig = {
     borderColor: 'border-slate-200',
     label: 'Idle',
     description: 'Waiting to start'
+  },
+  waiting: {
+    icon: AlertCircle,
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-100',
+    borderColor: 'border-orange-200',
+    label: 'Requires Setup',
+    description: 'Configuration needed'
   },
   starting: {
     icon: PlayCircle,

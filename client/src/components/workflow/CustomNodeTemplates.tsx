@@ -167,6 +167,7 @@ export function CustomNodeTemplates({
           <DialogTitle>Custom Node Templates</DialogTitle>
           <DialogDescription>
             Create, manage, and use your custom node templates to streamline your workflow creation.
+            Templates provide pre-configured node settings that can be customized after adding to your workflow.
           </DialogDescription>
         </DialogHeader>
 

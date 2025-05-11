@@ -705,10 +705,19 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
         category: template.category,
         description: template.description,
         icon: template.icon,
-        configuration: template.configuration,
+        // Preserve configuration but mark user-editable fields
+        configuration: {
+          ...template.configuration,
+          requiresConfiguration: true, // Flag to indicate this needs user input
+          templateApplied: true,       // Flag to indicate this came from a template
+          templateId: template.id,     // Reference to the source template
+          lastApplied: new Date().toISOString()
+        },
         inputs: template.inputs || {},
         outputs: template.outputs || {},
-        ports: template.ports || []
+        ports: template.ports || [],
+        // Set default state to indicate configuration needed
+        state: template.nodeType === 'trigger' ? 'waiting' : 'idle'
       }
     };
     
