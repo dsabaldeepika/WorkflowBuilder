@@ -36,7 +36,7 @@ type SubscriptionDetails = {
 export default function AccountBillingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
 

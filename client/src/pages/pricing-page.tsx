@@ -41,7 +41,7 @@ export default function PricingPage() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [loading, setLoading] = useState<number | null>(null);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
 
   // Get user subscription info if logged in
   const { data: subscription } = useQuery({
