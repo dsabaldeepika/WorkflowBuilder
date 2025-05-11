@@ -62,7 +62,9 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
     setSelectedNode,
     saveWorkflow,
     exportWorkflow,
-    setNodeState
+    setNodeState,
+    schedule,
+    updateSchedule
   } = useWorkflowStore();
   
   const reactFlowInstance = useReactFlow();

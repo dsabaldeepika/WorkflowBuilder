@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge } from 'reactflow';
 import { App, NodeCategory, Workflow, WorkflowTemplate, NodeType } from '@/types/workflow';
 import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
+import type { ScheduleOptions } from '@/components/workflow/ScheduleOptions';
 
 export type NodeData = {
   label: string;
@@ -95,6 +96,11 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   isAgentBuilderOpen: false,
   nodeStates: {},
   connectionValidations: {},
+  schedule: {
+    enabled: false,
+    frequency: 'once',
+    runCount: 0
+  },
   
   addNode: (node) => {
     set((state) => ({
@@ -544,5 +550,9 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
         [edgeId]: { isValid, message }
       }
     }));
+  },
+  
+  updateSchedule: (newSchedule) => {
+    set({ schedule: newSchedule });
   }
 }));
