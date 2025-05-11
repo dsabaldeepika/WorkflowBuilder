@@ -13,6 +13,7 @@ import { CheckCircle2, X, RefreshCw, AlertTriangle, CreditCard, Gauge, Clock, Ca
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { format } from "date-fns";
+import { API_ENDPOINTS, ROUTES } from "@/../../shared/config";
 import { SubscriptionTier } from "@/../../shared/schema";
 
 type SubscriptionDetails = {
@@ -48,18 +49,18 @@ export default function AccountBillingPage() {
 
   // Get user subscription info
   const { data: subscription, isLoading } = useQuery({
-    queryKey: ["/api/subscriptions/current"],
+    queryKey: [API_ENDPOINTS.subscriptions.current],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/subscriptions/current");
+      const res = await apiRequest("GET", API_ENDPOINTS.subscriptions.current);
       return await res.json();
     }
   });
 
   // Get all plans for comparison
   const { data: plans } = useQuery({
-    queryKey: ["/api/subscriptions/plans"],
+    queryKey: [API_ENDPOINTS.subscriptions.plans],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/subscriptions/plans");
+      const res = await apiRequest("GET", API_ENDPOINTS.subscriptions.plans);
       return await res.json();
     }
   });
@@ -67,7 +68,7 @@ export default function AccountBillingPage() {
   // Mutation to manage subscription via Stripe customer portal
   const manageBillingMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/subscriptions/create-portal-session");
+      const res = await apiRequest("POST", API_ENDPOINTS.subscriptions.createPortalSession);
       return await res.json();
     },
     onSuccess: (data) => {
@@ -87,11 +88,11 @@ export default function AccountBillingPage() {
   // Mutation to cancel subscription
   const cancelSubscriptionMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/subscriptions/cancel");
+      const res = await apiRequest("POST", API_ENDPOINTS.subscriptions.cancelSubscription);
       return await res.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions/current"] });
+      queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.subscriptions.current] });
       toast({
         title: "Subscription Canceled",
         description: `Your subscription will end on ${format(new Date(data.willEndOn), "MMMM d, yyyy")}`,

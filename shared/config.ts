@@ -12,12 +12,28 @@ export const APP_CONFIG = {
   version: '1.0.0',
 }
 
+// Helper function to safely access environment variables in both client and server
+const getEnv = (key: string, defaultValue: string = ''): string => {
+  // For server-side (Node.js)
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key] || defaultValue;
+  }
+  // For client-side (Vite)
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+    return import.meta.env[key] || defaultValue;
+  }
+  return defaultValue;
+};
+
+// Determine the app URL - this will be empty string on client unless explicitly set
+const appUrl = getEnv('APP_URL', '');
+
 // Stripe configuration
 export const STRIPE_CONFIG = {
   apiVersion: '2023-10-16' as const, // Use latest Stripe API version
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-  successUrl: `${process.env.APP_URL || ''}/account/billing?success=true`,
-  cancelUrl: `${process.env.APP_URL || ''}/pricing?cancelled=true`,
+  webhookSecret: getEnv('STRIPE_WEBHOOK_SECRET'),
+  successUrl: `${appUrl}/account/billing?success=true`,
+  cancelUrl: `${appUrl}/pricing?cancelled=true`,
 }
 
 // Subscription tiers

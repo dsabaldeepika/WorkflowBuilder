@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, CheckCircle2, CreditCard, X } from 'lucide-react';
+import { API_ENDPOINTS, ROUTES } from '@/../../shared/config';
 
 // Make sure to call loadStripe outside of a component's render to avoid recreating the Stripe object
 if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
@@ -145,7 +146,7 @@ export default function CheckoutPage() {
         setLoading(true);
         setError('');
         
-        const response = await apiRequest('POST', '/api/subscriptions/create-checkout-session', {
+        const response = await apiRequest('POST', API_ENDPOINTS.subscriptions.createSubscription, {
           planId: planId ? parseInt(planId) : undefined,
           priceId,
           billingPeriod,
