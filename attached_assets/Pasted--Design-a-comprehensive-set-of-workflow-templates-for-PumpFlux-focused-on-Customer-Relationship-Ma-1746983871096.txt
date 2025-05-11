@@ -1,0 +1,28 @@
+"Design a comprehensive set of workflow templates for 'PumpFlux' focused on Customer Relationship Management (CRM) and related business processes, inspired by the attached image.
+
+For each of the following scenarios, outline the workflow logic, necessary app integrations, and potential user benefits:
+
+1.  **Save new Facebook Lead Ads leads into Google Sheets.**
+2.  **Send a Gmail message from a Facebook Lead Ads form submission.**
+3.  **Send a Slack message from a Facebook Lead Ads form submission.**
+4.  **Create new completions with OpenAI ChatGPT from new rows in Google Sheets.** (Expand on this - what kind of completions? e.g., summarizing lead info, generating follow-up questions).
+5.  **Create new completions with Anthropic Claude from new rows in Google Sheets.** (Same expansion as above).
+6.  **AI web scraping of Anthropic Claude and Google Sheets.** (Detail what kind of data would be scraped and how it integrates with Google Sheets).
+7.  **Send a Slack message from a new HubSpot CRM deal.**
+8.  **Send a Slack message from a new HubSpot CRM form submission.**
+9.  **Create ClickUp tasks from new HubSpot CRM contacts.**
+10. **Update a record in HubSpot CRM by records from Airtable form.**
+11. **Create a PandaDoc document when a HubSpot CRM deal stage changes.**
+12. **Send Slack messages for new Pipedrive activities.**
+13. **Add new Pipedrive deals to a Google Sheets spreadsheet as new rows.**
+14. **Add new Google Forms responses to Pipedrive as deals.**
+15. **Create Mailchimp subscribers from new Google Sheets rows.**
+16. **Create Trello cards from new Salesforce tasks.**
+17. **Create ClickUp tasks from new opportunities in Salesforce.**
+18. **Send a Slack message from a closed Salesforce opportunity.**
+
+**Additionally, for each template idea above, consider and suggest:**
+
+* **Customization Options:** What parts of the workflow would a user likely want to customize?
+* **Potential Enhancements:** How could these workflows be made even more powerful (e.g., adding filters, conditional logic, multi-step actions)?
+* **Use Cases:** Briefly describe a scenario where a business would find this template particularly useful.

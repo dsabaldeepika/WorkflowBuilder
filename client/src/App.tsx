@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard-new";
 import Callback from "@/pages/auth/callback";
 import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
 import WorkflowMonitoring from "@/pages/workflow-monitoring";
+import TemplatesPage from "@/pages/templates-page";
 import { useAuth } from "@/hooks/useAuth";
 
 // Protected route component
@@ -62,6 +63,9 @@ function Router() {
       </Route>
       <Route path="/monitoring">
         {(params) => <ProtectedRoute component={WorkflowMonitoring} params={params} />}
+      </Route>
+      <Route path="/templates">
+        {(params) => <ProtectedRoute component={TemplatesPage} params={params} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

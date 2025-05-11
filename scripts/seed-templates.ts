@@ -649,6 +649,553 @@ const templates: InsertWorkflowTemplate[] = [
     isPublished: true,
     isOfficial: true
   },
+  {
+    name: "Create PandaDoc Document from HubSpot Deal Stage Change",
+    description: "Automatically generate a PandaDoc document when a deal reaches a specific stage in HubSpot CRM.",
+    category: "document-automation",
+    tags: ["hubspot", "pandadoc", "crm", "sales", "document"],
+    nodes: JSON.stringify([
+      {
+        id: "hubspot-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "hubspot",
+          event: "deal_stage_change",
+          config: { 
+            target_stage: "${deal_stage}"
+          }
+        }
+      },
+      {
+        id: "get-deal-data",
+        type: "action",
+        position: { x: 400, y: 100 },
+        data: { 
+          service: "hubspot",
+          action: "get_deal",
+          config: { 
+            deal_id: "{{trigger.deal_id}}",
+            include_associations: true
+          }
+        }
+      },
+      {
+        id: "prepare-document",
+        type: "function",
+        position: { x: 700, y: 100 },
+        data: { 
+          function: "transform",
+          config: { 
+            document_data: {
+              "client_name": "{{deal.associated_company.name}}",
+              "contact_name": "{{deal.associated_contact.name}}",
+              "deal_name": "{{deal.name}}",
+              "deal_amount": "{{deal.amount}}",
+              "deal_owner": "{{deal.owner_name}}",
+              "expiration_date": "{{addDays today 30}}"
+            }
+          }
+        }
+      },
+      {
+        id: "pandadoc-action",
+        type: "action",
+        position: { x: 1000, y: 100 },
+        data: { 
+          service: "pandadoc",
+          action: "create_document",
+          config: { 
+            template_id: "${template_id}",
+            email: "{{deal.associated_contact.email}}"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "hubspot-trigger", target: "get-deal-data" },
+      { id: "e2-3", source: "get-deal-data", target: "prepare-document" },
+      { id: "e3-4", source: "prepare-document", target: "pandadoc-action" }
+    ]),
+    coverImage: "https://example.com/images/hubspot-to-pandadoc.png",
+    complexity: "complex",
+    estimatedDuration: "15 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Send Slack Messages for New Pipedrive Activities",
+    description: "Keep your team updated in Slack about new activities created in Pipedrive CRM.",
+    category: "team-notifications",
+    tags: ["pipedrive", "slack", "crm", "activity"],
+    nodes: JSON.stringify([
+      {
+        id: "pipedrive-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "pipedrive",
+          event: "new_activity",
+          config: { 
+            types: "${activity_types}"
+          }
+        }
+      },
+      {
+        id: "format-message",
+        type: "function",
+        position: { x: 400, y: 100 },
+        data: { 
+          function: "template",
+          config: { 
+            template: ":calendar: *New Pipedrive Activity*\n>Type: {{activity.type}}\n>Title: {{activity.title}}\n>Due Date: {{formatDate activity.due_date}}\n>Deal: {{activity.deal_title}}\n>Person: {{activity.person_name}}\n>Organization: {{activity.org_name}}\n>Assigned to: {{activity.assigned_to_user_name}}"
+          }
+        }
+      },
+      {
+        id: "slack-action",
+        type: "action",
+        position: { x: 700, y: 100 },
+        data: { 
+          service: "slack",
+          action: "send_message",
+          config: { 
+            channel: "${channel_id}",
+            message_type: "text"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "pipedrive-trigger", target: "format-message" },
+      { id: "e2-3", source: "format-message", target: "slack-action" }
+    ]),
+    coverImage: "https://example.com/images/pipedrive-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Add Pipedrive Deals to Google Sheets",
+    description: "Automatically track new Pipedrive deals in a Google Sheets spreadsheet for easy reporting and analysis.",
+    category: "data-synchronization",
+    tags: ["pipedrive", "google-sheets", "crm", "sales"],
+    nodes: JSON.stringify([
+      {
+        id: "pipedrive-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "pipedrive",
+          event: "new_deal",
+          config: { }
+        }
+      },
+      {
+        id: "transform-data",
+        type: "function",
+        position: { x: 400, y: 100 },
+        data: { 
+          function: "transform",
+          config: { 
+            mapping: {
+              "Deal Title": "{{deal.title}}",
+              "Value": "{{deal.value}}",
+              "Currency": "{{deal.currency}}",
+              "Stage": "{{deal.stage_name}}",
+              "Organization": "{{deal.org_name}}",
+              "Contact Person": "{{deal.person_name}}",
+              "Expected Close Date": "{{deal.expected_close_date}}",
+              "Owner": "{{deal.owner_name}}",
+              "Created Date": "{{deal.add_time}}"
+            }
+          }
+        }
+      },
+      {
+        id: "sheets-action",
+        type: "action",
+        position: { x: 700, y: 100 },
+        data: { 
+          service: "google-sheets",
+          action: "append_row",
+          config: { 
+            spreadsheet_id: "${spreadsheet_id}",
+            sheet_name: "${sheet_name}"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "pipedrive-trigger", target: "transform-data" },
+      { id: "e2-3", source: "transform-data", target: "sheets-action" }
+    ]),
+    coverImage: "https://example.com/images/pipedrive-to-sheets.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Create Pipedrive Deals from Google Forms",
+    description: "Turn Google Forms responses into new deals in Pipedrive CRM to streamline lead capture.",
+    category: "lead-management",
+    tags: ["pipedrive", "google-forms", "crm", "lead-generation"],
+    nodes: JSON.stringify([
+      {
+        id: "forms-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "google-forms",
+          event: "new_response",
+          config: { 
+            form_id: "${form_id}"
+          }
+        }
+      },
+      {
+        id: "search-person",
+        type: "action",
+        position: { x: 400, y: 100 },
+        data: { 
+          service: "pipedrive",
+          action: "find_person",
+          config: { 
+            email: "{{response.email}}"
+          }
+        }
+      },
+      {
+        id: "create-person",
+        type: "action",
+        position: { x: 700, y: 50 },
+        data: { 
+          service: "pipedrive",
+          action: "create_person",
+          config: { 
+            name: "{{response.name}}",
+            email: "{{response.email}}",
+            phone: "{{response.phone}}",
+            org_name: "{{response.company}}"
+          }
+        }
+      },
+      {
+        id: "prepare-deal",
+        type: "function",
+        position: { x: 1000, y: 100 },
+        data: { 
+          function: "transform",
+          config: { 
+            deal_title: "${deal_title_prefix} - {{response.product_interest}}",
+            deal_value: "{{response.budget}}",
+            expected_close_date: "{{addDays today 30}}"
+          }
+        }
+      },
+      {
+        id: "create-deal",
+        type: "action",
+        position: { x: 1300, y: 100 },
+        data: { 
+          service: "pipedrive",
+          action: "create_deal",
+          config: { 
+            stage_id: "${stage_id}",
+            person_id: "{{search.person_id || create_person.person_id}}"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "forms-trigger", target: "search-person" },
+      { id: "e2-3a", source: "search-person", target: "create-person", label: "If not found" },
+      { id: "e2-4", source: "search-person", target: "prepare-deal" },
+      { id: "e3-4", source: "create-person", target: "prepare-deal" },
+      { id: "e4-5", source: "prepare-deal", target: "create-deal" }
+    ]),
+    coverImage: "https://example.com/images/forms-to-pipedrive.png",
+    complexity: "medium",
+    estimatedDuration: "10 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Create Mailchimp Subscribers from Google Sheets",
+    description: "Automatically add new rows from Google Sheets as subscribers to your Mailchimp mailing list.",
+    category: "email-marketing",
+    tags: ["mailchimp", "google-sheets", "marketing", "email"],
+    nodes: JSON.stringify([
+      {
+        id: "sheets-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "google-sheets",
+          event: "new_row",
+          config: { 
+            spreadsheet_id: "${spreadsheet_id}",
+            sheet_name: "${sheet_name}"
+          }
+        }
+      },
+      {
+        id: "prepare-subscriber",
+        type: "function",
+        position: { x: 400, y: 100 },
+        data: { 
+          function: "transform",
+          config: { 
+            mapping: {
+              "email_address": "{{row.email}}",
+              "status": "subscribed",
+              "merge_fields": {
+                "FNAME": "{{row.first_name}}",
+                "LNAME": "{{row.last_name}}",
+                "COMPANY": "{{row.company}}"
+              },
+              "tags": ["${tags}"]
+            }
+          }
+        }
+      },
+      {
+        id: "mailchimp-action",
+        type: "action",
+        position: { x: 700, y: 100 },
+        data: { 
+          service: "mailchimp",
+          action: "add_subscriber",
+          config: { 
+            list_id: "${list_id}"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "sheets-trigger", target: "prepare-subscriber" },
+      { id: "e2-3", source: "prepare-subscriber", target: "mailchimp-action" }
+    ]),
+    coverImage: "https://example.com/images/sheets-to-mailchimp.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Create Trello Cards from Salesforce Tasks",
+    description: "Automatically create Trello cards for new tasks created in Salesforce CRM.",
+    category: "task-management",
+    tags: ["salesforce", "trello", "crm", "task-automation"],
+    nodes: JSON.stringify([
+      {
+        id: "salesforce-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "salesforce",
+          event: "new_task",
+          config: { }
+        }
+      },
+      {
+        id: "prepare-card",
+        type: "function",
+        position: { x: 400, y: 100 },
+        data: { 
+          function: "template",
+          config: { 
+            name_template: "{{task.subject}}",
+            description_template: "**Description:** {{task.description}}\n\n**Related to:** {{task.related_to_name}}\n\n**Due date:** {{formatDate task.due_date}}\n\n**Salesforce URL:** {{task.url}}"
+          }
+        }
+      },
+      {
+        id: "set-due-date",
+        type: "function",
+        position: { x: 700, y: 100 },
+        data: { 
+          function: "transform",
+          config: { 
+            due_date: "{{task.due_date}}"
+          }
+        }
+      },
+      {
+        id: "trello-action",
+        type: "action",
+        position: { x: 1000, y: 100 },
+        data: { 
+          service: "trello",
+          action: "create_card",
+          config: { 
+            board_id: "${board_id}",
+            list_id: "${list_id}",
+            labels: "${labels}"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "salesforce-trigger", target: "prepare-card" },
+      { id: "e2-3", source: "prepare-card", target: "set-due-date" },
+      { id: "e3-4", source: "set-due-date", target: "trello-action" }
+    ]),
+    coverImage: "https://example.com/images/salesforce-to-trello.png",
+    complexity: "medium",
+    estimatedDuration: "8 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Create ClickUp Tasks from Salesforce Opportunities",
+    description: "Automatically create tasks in ClickUp when new opportunities are added in Salesforce CRM.",
+    category: "task-management",
+    tags: ["salesforce", "clickup", "crm", "sales", "task-automation"],
+    nodes: JSON.stringify([
+      {
+        id: "salesforce-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "salesforce",
+          event: "new_opportunity",
+          config: { }
+        }
+      },
+      {
+        id: "prepare-task",
+        type: "function",
+        position: { x: 400, y: 100 },
+        data: { 
+          function: "template",
+          config: { 
+            title_template: "Follow up on opportunity: {{opportunity.name}}",
+            description_template: "A new opportunity was created in Salesforce:\n\nOpportunity: {{opportunity.name}}\nAccount: {{opportunity.account_name}}\nAmount: {{formatCurrency opportunity.amount}}\nStage: {{opportunity.stage}}\nClose Date: {{formatDate opportunity.close_date}}\nOwner: {{opportunity.owner_name}}\n\nNext steps: ${next_steps}"
+          }
+        }
+      },
+      {
+        id: "set-due-date",
+        type: "function",
+        position: { x: 700, y: 100 },
+        data: { 
+          function: "transform",
+          config: { 
+            due_date: "{{addDays today ${follow_up_days}}}"
+          }
+        }
+      },
+      {
+        id: "clickup-action",
+        type: "action",
+        position: { x: 1000, y: 100 },
+        data: { 
+          service: "clickup",
+          action: "create_task",
+          config: { 
+            list_id: "${list_id}",
+            assignee_id: "${assignee_id}",
+            priority: "${priority}",
+            tags: ["salesforce", "opportunity", "${tag}"]
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "salesforce-trigger", target: "prepare-task" },
+      { id: "e2-3", source: "prepare-task", target: "set-due-date" },
+      { id: "e3-4", source: "set-due-date", target: "clickup-action" }
+    ]),
+    coverImage: "https://example.com/images/salesforce-to-clickup.png",
+    complexity: "medium",
+    estimatedDuration: "8 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
+  {
+    name: "Send Slack Message for Closed Salesforce Opportunity",
+    description: "Notify your team in Slack when an opportunity is closed (won or lost) in Salesforce CRM.",
+    category: "team-notifications",
+    tags: ["salesforce", "slack", "crm", "sales", "notification"],
+    nodes: JSON.stringify([
+      {
+        id: "salesforce-trigger",
+        type: "trigger",
+        position: { x: 100, y: 100 },
+        data: { 
+          service: "salesforce",
+          event: "opportunity_stage_change",
+          config: { 
+            stages: ["Closed Won", "Closed Lost"]
+          }
+        }
+      },
+      {
+        id: "format-message",
+        type: "function",
+        position: { x: 400, y: 100 },
+        data: { 
+          function: "template",
+          config: { 
+            template: "{{#if (eq opportunity.stage 'Closed Won')}}\n:tada: *Opportunity Won!*\n{{else}}\n:disappointed: *Opportunity Lost*\n{{/if}}\n\n>Name: {{opportunity.name}}\n>Account: {{opportunity.account_name}}\n>Amount: {{formatCurrency opportunity.amount}}\n>Close Date: {{formatDate opportunity.close_date}}\n>Owner: {{opportunity.owner_name}}\n{{#if opportunity.description}}\n>Notes: {{opportunity.description}}\n{{/if}}"
+          }
+        }
+      },
+      {
+        id: "determine-channel",
+        type: "function",
+        position: { x: 700, y: 100 },
+        data: { 
+          function: "logic",
+          config: { 
+            if: "{{eq opportunity.stage 'Closed Won'}}",
+            then: {
+              channel: "${won_channel_id}",
+              emoji: ":tada:"
+            },
+            else: {
+              channel: "${lost_channel_id}",
+              emoji: ":disappointed:"
+            }
+          }
+        }
+      },
+      {
+        id: "slack-action",
+        type: "action",
+        position: { x: 1000, y: 100 },
+        data: { 
+          service: "slack",
+          action: "send_message",
+          config: { 
+            channel: "{{logic.channel}}",
+            message_type: "text"
+          }
+        }
+      }
+    ]),
+    edges: JSON.stringify([
+      { id: "e1-2", source: "salesforce-trigger", target: "format-message" },
+      { id: "e2-3", source: "format-message", target: "determine-channel" },
+      { id: "e3-4", source: "determine-channel", target: "slack-action" }
+    ]),
+    coverImage: "https://example.com/images/salesforce-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
+    createdByUserId: null,
+    isPublished: true,
+    isOfficial: true
+  },
 ];
 
 async function seedTemplates() {
