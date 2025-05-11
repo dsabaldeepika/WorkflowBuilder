@@ -126,14 +126,14 @@ export default function CheckoutPage() {
   // Redirect if no plan selected
   useEffect(() => {
     if (!planId && !priceId) {
-      navigate('/pricing');
+      navigate(ROUTES.pricing);
     }
   }, [planId, priceId, navigate]);
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!user) {
-      navigate('/auth');
+      navigate(ROUTES.auth);
     }
   }, [user, navigate]);
 

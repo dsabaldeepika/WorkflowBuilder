@@ -76,7 +76,7 @@ export default function PricingPage() {
         description: "Please log in to subscribe to a plan",
         variant: "default"
       });
-      navigate("/auth");
+      navigate(ROUTES.auth);
       return;
     }
 

@@ -43,7 +43,7 @@ export default function AccountBillingPage() {
 
   // Redirect if not authenticated
   if (!user) {
-    navigate("/auth");
+    navigate(ROUTES.auth);
     return null;
   }
 
