@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ROUTES } from "@shared/config";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import WorkflowBuilder from "@/pages/workflow-builder";
@@ -52,29 +53,29 @@ function Router() {
   
   return (
     <Switch>
-      <Route path="/" component={HomeRoute} />
+      <Route path={ROUTES.home} component={HomeRoute} />
       <Route path="/login" component={Login} />
       <Route path="/auth/callback" component={Callback} />
-      <Route path="/dashboard">
+      <Route path={ROUTES.dashboard}>
         {(params) => <ProtectedRoute component={Dashboard} params={params} />}
       </Route>
-      <Route path="/create">
+      <Route path={ROUTES.createWorkflow}>
         {(params) => <ProtectedRoute component={WorkflowBuilder} params={params} />}
       </Route>
-      <Route path="/workflow-animations">
+      <Route path={ROUTES.workflowAnimations}>
         {(params) => <ProtectedRoute component={WorkflowAnimationsDemo} params={params} />}
       </Route>
       <Route path="/monitoring">
         {(params) => <ProtectedRoute component={WorkflowMonitoring} params={params} />}
       </Route>
-      <Route path="/templates">
+      <Route path={ROUTES.templates}>
         {(params) => <ProtectedRoute component={TemplatesPage} params={params} />}
       </Route>
-      <Route path="/pricing" component={PricingPage} />
-      <Route path="/checkout">
+      <Route path={ROUTES.pricing} component={PricingPage} />
+      <Route path={ROUTES.checkout}>
         {(params) => <ProtectedRoute component={CheckoutPage} params={params} />}
       </Route>
-      <Route path="/account/billing">
+      <Route path={ROUTES.accountBilling}>
         {(params) => <ProtectedRoute component={AccountBillingPage} params={params} />}
       </Route>
       <Route component={NotFound} />
