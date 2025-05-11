@@ -251,11 +251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/workflows", async (req, res) => {
     try {
-      const parsedBody = insertWorkflowSchema.parse({
-        ...req.body,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+      // Only parse the input body without adding unnecessary date fields
+      const parsedBody = insertWorkflowSchema.parse(req.body);
       
       // Get user's subscription information
       const userId = parsedBody.createdByUserId;

@@ -230,12 +230,11 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
         const workflowData = {
           name,
           description,
-          workflowData: JSON.stringify({
-            nodes,
-            edges,
-          }),
-          userId,
-          status: "draft"
+          // Pass nodes and edges as separate properties as expected by the API
+          nodes: nodes,
+          edges: edges,
+          createdByUserId: userId,
+          isPublished: false // Set default state as unpublished
         };
         
         // Send to API
