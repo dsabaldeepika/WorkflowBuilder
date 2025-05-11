@@ -10,6 +10,7 @@ import ReactFlow, {
   Panel,
   useReactFlow,
   ConnectionLineType,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import WorkflowNode from './WorkflowNode';
@@ -35,7 +36,15 @@ const edgeTypes: EdgeTypes = {
   default: ValidatedEdge,
 };
 
-export function WorkflowCanvas() {
+export function WorkflowCanvas({ onAddNodeClick }) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasContent onAddNodeClick={onAddNodeClick} />
+    </ReactFlowProvider>
+  );
+}
+
+function WorkflowCanvasContent({ onAddNodeClick }) {
   const { 
     nodes, 
     edges, 
