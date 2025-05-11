@@ -250,9 +250,14 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
             <span>Validate</span>
           </DropdownMenuItem>
           
-          <DropdownMenuItem onSelect={() => setShowScheduleDialog(true)} disabled={nodes.length === 0}>
+          <DropdownMenuItem onSelect={() => setShowScheduleDialog(true)}>
             <Clock className="mr-2 h-4 w-4" />
             <span>Schedule</span>
+            {schedule?.enabled && (
+              <Badge variant="success" className="ml-auto">
+                {schedule.frequency}
+              </Badge>
+            )}
           </DropdownMenuItem>
           
           <DropdownMenuItem onSelect={clearWorkflow} disabled={nodes.length === 0} className="text-destructive focus:text-destructive">

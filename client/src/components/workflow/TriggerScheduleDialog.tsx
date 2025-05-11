@@ -17,6 +17,10 @@ export interface ScheduleOptions {
   enabled: boolean;
   frequency: ScheduleFrequency;
   customInterval?: string;
+  startDate?: Date;
+  startTime?: string;
+  runCount: number;
+  lastRun?: Date;
 }
 
 interface TriggerScheduleDialogProps {
@@ -49,7 +53,7 @@ const TriggerScheduleDialog: React.FC<TriggerScheduleDialogProps> = ({
         </DialogHeader>
         
         <div className="py-4">
-          <div className="bg-sky-50 p-4 mb-4 rounded-md">
+          <div className="bg-blue-50 p-4 mb-4 rounded-md">
             <div className="flex items-start">
               <Clock className="h-5 w-5 text-blue-500 mr-2 mt-0.5" />
               <p className="text-sm text-blue-700">
@@ -84,6 +88,11 @@ const TriggerScheduleDialog: React.FC<TriggerScheduleDialogProps> = ({
             </div>
             
             <div className="flex items-center space-x-2">
+              <RadioGroupItem value="monthly" id="run-monthly" />
+              <Label htmlFor="run-monthly">Run monthly</Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
               <RadioGroupItem value="custom" id="run-custom" />
               <Label htmlFor="run-custom">Custom interval</Label>
             </div>
@@ -94,7 +103,7 @@ const TriggerScheduleDialog: React.FC<TriggerScheduleDialogProps> = ({
           <Button variant="outline" onClick={onClose}>
             Back
           </Button>
-          <Button onClick={onAddToWorkflow}>
+          <Button onClick={onAddToWorkflow} className="bg-blue-500 hover:bg-blue-600">
             Add to Workflow
           </Button>
         </DialogFooter>

@@ -141,34 +141,38 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   
   // Handle adding schedule to workflow
   const handleAddScheduleToWorkflow = useCallback(() => {
-    // Create a trigger node with the schedule configuration
-    const triggerNode: Node<NodeData> = {
-      id: `trigger-${Date.now()}`,
-      type: 'trigger',
-      position: { x: 100, y: 100 },
-      data: {
-        label: `Schedule (${schedule.frequency})`,
-        description: 'Triggers workflow on a schedule',
-        type: 'trigger',
-        nodeType: 'trigger',
-        category: 'trigger' as NodeCategory,
-        icon: 'clock',
-        configuration: { schedule },
-      }
+    // Update workflow-level schedule instead of creating a node
+    const updatedSchedule = {
+      ...schedule,
+      enabled: true
     };
     
-    // Add the node to the workflow
-    setNodes([...nodes, triggerNode]);
+    // Update the schedule in the store
+    updateSchedule(updatedSchedule);
     
     // Close the dialog
     setShowScheduleDialog(false);
     
     // Show toast notification
     toast({
-      title: 'Schedule Trigger Added',
-      description: `Added a new trigger that runs ${schedule.frequency}.`,
+      title: 'Workflow Schedule Updated',
+      description: `This workflow will run ${schedule.frequency}.`,
     });
-  }, [schedule, nodes, setNodes]);
+    
+    // If no nodes exist, prompt user to add their first node
+    if (nodes.length === 0) {
+      setShowGuide(true);
+      setOnboardingSteps([
+        {
+          title: 'Add your first node',
+          description: 'Click the canvas to add your first workflow node',
+          completed: false,
+          type: 'trigger'
+        }
+      ]);
+      setCurrentStepIndex(0);
+    }
+  }, [schedule, nodes, updateSchedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex]);
   
   // Handle workflow import
   const handleImport = useCallback(() => {
@@ -238,8 +242,30 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
             pannable
           />
           <Panel position="top-left" className="p-4">
-            <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
-            <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
+                <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
+              </div>
+              {schedule?.enabled && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-4 flex items-center gap-1"
+                  onClick={() => setShowScheduleDialog(true)}
+                >
+                  <Clock className="h-4 w-4 text-blue-500" />
+                  <span>
+                    {schedule.frequency === 'once' ? 'Run once' : 
+                    schedule.frequency === 'hourly' ? 'Run hourly' :
+                    schedule.frequency === 'daily' ? 'Run daily' :
+                    schedule.frequency === 'weekly' ? 'Run weekly' :
+                    schedule.frequency === 'monthly' ? 'Run monthly' :
+                    'Custom'}
+                  </span>
+                </Button>
+              )}
+            </div>
           </Panel>
           
           {/* Add workflow controls */}
