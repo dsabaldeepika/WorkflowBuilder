@@ -36,6 +36,7 @@ interface WorkflowStoreState {
   isTemplateGalleryOpen: boolean;
   isAgentBuilderOpen: boolean;
   nodeStates: Record<string, NodeState>;
+  schedule: ScheduleOptions;
   connectionValidations: Record<string, {
     isValid: boolean;
     message?: string;
@@ -78,6 +79,9 @@ interface WorkflowStoreState {
   // Connection validation
   validateConnection: (connection: Connection) => boolean;
   setConnectionValidation: (edgeId: string, isValid: boolean, message?: string) => void;
+  
+  // Schedule management
+  updateSchedule: (schedule: ScheduleOptions) => void;
 }
 
 export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({

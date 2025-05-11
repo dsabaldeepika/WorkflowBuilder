@@ -32,9 +32,11 @@ import {
   Trash2, 
   FilePlus, 
   CheckCircle2, 
-  AlertOctagon 
+  AlertOctagon,
+  Clock
 } from 'lucide-react';
 import { NodeData, useWorkflowStore } from '@/store/useWorkflowStore';
+import ScheduleOptions, { ScheduleOptions as ScheduleOptionsType } from './ScheduleOptions';
 
 interface WorkflowControlsProps {
   onSave?: () => void;
@@ -44,6 +46,11 @@ interface WorkflowControlsProps {
   onValidate?: () => void;
   showInfoPanel?: () => void;
   onNodeStateChange?: (nodeId: string, state: any) => void;
+  schedule?: ScheduleOptionsType;
+  onScheduleChange?: (schedule: ScheduleOptionsType) => void;
+  subscriptionTier?: string;
+  maxRunsPerMonth?: number;
+  currentRunCount?: number;
 }
 
 export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
@@ -53,7 +60,12 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
   onClear,
   onValidate,
   showInfoPanel,
-  onNodeStateChange
+  onNodeStateChange,
+  schedule,
+  onScheduleChange,
+  subscriptionTier = 'FREE',
+  maxRunsPerMonth = 10,
+  currentRunCount = 0
 }) => {
   // Get nodes and edges from the workflow store so we don't need to pass them
   const { nodes, edges } = useWorkflowStore();
@@ -65,6 +77,16 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
   const [exportName, setExportName] = useState('my-workflow');
   const [exportDescription, setExportDescription] = useState('');
   const [exportText, setExportText] = useState('');
+  
+  // Schedule dialog
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  
+  // Default schedule if none provided
+  const defaultSchedule: ScheduleOptionsType = {
+    enabled: false,
+    frequency: 'once',
+    runCount: 0
+  };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -228,6 +250,11 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
             <span>Validate</span>
           </DropdownMenuItem>
           
+          <DropdownMenuItem onSelect={() => setShowScheduleDialog(true)} disabled={nodes.length === 0}>
+            <Clock className="mr-2 h-4 w-4" />
+            <span>Schedule</span>
+          </DropdownMenuItem>
+          
           <DropdownMenuItem onSelect={clearWorkflow} disabled={nodes.length === 0} className="text-destructive focus:text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             <span>Clear All</span>
@@ -372,6 +399,38 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
               </Button>
             </div>
             <Button onClick={() => setShowExportDialog(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Schedule Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Schedule Workflow</DialogTitle>
+            <DialogDescription>
+              Configure when and how often this workflow should run automatically.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <ScheduleOptions
+              schedule={schedule || defaultSchedule}
+              onScheduleChange={(updatedSchedule) => {
+                if (onScheduleChange) {
+                  onScheduleChange(updatedSchedule);
+                }
+              }}
+              subscriptionTier={subscriptionTier}
+              maxRunsPerMonth={maxRunsPerMonth}
+              currentRunCount={currentRunCount}
+            />
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowScheduleDialog(false)}>
               Done
             </Button>
           </DialogFooter>
