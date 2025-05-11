@@ -34,27 +34,29 @@ import {
   CheckCircle2, 
   AlertOctagon 
 } from 'lucide-react';
-import { NodeData } from '@/store/useWorkflowStore';
+import { NodeData, useWorkflowStore } from '@/store/useWorkflowStore';
 
 interface WorkflowControlsProps {
-  nodes: Node<NodeData>[];
-  edges: Edge[];
   onSave?: () => void;
-  onLoad?: (nodes: Node<NodeData>[], edges: Edge[]) => void;
+  onExport?: () => void; 
+  onImport?: () => void;
   onClear?: () => void;
   onValidate?: () => void;
   showInfoPanel?: () => void;
+  onNodeStateChange?: (nodeId: string, state: any) => void;
 }
 
 export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
-  nodes,
-  edges,
   onSave,
-  onLoad,
+  onExport,
+  onImport,
   onClear,
   onValidate,
-  showInfoPanel
+  showInfoPanel,
+  onNodeStateChange
 }) => {
+  // Get nodes and edges from the workflow store so we don't need to pass them
+  const { nodes, edges } = useWorkflowStore();
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
@@ -66,6 +68,9 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Get setNodes and setEdges from the store
+  const { setNodes, setEdges } = useWorkflowStore();
+
   // Import from text
   const handleImport = () => {
     try {
@@ -76,8 +81,13 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
         return;
       }
       
-      if (onLoad) {
-        onLoad(parsed.nodes, parsed.edges);
+      // Set nodes and edges directly from the store
+      setNodes(parsed.nodes);
+      setEdges(parsed.edges);
+      
+      // If onImport callback is provided, call it
+      if (onImport) {
+        onImport();
       }
       
       setImportText('');
@@ -104,8 +114,13 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
           return;
         }
         
-        if (onLoad) {
-          onLoad(parsed.nodes, parsed.edges);
+        // Set nodes and edges directly from the store
+        setNodes(parsed.nodes);
+        setEdges(parsed.edges);
+        
+        // If onImport callback is provided, call it
+        if (onImport) {
+          onImport();
         }
         
         // Reset file input
@@ -380,11 +395,13 @@ export const downloadJSONFile = (data: any, filename: string): void => {
   URL.revokeObjectURL(url);
 };
 
-export const uploadJSONFile = (fileInputRef: React.RefObject<HTMLInputElement>, onFileLoaded: (data: any) => void): void => {
-  if (!fileInputRef.current) return;
+export const uploadJSONFile = (onFileLoaded: (data: any) => void): void => {
+  // Create a temporary file input element
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
   
-  fileInputRef.current.click();
-  fileInputRef.current.onchange = (event) => {
+  input.onchange = (event) => {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
     
@@ -394,11 +411,6 @@ export const uploadJSONFile = (fileInputRef: React.RefObject<HTMLInputElement>, 
         const content = e.target?.result as string;
         const parsed = JSON.parse(content);
         onFileLoaded(parsed);
-        
-        // Reset the input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
       } catch (err) {
         console.error('Failed to parse JSON from file', err);
       }
@@ -406,6 +418,9 @@ export const uploadJSONFile = (fileInputRef: React.RefObject<HTMLInputElement>, 
     
     reader.readAsText(file);
   };
+  
+  // Trigger the file dialog
+  input.click();
 };
 
 export default WorkflowControls;

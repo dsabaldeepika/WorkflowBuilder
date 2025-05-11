@@ -20,8 +20,8 @@ import { useWorkflowStore } from '@/store/useWorkflowStore';
 import { WorkflowState } from './StateChangeAnimation';
 import { toast } from '@/hooks/use-toast';
 
-// Define custom node types
-const nodeTypes: NodeTypes = {
+// Define custom node types outside of component to avoid recreation on each render
+const customNodeTypes = {
   default: WorkflowNode,
   trigger: WorkflowNode,
   action: WorkflowNode,
@@ -31,12 +31,16 @@ const nodeTypes: NodeTypes = {
   agent: WorkflowNode,
 };
 
-// Define custom edge types
-const edgeTypes: EdgeTypes = {
+// Define custom edge types outside of component to avoid recreation on each render
+const customEdgeTypes = {
   default: ValidatedEdge,
 };
 
-export function WorkflowCanvas({ onAddNodeClick }) {
+interface WorkflowCanvasProps {
+  onAddNodeClick: () => void;
+}
+
+export function WorkflowCanvas({ onAddNodeClick }: WorkflowCanvasProps) {
   return (
     <ReactFlowProvider>
       <WorkflowCanvasContent onAddNodeClick={onAddNodeClick} />
@@ -44,7 +48,7 @@ export function WorkflowCanvas({ onAddNodeClick }) {
   );
 }
 
-function WorkflowCanvasContent({ onAddNodeClick }) {
+function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   const { 
     nodes, 
     edges, 
@@ -122,8 +126,8 @@ function WorkflowCanvasContent({ onAddNodeClick }) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
+        nodeTypes={customNodeTypes}
+        edgeTypes={customEdgeTypes}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         connectionLineType={ConnectionLineType.SmoothStep}
