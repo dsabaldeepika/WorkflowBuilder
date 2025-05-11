@@ -4,6 +4,7 @@ import { NodePickerModal } from "@/components/workflow/NodePickerModal";
 import { AIAssistant } from "@/components/workflow/AIAssistant";
 import { TemplateGallery } from "@/components/workflow/TemplateGallery";
 import { AgentBuilder } from "@/components/workflow/AgentBuilder";
+import { CustomNodeTemplates } from "@/components/workflow/CustomNodeTemplates";
 import WorkflowMonitoring from "@/components/workflow/WorkflowMonitoring";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
@@ -11,7 +12,7 @@ import {
   ArrowLeft, Save, Play, Cog, History, Repeat, Clock, Settings,
   FileText, Database, Webhook, Power, HelpCircle, Workflow, RefreshCw,
   LayoutGrid, AlertCircle, BookOpen, Gift, Share2, PlusCircle, Sparkles,
-  Bot
+  Bot, Bookmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -35,6 +36,7 @@ export default function WorkflowBuilder() {
     isAIAssistantOpen,
     isTemplateGalleryOpen,
     isAgentBuilderOpen,
+    isCustomTemplatesOpen,
     openNodePicker,
     closeNodePicker,
     openAIAssistant,
@@ -43,9 +45,12 @@ export default function WorkflowBuilder() {
     closeTemplateGallery,
     openAgentBuilder,
     closeAgentBuilder,
+    openCustomTemplates,
+    closeCustomTemplates,
     generateWorkflowFromDescription,
     applyWorkflowTemplate,
-    createAgent
+    createAgent,
+    applyNodeTemplate
   } = useWorkflowStore();
 
   const handleSaveDraft = async () => {
@@ -394,7 +399,20 @@ export default function WorkflowBuilder() {
       <TemplateGallery
         isOpen={isTemplateGalleryOpen}
         onClose={closeTemplateGallery}
-        onSelectTemplate={(template) => applyWorkflowTemplate(template.id)}
+        onSelectTemplate={(template) => {
+          // Get the complete template object with the given ID
+          // This is a workaround since TemplateGallery provides template objects 
+          // with a different structure from WorkflowTemplate
+          const workflowTemplate = {
+            id: template.id,
+            name: template.title,
+            description: template.description,
+            category: template.category[0], // Use the first category
+            nodes: [], // These would be populated from the actual API
+            edges: []  // These would be populated from the actual API
+          };
+          applyWorkflowTemplate(workflowTemplate);
+        }}
       />
       
       {/* Agent Builder Modal */}
@@ -402,6 +420,13 @@ export default function WorkflowBuilder() {
         isOpen={isAgentBuilderOpen}
         onClose={closeAgentBuilder}
         onCreateAgent={createAgent}
+      />
+      
+      {/* Custom Node Templates Modal */}
+      <CustomNodeTemplates
+        isOpen={isCustomTemplatesOpen}
+        onClose={closeCustomTemplates}
+        onSelectTemplate={applyNodeTemplate}
       />
     </div>
   );
