@@ -125,6 +125,14 @@ export default function WorkflowBuilder() {
               </Button>
               <Button 
                 variant="outline" 
+                className="w-full justify-start text-gray-700 hover:text-purple-600 hover:border-purple-200"
+                onClick={openCustomTemplates}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Custom Templates
+              </Button>
+              <Button 
+                variant="outline" 
                 className="w-full justify-start text-gray-700 hover:text-amber-600 hover:border-amber-200"
                 onClick={handleClearWorkflow}
               >
