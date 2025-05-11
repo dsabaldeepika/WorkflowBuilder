@@ -488,6 +488,14 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
         onScheduleChange={handleScheduleChange}
         onAddToWorkflow={handleAddScheduleToWorkflow}
       />
+      
+      {/* Node picker dialog */}
+      <WorkflowNodePicker
+        isOpen={showNodePicker}
+        onClose={() => setShowNodePicker(false)}
+        onSelectNode={handleSelectNode}
+        initialCategory="trigger"
+      />
     </div>
   );
 }
