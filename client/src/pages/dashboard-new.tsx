@@ -130,10 +130,10 @@ export default function Dashboard() {
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Stars className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-medium">AI Assistant</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Let AI build for you</p>
-              <Button className="w-full" variant="outline">
-                Try AI Builder
+              <h3 className="font-medium">Template Library</h3>
+              <p className="text-muted-foreground text-sm mt-1 mb-4">Browse ready-made templates</p>
+              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/templates'}>
+                Browse Templates
               </Button>
             </CardContent>
           </Card>
