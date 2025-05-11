@@ -258,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Get user's subscription information
-      const userId = parsedBody.userId;
+      const userId = parsedBody.createdByUserId;
       const user = await storage.getUser(userId);
       
       if (!user) {

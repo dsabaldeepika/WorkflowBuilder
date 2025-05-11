@@ -247,17 +247,58 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
           body: JSON.stringify(workflowData),
         });
         
+        // Parse the response first, since both success and error responses have JSON bodies
+        const responseData = await saveResponse.json();
+        
         if (!saveResponse.ok) {
-          const errorText = await saveResponse.text();
-          throw new Error(`Failed to save workflow: ${errorText}`);
+          // Check if this is a subscription limit error (HTTP 403)
+          if (saveResponse.status === 403 && responseData.upgradeRequired) {
+            const { currentCount, maxAllowed, subscriptionTier } = responseData;
+            
+            // Show a more informative message with upgrade prompt
+            const upgradeConfirm = confirm(
+              `You've reached your workflow limit (${currentCount}/${maxAllowed}) on your ${subscriptionTier} plan.\n\n` +
+              'Would you like to upgrade your subscription to create more workflows?'
+            );
+            
+            if (upgradeConfirm) {
+              // Navigate to pricing page
+              window.location.href = '/pricing';
+              return;
+            } else {
+              throw new Error('Workflow limit reached. Please upgrade your subscription or delete existing workflows.');
+            }
+          }
+          
+          // Handle other error types
+          throw new Error(`Failed to save workflow: ${responseData.message || 'Unknown error'}`);
         }
         
-        const savedWorkflow = await saveResponse.json();
+        // Success path
+        const savedWorkflow = responseData;
         console.log('Workflow saved successfully:', savedWorkflow);
         
-        // Show success message with native alert for now
-        // (components should handle this with proper UI)
-        alert('Workflow saved successfully!');
+        // If response includes subscription info, show remaining count
+        if (savedWorkflow.subscriptionInfo) {
+          const { currentCount, maxAllowed, remainingWorkflows } = savedWorkflow.subscriptionInfo;
+          
+          // Construct a more informative success message
+          let successMessage = 'Workflow saved successfully!';
+          
+          if (remainingWorkflows !== -1) { // -1 means unlimited
+            successMessage += `\n\nYou have used ${currentCount} of ${maxAllowed} workflows in your plan.`;
+            
+            // Add a warning if they're getting close to the limit (80% or more)
+            if (remainingWorkflows <= Math.ceil(maxAllowed * 0.2) && remainingWorkflows > 0) {
+              successMessage += `\n\nWarning: You only have ${remainingWorkflows} workflow${remainingWorkflows === 1 ? '' : 's'} remaining in your plan.`;
+            }
+          }
+          
+          alert(successMessage);
+        } else {
+          // Fallback to basic success message if subscription info isn't available
+          alert('Workflow saved successfully!');
+        }
         
         // Resolve with the saved workflow
         resolve(savedWorkflow);
