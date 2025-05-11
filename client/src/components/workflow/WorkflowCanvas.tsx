@@ -44,18 +44,19 @@ const customEdgeTypes = {
   default: ValidatedEdge,
 };
 
-// Props are no longer needed since we handle node picking internally
-interface WorkflowCanvasProps {}
+interface WorkflowCanvasProps {
+  onAddNodeClick: () => void;
+}
 
-export function WorkflowCanvas({}: WorkflowCanvasProps) {
+export function WorkflowCanvas({ onAddNodeClick }: WorkflowCanvasProps) {
   return (
     <ReactFlowProvider>
-      <WorkflowCanvasContent />
+      <WorkflowCanvasContent onAddNodeClick={onAddNodeClick} />
     </ReactFlowProvider>
   );
 }
 
-function WorkflowCanvasContent() {
+function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   // State for onboarding and guided tour
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
@@ -171,11 +172,7 @@ function WorkflowCanvasContent() {
     updateSchedule(newSchedule);
   }, [updateSchedule]);
   
-  // Function to show our custom node picker
-  const handleAddNode = useCallback(() => {
-    console.log('Opening custom node picker');
-    setShowNodePicker(true);
-  }, []);
+  // No need for a separate function, we'll use the props directly
   
   // Create workflow with pre-selected schedule or open node picker
   const handleCreateWorkflow = useCallback((useSchedule: boolean) => {
@@ -199,12 +196,12 @@ function WorkflowCanvasContent() {
       });
       
       // Show node picker to start building
-      handleAddNode();
+      onAddNodeClick();
     } else {
       // Just open the node picker without schedule
-      handleAddNode();
+      onAddNodeClick();
     }
-  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, handleAddNode]);
+  }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, onAddNodeClick]);
   
   // Handle node selection from the picker
   const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
@@ -371,7 +368,7 @@ function WorkflowCanvasContent() {
     <div className="h-full w-full">
       {isEmpty ? (
         <EmptyWorkflowPlaceholder 
-          onAddNodeClick={handleAddNode}
+          onAddNodeClick={onAddNodeClick}
           onScheduleChange={handleScheduleChange}
           onCreateWorkflow={handleCreateWorkflow}
         />
