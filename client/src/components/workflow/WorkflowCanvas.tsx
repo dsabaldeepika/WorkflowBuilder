@@ -16,10 +16,11 @@ import 'reactflow/dist/style.css';
 import WorkflowNode from './WorkflowNode';
 import { ValidatedEdge } from './ConnectionValidator';
 import { WorkflowControls, downloadJSONFile, uploadJSONFile } from './WorkflowControls';
-import { useWorkflowStore } from '@/store/useWorkflowStore';
+import { useWorkflowStore, NodeData } from '@/store/useWorkflowStore';
 import { WorkflowState } from './StateChangeAnimation';
 import { toast } from '@/hooks/use-toast';
 import EmptyWorkflowPlaceholder from './EmptyWorkflowPlaceholder';
+import { NodeCategory } from '@/types/workflow';
 import WorkflowOnboarding, { OnboardingStep } from './WorkflowOnboarding';
 import OnboardingGuide from './OnboardingGuide';
 import TriggerScheduleDialog from './TriggerScheduleDialog';
@@ -141,7 +142,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   // Handle adding schedule to workflow
   const handleAddScheduleToWorkflow = useCallback(() => {
     // Create a trigger node with the schedule configuration
-    const triggerNode = {
+    const triggerNode: Node<NodeData> = {
       id: `trigger-${Date.now()}`,
       type: 'trigger',
       position: { x: 100, y: 100 },
@@ -150,7 +151,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
         description: 'Triggers workflow on a schedule',
         type: 'trigger',
         nodeType: 'trigger',
-        category: 'triggers',
+        category: 'trigger' as NodeCategory,
         icon: 'clock',
         configuration: { schedule },
       }
@@ -199,10 +200,16 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   // Check if there are any nodes in the workflow
   const isEmpty = nodes.length === 0;
 
+  // Effect to check local storage flag for first-time users
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('pumpflux_hasSeenOnboarding');
+    setShowOnboarding(!hasSeenOnboarding);
+  }, []);
+
   return (
     <div className="h-full w-full">
       {isEmpty ? (
-        <EmptyWorkflowPlaceholder onAddNodeClick={onAddNodeClick} />
+        <EmptyWorkflowPlaceholder onAddNodeClick={() => setShowScheduleDialog(true)} />
       ) : (
         <ReactFlow
           nodes={nodes}
@@ -255,8 +262,38 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
             maxRunsPerMonth={1000}
             currentRunCount={42}
           />
+          
+          {/* Onboarding guide */}
+          {showGuide && onboardingSteps.length > 0 && (
+            <OnboardingGuide
+              steps={onboardingSteps}
+              currentStepIndex={currentStepIndex}
+              onDismiss={() => setShowGuide(false)}
+              onCompleteStep={handleCompleteStep}
+            />
+          )}
         </ReactFlow>
       )}
+      
+      {/* Onboarding modal for first-time users */}
+      <WorkflowOnboarding
+        isOpen={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          // Save preference in local storage
+          localStorage.setItem('pumpflux_hasSeenOnboarding', 'true');
+        }}
+        onStartWorkflow={handleStartWorkflow}
+      />
+      
+      {/* Schedule configuration dialog */}
+      <TriggerScheduleDialog
+        isOpen={showScheduleDialog}
+        onClose={() => setShowScheduleDialog(false)}
+        schedule={schedule}
+        onScheduleChange={handleScheduleChange}
+        onAddToWorkflow={handleAddScheduleToWorkflow}
+      />
     </div>
   );
 }

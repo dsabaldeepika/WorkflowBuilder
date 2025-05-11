@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { X, Clock } from 'lucide-react';
 
-export type ScheduleFrequency = 'once' | 'hourly' | 'daily' | 'weekly' | 'custom';
+export type ScheduleFrequency = 'once' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'custom';
 
 export interface ScheduleOptions {
   enabled: boolean;
