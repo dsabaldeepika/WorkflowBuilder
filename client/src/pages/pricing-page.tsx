@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { CheckCircle2, X, AlertTriangle, CheckCircle } from "lucide-react";
-import { useNavigate } from "wouter";
-import { SubscriptionTier } from "../../shared/schema";
+import { useLocation } from "wouter";
+import { SubscriptionTier } from "@/../../shared/schema";
 
 type SubscriptionPlan = {
   id: number;

@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, X, RefreshCw, AlertTriangle, CreditCard, Gauge, Clock, CalendarDays } from "lucide-react";
 import { useState } from "react";
-import { useNavigate, Link } from "wouter";
+import { useLocation, Link } from "wouter";
 import { format } from "date-fns";
-import { SubscriptionTier } from "../../shared/schema";
+import { SubscriptionTier } from "@/../../shared/schema";
 
 type SubscriptionDetails = {
   tier: string;
