@@ -203,6 +203,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
   
   // Handle node selection from the picker
   const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
+    console.log('Creating node:', nodeType, category);
     // Create a node at a fixed position in the viewport
     const centerX = 250;
     const centerY = 150;
