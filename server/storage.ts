@@ -66,6 +66,11 @@ export interface IStorage {
     subscriptionId?: string, 
     periodEnd?: Date
   }): Promise<User | undefined>;
+  getUserActiveSubscription(userId: number): Promise<{ 
+    tier: string; 
+    status: string;
+    planDetails?: SubscriptionPlan;
+  } | undefined>;
   getSubscriptionPlans(isActive?: boolean): Promise<SubscriptionPlan[]>;
   getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined>;
   getSubscriptionPlanByTier(tier: string): Promise<SubscriptionPlan | undefined>;
@@ -1247,6 +1252,45 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptionPlans.tier, tier));
     
     return plan;
+  }
+  
+  // Get user's active subscription information
+  async getUserActiveSubscription(userId: number): Promise<{ 
+    tier: string; 
+    status: string;
+    planDetails?: SubscriptionPlan;
+  } | undefined> {
+    // First, get the user to check their subscription status
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    if (!user || !user.subscriptionTier) {
+      return undefined;
+    }
+    
+    // If the subscription is no longer active, return undefined
+    if (user.subscriptionStatus === 'canceled' || user.subscriptionStatus === 'unpaid') {
+      // If it's canceled but the period hasn't ended, it's still active until the end date
+      if (user.subscriptionStatus === 'canceled' && 
+          user.subscriptionPeriodEnd && 
+          new Date(user.subscriptionPeriodEnd) > new Date()) {
+        // Subscription is canceled but still active until the end date
+      } else {
+        // For other inactive statuses, or if the canceled subscription period has ended, return undefined
+        return undefined;
+      }
+    }
+    
+    // Get the subscription plan details
+    const plan = await this.getSubscriptionPlanByTier(user.subscriptionTier);
+    
+    return {
+      tier: user.subscriptionTier,
+      status: user.subscriptionStatus || 'active',
+      planDetails: plan
+    };
   }
   
   async createSubscriptionHistory(record: InsertSubscriptionHistory): Promise<SubscriptionHistory> {

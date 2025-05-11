@@ -13,6 +13,7 @@ import { subscriptionsRouter } from "./routes/subscriptions";
 import { setupAuth } from "./replitAuth";
 import { pool } from "./db";
 import { swaggerSpec } from "./swagger";
+import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup middleware
@@ -256,8 +257,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date().toISOString()
       });
       
+      // Get user's subscription information
+      const userId = parsedBody.userId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+      
+      // Get current workflow count for the user
+      const userWorkflows = await storage.getWorkflowsByCreator(userId);
+      const workflowCount = userWorkflows.length;
+      
+      // Get user's subscription 
+      const userSubscription = await storage.getUserActiveSubscription(userId);
+      let subscriptionTier = SubscriptionTier.FREE; // Default to FREE tier
+      
+      if (userSubscription) {
+        subscriptionTier = userSubscription.tier as SubscriptionTier;
+      }
+      
+      // Get the workflow limit for their subscription tier
+      const maxWorkflows = SUBSCRIPTION_LIMITS[subscriptionTier].maxWorkflows;
+      
+      // Check if they've reached their limit
+      if (maxWorkflows !== -1 && workflowCount >= maxWorkflows) {
+        return res.status(403).json({
+          message: "Workflow limit reached for your subscription tier",
+          currentCount: workflowCount,
+          maxAllowed: maxWorkflows,
+          subscriptionTier: subscriptionTier,
+          upgradeRequired: true
+        });
+      }
+      
+      // If we get here, they're under their limit, so create the workflow
       const workflow = await storage.createWorkflow(parsedBody);
-      res.status(201).json(workflow);
+      
+      // Return success with additional subscription info for UI feedback
+      res.status(201).json({
+        ...workflow,
+        subscriptionInfo: {
+          currentCount: workflowCount + 1, // Include the one we just created
+          maxAllowed: maxWorkflows,
+          remainingWorkflows: maxWorkflows === -1 ? -1 : maxWorkflows - (workflowCount + 1)
+        }
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ 
@@ -266,6 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      console.error("Error creating workflow:", error);
       res.status(500).json({ message: "Failed to create workflow" });
     }
   });
