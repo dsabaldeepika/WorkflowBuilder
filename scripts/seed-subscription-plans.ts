@@ -1,0 +1,145 @@
+/**
+ * Seed script to populate initial subscription plans
+ */
+import { db } from "../server/db";
+import { subscriptionPlans, SubscriptionTier } from "../shared/schema";
+
+async function seedSubscriptionPlans() {
+  console.log("Seeding subscription plans...");
+  
+  // First, check if plans already exist
+  const existingPlans = await db.select().from(subscriptionPlans);
+  if (existingPlans.length > 0) {
+    console.log(`Found ${existingPlans.length} existing plans. Skipping seeding.`);
+    return;
+  }
+
+  // Define our subscription plans
+  const plans = [
+    {
+      name: "Free",
+      tier: SubscriptionTier.FREE,
+      description: "Perfect for individuals getting started with workflow automation",
+      priceMonthly: 0,
+      priceYearly: 0,
+      stripePriceIdMonthly: "", // Empty for free tier
+      stripePriceIdYearly: "",  // Empty for free tier
+      maxWorkflows: 5,
+      maxWorkspaces: 1,
+      maxExecutionsPerMonth: 500,
+      maxTeamMembers: 1,
+      hasAdvancedIntegrations: false,
+      hasAiFeatures: false,
+      hasCustomBranding: false,
+      hasPrioritySuppport: false,
+      features: [
+        "Up to 5 workflows",
+        "Basic integrations",
+        "Community support",
+        "1 workspace",
+        "500 executions per month"
+      ],
+      isActive: true,
+    },
+    {
+      name: "Basic",
+      tier: SubscriptionTier.BASIC,
+      description: "Great for professionals who need more power and flexibility",
+      priceMonthly: 19.99,
+      priceYearly: 199.99,
+      stripePriceIdMonthly: "price_basic_monthly", // These would be actual Stripe price IDs in production
+      stripePriceIdYearly: "price_basic_yearly",
+      maxWorkflows: 20,
+      maxWorkspaces: 3,
+      maxExecutionsPerMonth: 5000,
+      maxTeamMembers: 3,
+      hasAdvancedIntegrations: true,
+      hasAiFeatures: false,
+      hasCustomBranding: false,
+      hasPrioritySuppport: false,
+      features: [
+        "Up to 20 workflows",
+        "Advanced integrations",
+        "Email support",
+        "3 workspaces",
+        "5,000 executions per month",
+        "Team collaboration (up to 3 members)"
+      ],
+      isActive: true,
+    },
+    {
+      name: "Pro",
+      tier: SubscriptionTier.PRO,
+      description: "For teams that need advanced features and higher limits",
+      priceMonthly: 49.99,
+      priceYearly: 499.99,
+      stripePriceIdMonthly: "price_pro_monthly",
+      stripePriceIdYearly: "price_pro_yearly",
+      maxWorkflows: 100,
+      maxWorkspaces: 10,
+      maxExecutionsPerMonth: 20000,
+      maxTeamMembers: 10,
+      hasAdvancedIntegrations: true,
+      hasAiFeatures: true,
+      hasCustomBranding: false,
+      hasPrioritySuppport: true,
+      features: [
+        "Up to 100 workflows",
+        "All integrations",
+        "AI-powered features",
+        "Priority support",
+        "10 workspaces",
+        "20,000 executions per month",
+        "Team collaboration (up to 10 members)",
+        "Workflow monitoring"
+      ],
+      isActive: true,
+    },
+    {
+      name: "Enterprise",
+      tier: SubscriptionTier.ENTERPRISE,
+      description: "Custom solutions for organizations with advanced needs",
+      priceMonthly: 129.99,
+      priceYearly: 1299.99,
+      stripePriceIdMonthly: "price_enterprise_monthly",
+      stripePriceIdYearly: "price_enterprise_yearly",
+      maxWorkflows: 1000,
+      maxWorkspaces: 100,
+      maxExecutionsPerMonth: 100000,
+      maxTeamMembers: 100,
+      hasAdvancedIntegrations: true,
+      hasAiFeatures: true,
+      hasCustomBranding: true,
+      hasPrioritySuppport: true,
+      features: [
+        "Unlimited workflows",
+        "All integrations",
+        "Advanced AI features",
+        "Dedicated support",
+        "Custom branding",
+        "Unlimited workspaces",
+        "100,000 executions per month",
+        "Team collaboration (up to 100 members)",
+        "Enterprise security features",
+        "Custom reporting",
+        "SLA guarantees"
+      ],
+      isActive: true,
+    }
+  ];
+  
+  // Insert the plans into the database
+  for (const plan of plans) {
+    await db.insert(subscriptionPlans).values(plan);
+  }
+  
+  console.log(`Successfully seeded ${plans.length} subscription plans.`);
+}
+
+// Run the seeding function
+seedSubscriptionPlans()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("Error seeding subscription plans:", error);
+    process.exit(1);
+  });
