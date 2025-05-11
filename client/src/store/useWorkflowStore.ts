@@ -201,67 +201,77 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
-  saveWorkflow: async () => {
-    const { nodes, edges } = get();
-    const { toast } = useToast();
-    
-    try {
-      // Get the user ID from auth context (this needs to be updated based on your auth implementation)
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user?.id || user?.claims?.sub;
-      
-      if (!userId) {
-        throw new Error('User ID not found. Please log in again.');
+  saveWorkflow: () => {
+    // Return a promise that the components can await and handle UI feedback
+    return new Promise(async (resolve, reject) => {
+      try {
+        const { nodes, edges } = get();
+        
+        // Collect workflow metadata
+        const name = prompt("Enter workflow name:", "New Workflow") || "New Workflow";
+        const description = prompt("Enter workflow description:", "Created workflow") || "Created workflow";
+        
+        // Get the currently authenticated user's ID
+        // This approach works with the existing Replit Auth implementation
+        const response = await fetch('/api/auth/user');
+        
+        if (!response.ok) {
+          throw new Error('Authentication required. Please log in again.');
+        }
+        
+        const user = await response.json();
+        const userId = user.id;
+        
+        if (!userId) {
+          throw new Error('User ID not found. Please log in again.');
+        }
+        
+        // Build workflow data
+        const workflowData = {
+          name,
+          description,
+          workflowData: JSON.stringify({
+            nodes,
+            edges,
+          }),
+          userId,
+          status: "draft"
+        };
+        
+        // Send to API
+        const saveResponse = await fetch('/api/workflows', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(workflowData),
+        });
+        
+        if (!saveResponse.ok) {
+          const errorText = await saveResponse.text();
+          throw new Error(`Failed to save workflow: ${errorText}`);
+        }
+        
+        const savedWorkflow = await saveResponse.json();
+        console.log('Workflow saved successfully:', savedWorkflow);
+        
+        // Show success message with native alert for now
+        // (components should handle this with proper UI)
+        alert('Workflow saved successfully!');
+        
+        // Resolve with the saved workflow
+        resolve(savedWorkflow);
+        
+        // Navigate to dashboard after saving
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      } catch (error: any) {
+        console.error('Error saving workflow:', error);
+        alert(`Error saving workflow: ${error.message}`);
+        reject(error);
       }
-      
-      const workflowData = {
-        name: "New Workflow", // This could be made dynamic with user input
-        description: "Created workflow", // This could be made dynamic with user input
-        workflowData: {
-          nodes,
-          edges,
-        },
-        userId: parseInt(userId),
-        status: "draft",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      const response = await fetch('/api/workflows', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(workflowData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save workflow');
-      }
-      
-      const savedWorkflow = await response.json();
-      console.log('Workflow saved successfully:', savedWorkflow);
-      
-      toast({
-        title: "Success",
-        description: "Workflow saved successfully!",
-      });
-      
-      // Redirect to dashboard after successful save
-      window.location.href = '/dashboard';
-      
-      return savedWorkflow;
-    } catch (error) {
-      console.error('Error saving workflow:', error);
-      
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save workflow",
-        variant: "destructive",
-      });
-      
-      return null;
-    }
+    });
   },
   
   loadWorkflow: (workflow) => {

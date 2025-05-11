@@ -141,7 +141,15 @@ export function WorkflowCanvas() {
         {/* Add workflow controls */}
         <WorkflowControls 
           onNodeStateChange={handleNodeStateChange}
-          onSave={saveWorkflow}
+          onSave={async () => {
+            try {
+              await saveWorkflow();
+              // Toast message is now handled in the saveWorkflow function
+            } catch (error) {
+              console.error('Error saving workflow', error);
+              // Error handling is also done in the saveWorkflow function
+            }
+          }}
           onExport={handleExport}
           onImport={handleImport}
         />
