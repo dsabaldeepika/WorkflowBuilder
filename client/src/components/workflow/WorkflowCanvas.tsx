@@ -467,7 +467,7 @@ function WorkflowCanvasContent({ onAddNodeClick }: WorkflowCanvasProps) {
         }}
         onStartWorkflow={() => {
           // Start a new workflow by showing the node picker
-          handleAddNode();
+          onAddNodeClick();
           // Setup initial guide if needed
           setShowGuide(true);
           setOnboardingSteps([

@@ -372,7 +372,7 @@ export default function WorkflowBuilder() {
         </aside>
 
         {/* Workflow Canvas */}
-        <WorkflowCanvas />
+        <WorkflowCanvas onAddNodeClick={openNodePicker} />
       </div>
 
       {/* Node Picker Modal */}
