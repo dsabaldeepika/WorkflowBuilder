@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Card, 
@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { WorkflowTemplate } from "@shared/schema";
-import { Loader2, Clock, FileBadge, Tag, Search, Eye } from "lucide-react";
+import { Loader2, Clock, FileBadge, Tag, Search, Eye, Star } from "lucide-react";
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { useToast } from '@/hooks/use-toast';
@@ -202,6 +202,15 @@ export function TemplateSearch() {
               ))}
             </SelectContent>
           </Select>
+          
+          <Button 
+            variant={showFavoritesOnly ? "default" : "outline"} 
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            className={showFavoritesOnly ? "bg-yellow-500 hover:bg-yellow-600 text-white" : ""}
+          >
+            <Star className="h-4 w-4 mr-2" fill={showFavoritesOnly ? "currentColor" : "none"} />
+            {showFavoritesOnly ? "Showing Favorites" : "Show Favorites"}
+          </Button>
         </div>
       </div>
       
@@ -221,14 +230,14 @@ export function TemplateSearch() {
       )}
       
       {/* Template grid */}
-      {!isLoading && templates && (
+      {!isLoading && filteredTemplates.length > 0 && (
         <>
           <div className="text-sm text-gray-500 mb-4">
-            Found {templates.length} template{templates.length !== 1 ? 's' : ''}
+            Found {filteredTemplates.length} {showFavoritesOnly ? 'favorite ' : ''}template{filteredTemplates.length !== 1 ? 's' : ''}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((template) => (
+            {filteredTemplates.map((template) => (
               <Card key={template.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
@@ -238,7 +247,10 @@ export function TemplateSearch() {
                         {template.description}
                       </CardDescription>
                     </div>
-                    <TemplateFavoriteButton templateId={template.id} />
+                    <TemplateFavoriteButton 
+                      templateId={template.id} 
+                      initialFavorited={favoriteIds.includes(template.id)} 
+                    />
                   </div>
                 </CardHeader>
                 
@@ -291,24 +303,40 @@ export function TemplateSearch() {
       )}
       
       {/* Empty state */}
-      {!isLoading && templates && templates.length === 0 && (
+      {!isLoading && templates && filteredTemplates.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
           <FileBadge className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-800 mb-2">No templates found</h3>
+          <h3 className="text-lg font-medium text-gray-800 mb-2">
+            {showFavoritesOnly 
+              ? "No favorite templates found" 
+              : "No templates found"}
+          </h3>
           <p className="text-gray-500 mb-4">
-            Try adjusting your search or filters to find what you're looking for.
+            {showFavoritesOnly 
+              ? "You haven't favorited any templates yet, or none match your current filters." 
+              : "Try adjusting your search or filters to find what you're looking for."}
           </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory('all');
-              setSelectedComplexity('all');
-              setSortBy('name');
-            }}
-          >
-            Clear Filters
-          </Button>
+          <div className="flex flex-wrap justify-center gap-3">
+            {showFavoritesOnly && (
+              <Button
+                variant="default"
+                onClick={() => setShowFavoritesOnly(false)}
+              >
+                Show All Templates
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('all');
+                setSelectedComplexity('all');
+                setSortBy('name');
+              }}
+            >
+              Clear Filters
+            </Button>
+          </div>
         </div>
       )}
       

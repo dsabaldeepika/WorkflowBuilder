@@ -8,6 +8,7 @@ interface TemplateFavoriteButtonProps {
   initialFavorited?: boolean;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  onFavoriteChange?: (templateId: number, isFavorited: boolean) => void;
 }
 
 const LOCAL_STORAGE_KEY = 'favoriteTemplates';
@@ -17,18 +18,21 @@ export function TemplateFavoriteButton({
   initialFavorited = false,
   variant = 'ghost',
   size = 'icon',
+  onFavoriteChange,
 }: TemplateFavoriteButtonProps) {
   const { toast } = useToast();
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   
-  // Load favorite state from localStorage on component mount
+  // Load favorite state from localStorage on component mount and when initialFavorited changes
   useEffect(() => {
     const savedFavorites = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedFavorites) {
       const favorites = JSON.parse(savedFavorites);
       setIsFavorited(favorites.includes(templateId));
+    } else {
+      setIsFavorited(initialFavorited);
     }
-  }, [templateId]);
+  }, [templateId, initialFavorited]);
   
   const toggleFavorite = () => {
     // Toggle the favorite state
@@ -64,6 +68,11 @@ export function TemplateFavoriteButton({
     }
     
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(favorites));
+    
+    // Notify parent component about the change
+    if (onFavoriteChange) {
+      onFavoriteChange(templateId, newFavoritedState);
+    }
     
     // Here you could also make an API call to sync with the server
     // This is just a client-side implementation for now
