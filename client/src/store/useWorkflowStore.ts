@@ -201,14 +201,67 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
-  saveWorkflow: () => {
-    // This would typically save to a backend
-    console.log('Saving workflow', {
-      nodes: get().nodes,
-      edges: get().edges,
-    });
-    // Simulate successful save
-    alert('Workflow saved successfully!');
+  saveWorkflow: async () => {
+    const { nodes, edges } = get();
+    const { toast } = useToast();
+    
+    try {
+      // Get the user ID from auth context (this needs to be updated based on your auth implementation)
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user?.id || user?.claims?.sub;
+      
+      if (!userId) {
+        throw new Error('User ID not found. Please log in again.');
+      }
+      
+      const workflowData = {
+        name: "New Workflow", // This could be made dynamic with user input
+        description: "Created workflow", // This could be made dynamic with user input
+        workflowData: {
+          nodes,
+          edges,
+        },
+        userId: parseInt(userId),
+        status: "draft",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const response = await fetch('/api/workflows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(workflowData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save workflow');
+      }
+      
+      const savedWorkflow = await response.json();
+      console.log('Workflow saved successfully:', savedWorkflow);
+      
+      toast({
+        title: "Success",
+        description: "Workflow saved successfully!",
+      });
+      
+      // Redirect to dashboard after successful save
+      window.location.href = '/dashboard';
+      
+      return savedWorkflow;
+    } catch (error) {
+      console.error('Error saving workflow:', error);
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save workflow",
+        variant: "destructive",
+      });
+      
+      return null;
+    }
   },
   
   loadWorkflow: (workflow) => {
