@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Card, 
@@ -19,7 +19,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { WorkflowTemplate } from "@shared/schema";
-import { Loader2, Clock, FileBadge, Tag, Search } from "lucide-react";
+import { Loader2, Clock, FileBadge, Tag, Search, Eye } from "lucide-react";
+import { TemplatePreviewModal } from './TemplatePreviewModal';
+import { TemplateFavoriteButton } from './TemplateFavoriteButton';
+import { useToast } from '@/hooks/use-toast';
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -49,10 +52,15 @@ const SORT_OPTIONS = [
 ];
 
 export function TemplateSearch() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedComplexity, setSelectedComplexity] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplate | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
 
   // Build the query string based on filters
   const buildQueryString = () => {
@@ -75,6 +83,20 @@ export function TemplateSearch() {
     return params.toString();
   };
 
+  // Load favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favoriteTemplates');
+    if (savedFavorites) {
+      try {
+        const favorites = JSON.parse(savedFavorites);
+        setFavoriteIds(favorites);
+      } catch (e) {
+        console.error('Error parsing favorites from localStorage:', e);
+        setFavoriteIds([]);
+      }
+    }
+  }, []);
+  
   // Fetch templates with filters
   const { data: templates, isLoading, isError } = useQuery<WorkflowTemplate[]>({
     queryKey: ['/api/workflow/templates', searchTerm, selectedCategory, selectedComplexity, sortBy],
@@ -84,6 +106,13 @@ export function TemplateSearch() {
       return fetch(url).then(res => res.json());
     }
   });
+  
+  // Filter templates by favorites if the option is selected
+  const filteredTemplates = templates ? (
+    showFavoritesOnly 
+      ? templates.filter(template => favoriteIds.includes(template.id))
+      : templates
+  ) : [];
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
@@ -92,6 +121,26 @@ export function TemplateSearch() {
       case 'complex': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+  
+  const handlePreviewTemplate = (template: WorkflowTemplate) => {
+    setPreviewTemplate(template);
+    setIsPreviewOpen(true);
+  };
+  
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+  };
+  
+  const handleUseTemplate = (template: WorkflowTemplate) => {
+    // This will be expanded later to actually use the template
+    toast({
+      title: "Template selected",
+      description: `You selected the "${template.name}" template.`,
+    });
+    setIsPreviewOpen(false);
+    // Navigate to workflow builder with template
+    window.location.href = `/create?template=${template.id}`;
   };
 
   return (
@@ -189,16 +238,22 @@ export function TemplateSearch() {
                         {template.description}
                       </CardDescription>
                     </div>
+                    <TemplateFavoriteButton templateId={template.id} />
                   </div>
                 </CardHeader>
                 
                 <CardContent className="flex-grow">
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {template.tags?.map((tag, index) => (
+                    {template.tags?.slice(0, 3).map((tag, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {tag}
                       </Badge>
                     ))}
+                    {(template.tags?.length || 0) > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{(template.tags?.length || 0) - 3} more
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="flex gap-3 text-xs text-gray-500">
@@ -218,9 +273,15 @@ export function TemplateSearch() {
                     <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
                       {template.complexity || 'medium'} complexity
                     </Badge>
-                    <Button size="sm" variant="default">
-                      Use Template
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handlePreviewTemplate(template)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                      <Button size="sm" variant="default" onClick={() => handleUseTemplate(template)}>
+                        Use
+                      </Button>
+                    </div>
                   </div>
                 </CardFooter>
               </Card>
@@ -250,6 +311,14 @@ export function TemplateSearch() {
           </Button>
         </div>
       )}
+      
+      {/* Template Preview Modal */}
+      <TemplatePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+        template={previewTemplate}
+        onUseTemplate={handleUseTemplate}
+      />
     </div>
   );
 }

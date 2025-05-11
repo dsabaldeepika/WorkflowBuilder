@@ -19,8 +19,11 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { WorkflowTemplate } from "@shared/schema";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Eye } from "lucide-react";
 import { Link } from 'wouter';
+import { TemplatePreviewModal } from './TemplatePreviewModal';
+import { TemplateFavoriteButton } from './TemplateFavoriteButton';
+import { useToast } from '@/hooks/use-toast';
 
 // Categories to filter templates
 const CATEGORIES = [
@@ -36,8 +39,11 @@ const CATEGORIES = [
 ];
 
 export default function WorkflowTemplates() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplate | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Build query string based on filters
   const buildQueryString = () => {
@@ -72,6 +78,26 @@ export default function WorkflowTemplates() {
       case 'complex': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+  
+  const handlePreviewTemplate = (template: WorkflowTemplate) => {
+    setPreviewTemplate(template);
+    setIsPreviewOpen(true);
+  };
+  
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+  };
+  
+  const handleUseTemplate = (template: WorkflowTemplate) => {
+    // This will be expanded later to actually use the template
+    toast({
+      title: "Template selected",
+      description: `You selected the "${template.name}" template.`,
+    });
+    setIsPreviewOpen(false);
+    // Navigate to workflow builder with template
+    window.location.href = `/create?template=${template.id}`;
   };
 
   return (
@@ -129,10 +155,15 @@ export default function WorkflowTemplates() {
           {templates.slice(0, 6).map((template) => (
             <Card key={template.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg">{template.name}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {template.description}
-                </CardDescription>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {template.description}
+                    </CardDescription>
+                  </div>
+                  <TemplateFavoriteButton templateId={template.id} />
+                </div>
               </CardHeader>
               
               <CardContent className="pt-0 pb-4 flex-grow">
@@ -155,9 +186,25 @@ export default function WorkflowTemplates() {
               </CardContent>
               
               <CardFooter className="pt-0">
-                <Button size="sm" className="w-full" variant="outline">
-                  Use Template
-                </Button>
+                <div className="w-full flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1" 
+                    variant="outline"
+                    onClick={() => handlePreviewTemplate(template)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Preview
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1" 
+                    variant="default"
+                    onClick={() => handleUseTemplate(template)}
+                  >
+                    Use Template
+                  </Button>
+                </div>
               </CardFooter>
             </Card>
           ))}
@@ -193,6 +240,14 @@ export default function WorkflowTemplates() {
           </Link>
         </div>
       )}
+      
+      {/* Template Preview Modal */}
+      <TemplatePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+        template={previewTemplate}
+        onUseTemplate={handleUseTemplate}
+      />
     </div>
   );
 }
