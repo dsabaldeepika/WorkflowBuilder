@@ -9,6 +9,7 @@ import { WorkflowExecution, ExecutionLog } from '@/types/workflow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import WorkflowHealthDashboard from '@/components/workflow/WorkflowHealthDashboard';
 
 // Sample workflow with nodes and edges for demonstration
 import { sampleWorkflow } from '@/data/sample-workflows';
@@ -108,9 +109,10 @@ const WorkflowMonitoringPage: React.FC = () => {
           {/* Left column - Monitoring and execution */}
           <div className="lg:col-span-2 space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="execution">Execution</TabsTrigger>
                 <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+                <TabsTrigger value="health">Health Dashboard</TabsTrigger>
                 <TabsTrigger value="optimization">Optimization</TabsTrigger>
               </TabsList>
               
@@ -129,6 +131,16 @@ const WorkflowMonitoringPage: React.FC = () => {
                   executions={executions}
                   logs={logs}
                 />
+              </TabsContent>
+              
+              <TabsContent value="health" className="space-y-6 py-4">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold">Workflow Health Dashboard</h2>
+                  <p className="text-muted-foreground">
+                    Monitor performance metrics, identify bottlenecks, and get optimization suggestions
+                  </p>
+                </div>
+                <WorkflowHealthDashboard />
               </TabsContent>
               
               <TabsContent value="optimization" className="space-y-6 py-4">
