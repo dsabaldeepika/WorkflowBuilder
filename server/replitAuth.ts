@@ -1,179 +1,131 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-
 import passport from "passport";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
-import connectPg from "connect-pg-simple";
+import type { Express, RequestHandler, Request, Response, NextFunction } from "express";
+import memorystore from "memorystore";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
-}
+// BYPASS FLAG: This completely bypasses all authentication
+const BYPASS_AUTH = true;
 
-const getOidcConfig = memoize(
-  async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
+// Dummy console message
+console.log("⚠️ Authentication completely bypassed for development - Do not use in production ⚠️");
+
+// Create a mock user for authentication bypass
+const MOCK_USER = {
+  id: "bypass-user-123",
+  claims: {
+    sub: "bypass-user-123",
+    email: "bypass@example.com",
+    first_name: "Bypass",
+    last_name: "User",
+    profile_image_url: "https://ui-avatars.com/api/?name=Bypass+User&background=random"
   },
-  { maxAge: 3600 * 1000 }
-);
+  access_token: "mock-access-token",
+  refresh_token: "mock-refresh-token",
+  expires_at: Math.floor(Date.now() / 1000) + 86400 * 30 // 30 days
+};
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
+  
+  // Use memory store for simplicity in bypass mode
+  const MemoryStore = memorystore(session);
+  const sessionStore = new MemoryStore({
+    checkPeriod: sessionTtl
   });
-  const isProduction = process.env.NODE_ENV === 'production';
-  const isDevelopment = process.env.NODE_ENV === 'development';
   
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "bypass-secret-key",
     store: sessionStore,
-    resave: false, 
-    saveUninitialized: false,
-    proxy: true,
+    resave: false,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isDevelopment ? 'lax' : 'none',
+      secure: false,
+      sameSite: 'lax',
       maxAge: sessionTtl,
-      path: '/',
     },
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
-
-async function upsertUser(
-  claims: any,
-) {
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
-}
-
 export async function setupAuth(app: Express) {
-  // Trust all proxies for Replit environment
-  app.enable("trust proxy");
+  app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
 
-  const config = await getOidcConfig();
-
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    const strategy = new Strategy(
-      {
-        name: `replitauth:${domain}`,
-        config,
-        scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
-      },
-      verify,
-    );
-    passport.use(strategy);
-  }
-
+  // Simple passport serialization
   passport.serializeUser((user: Express.User, cb) => {
-    // For Replit Auth, we serialize the whole user object
     cb(null, user);
   });
   
   passport.deserializeUser((user: Express.User, cb) => {
-    // For Replit Auth, we use the user object as is
     cb(null, user);
   });
 
-  app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+  // Auto-login route
+  app.get("/api/login", (req, res) => {
+    req.login(MOCK_USER, () => {
+      res.redirect("/");
+    });
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-      failureMessage: true,
-    })(req, res, next);
+  // Mock callback route
+  app.get("/api/callback", (req, res) => {
+    req.login(MOCK_USER, () => {
+      res.redirect("/");
+    });
   });
   
-  // Add a debug route to check authentication status
+  // Status route to check authentication
   app.get("/api/auth/status", (req, res) => {
-    res.json({
-      isAuthenticated: req.isAuthenticated(),
-      user: req.user ? { id: (req.user as any).claims?.sub } : null,
-      session: req.session ? { id: req.sessionID } : null,
-    });
+    if (BYPASS_AUTH) {
+      // Always return authenticated in bypass mode
+      res.json({
+        authenticated: true,
+        user: MOCK_USER,
+        bypassMode: true
+      });
+    } else {
+      res.json({
+        authenticated: req.isAuthenticated(),
+        user: req.user
+      });
+    }
   });
 
+  // Mock logout
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      res.redirect("/");
     });
   });
+  
+  // Auto-login middleware for all requests in bypass mode
+  if (BYPASS_AUTH) {
+    app.use((req, res, next) => {
+      if (!req.isAuthenticated()) {
+        req.login(MOCK_USER, (err) => {
+          if (err) console.error("Auto-login error:", err);
+          next();
+        });
+      } else {
+        next();
+      }
+    });
+  }
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (BYPASS_AUTH) {
+    // Always authenticated in bypass mode
+    return next();
+  }
+  
+  // Normal authentication check (this won't run in bypass mode)
+  if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    return res.redirect("/api/login");
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    return res.redirect("/api/login");
-  }
+  
+  return next();
 };
