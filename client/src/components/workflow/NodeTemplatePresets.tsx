@@ -49,8 +49,30 @@ export function NodeTemplatePresets({ onSelectTemplate }: NodeTemplatePresetProp
     { id: 'forms', name: 'Form Handlers', icon: FileText }
   ];
 
+  // Helper function to ensure templates have all required fields
+  const createTemplate = (template: Partial<NodeTemplate>): NodeTemplate => {
+    const now = new Date().toISOString();
+    return {
+      id: template.id || `preset-${Date.now()}`,
+      name: template.name || 'Unnamed Template',
+      description: template.description || 'No description',
+      category: template.category || 'custom',
+      nodeType: template.nodeType || 'action',
+      icon: template.icon || 'settings',
+      configuration: template.configuration || {},
+      createdAt: template.createdAt || now,
+      updatedAt: template.updatedAt || now,
+      isFavorite: template.isFavorite || false,
+      isCustom: template.isCustom || true,
+      isGroupTemplate: template.isGroupTemplate || false,
+      inputs: template.inputs,
+      outputs: template.outputs,
+      ports: template.ports
+    };
+  };
+  
   // Template presets - each with tailored configuration
-  const templates: NodeTemplate[] = [
+  const templateDefinitions = [
     // CRM Automation Templates
     {
       id: 'preset-crm-lead-capture',
@@ -80,11 +102,7 @@ export function NodeTemplatePresets({ onSelectTemplate }: NodeTemplatePresetProp
           type: 'output',
           dataType: 'object'
         }
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isFavorite: false,
-      isCustom: true
+      ]
     },
     {
       id: 'preset-crm-lead-qualification',
