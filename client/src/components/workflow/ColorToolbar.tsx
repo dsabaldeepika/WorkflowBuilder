@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Palette, Check } from 'lucide-react';
 import { 
@@ -22,6 +22,62 @@ export function ColorToolbar() {
   const { nodes, bulkUpdateNodeColors } = useWorkflowStore();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectMode, setSelectMode] = useState(false);
+  
+  // Handle node selection and highlighting
+  useEffect(() => {
+    // When entering selection mode, set up a listener for node clicks and highlight nodes
+    if (selectMode) {
+      // Set up click handler for node selection
+      const handleNodeClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        const nodeElement = target.closest('.workflow-node');
+        
+        if (nodeElement) {
+          // Find the node ID
+          const nodeId = nodeElement.getAttribute('data-id');
+          if (nodeId) {
+            toggleNodeSelection(nodeId);
+            event.stopPropagation();
+            event.preventDefault();
+          }
+        }
+      };
+      
+      // Add a visual indicator for selection mode
+      document.querySelectorAll('.workflow-node').forEach(node => {
+        node.classList.add('selection-mode');
+      });
+      
+      document.addEventListener('click', handleNodeClick, true);
+      
+      return () => {
+        document.removeEventListener('click', handleNodeClick, true);
+        // Remove selection mode indicator when exiting selection mode
+        document.querySelectorAll('.workflow-node').forEach(node => {
+          node.classList.remove('selection-mode');
+          node.classList.remove('node-selected');
+        });
+      };
+    }
+  }, [selectMode]);
+  
+  // Update node highlights when selected ids change
+  useEffect(() => {
+    if (selectMode) {
+      // Clear all selected indicators first
+      document.querySelectorAll('.workflow-node').forEach(node => {
+        node.classList.remove('node-selected');
+      });
+      
+      // Add highlight to selected nodes
+      selectedIds.forEach(id => {
+        const node = document.querySelector(`.workflow-node[data-id="${id}"]`);
+        if (node) {
+          node.classList.add('node-selected');
+        }
+      });
+    }
+  }, [selectMode, selectedIds]);
   
   // Toggle node selection
   const toggleNodeSelection = (nodeId: string) => {

@@ -58,11 +58,14 @@ export default function WorkflowNode({
 
   return (
     <NodeContextMenu nodeId={id}>
-      <div className={`
-        workflow-node
-        ${selected ? 'ring-2 ring-primary' : ''}
-        ${optimized ? 'optimized-node' : ''}
-      `}>
+      <div 
+        className={`
+          workflow-node
+          ${selected ? 'ring-2 ring-primary' : ''}
+          ${optimized ? 'optimized-node' : ''}
+        `}
+        data-id={id}
+      >
         <Card 
           className={`min-w-[220px] shadow-md ${borderColor ? '' : 'border-none'}`}
           style={cardStyle}
