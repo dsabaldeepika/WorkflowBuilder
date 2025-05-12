@@ -19,8 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { WorkflowTemplate } from "@shared/schema";
-import { Loader2, Clock, FileBadge, Tag, Search, Eye, Star } from "lucide-react";
-import { TemplatePreviewModal } from './TemplatePreviewModal';
+import { Loader2, Clock, FileBadge, Tag, Search, Star } from "lucide-react";
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { useToast } from '@/hooks/use-toast';
 
@@ -57,8 +56,6 @@ export function TemplateSearch() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedComplexity, setSelectedComplexity] = useState('all');
   const [sortBy, setSortBy] = useState('name');
-  const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplate | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
 
@@ -123,21 +120,13 @@ export function TemplateSearch() {
     }
   };
   
-  const handlePreviewTemplate = (template: WorkflowTemplate) => {
-    setPreviewTemplate(template);
-    setIsPreviewOpen(true);
-  };
-  
-  const handleClosePreview = () => {
-    setIsPreviewOpen(false);
-  };
+  // Preview functionality temporarily removed
   
   const handleUseTemplate = (template: WorkflowTemplate) => {
     toast({
       title: "Template selected",
       description: `Preparing "${template.name}" template for setup...`,
     });
-    setIsPreviewOpen(false);
     // Navigate to the new template setup page
     window.location.href = `/template-setup/${template.id}`;
   };
@@ -290,13 +279,9 @@ export function TemplateSearch() {
                     <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
                       {template.complexity || 'medium'} complexity
                     </Badge>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handlePreviewTemplate(template)}>
-                        <Eye className="h-4 w-4 mr-1" />
-                        Preview
-                      </Button>
+                    <div className="flex">
                       <Button size="sm" variant="default" onClick={() => handleUseTemplate(template)}>
-                        Use
+                        Use Template
                       </Button>
                     </div>
                   </div>
@@ -345,13 +330,7 @@ export function TemplateSearch() {
         </div>
       )}
       
-      {/* Template Preview Modal */}
-      <TemplatePreviewModal
-        isOpen={isPreviewOpen}
-        onClose={handleClosePreview}
-        template={previewTemplate}
-        onUseTemplate={handleUseTemplate}
-      />
+      {/* Preview functionality temporarily disabled */}
     </div>
   );
 }
