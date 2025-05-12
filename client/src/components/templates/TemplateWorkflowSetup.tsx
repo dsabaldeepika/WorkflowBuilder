@@ -136,13 +136,16 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
       // Apply credentials to nodes before saving
       const updatedNodes = applyCredentialsToWorkflow();
       
-      // Save workflow with updated nodes
-      await saveWorkflow({
+      // Prepare workflow params
+      const workflowParams = {
         name: workflowName,
         description: workflowDescription,
         nodes: updatedNodes, 
         edges
-      });
+      };
+      
+      // Save workflow with updated nodes
+      await saveWorkflow(workflowParams);
       
       toast({
         title: "Workflow saved!",
