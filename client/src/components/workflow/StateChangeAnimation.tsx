@@ -201,15 +201,56 @@ export const WorkflowStateIndicator: React.FC<WorkflowStateIndicatorProps> = ({
     lg: 'h-6 w-6'
   };
   
+  // Determine if this is a transition from a significant state change
+  const isSignificantTransition = 
+    previousState && (
+      (previousState === 'running' && state === 'completed') ||
+      (previousState === 'running' && state === 'failed') ||
+      (state === 'running' && previousState === 'paused') ||
+      (state === 'retrying' && previousState === 'failed')
+    );
+  
+  // Custom animation for significant transitions
+  const getInitialAnimation = () => {
+    if (!previousState) return { scale: 1, opacity: 1 };
+    
+    if (state === 'completed' && previousState === 'running') {
+      return { scale: 0.8, opacity: 0, rotate: -10 };
+    }
+    
+    if (state === 'failed' && previousState === 'running') {
+      return { scale: 1.2, opacity: 0, x: 5 };
+    }
+    
+    if (state === 'retrying' && previousState === 'failed') {
+      return { scale: 0.8, opacity: 0, rotate: 180 };
+    }
+    
+    return { scale: 0.8, opacity: 0 };
+  };
+  
   return (
     <div className={cn("flex items-center", className)}>
       <motion.div
-        initial={{ scale: previousState ? 0.8 : 1, opacity: previousState ? 0 : 1 }}
-        animate={{ scale: 1, opacity: 1 }}
+        initial={getInitialAnimation()}
+        animate={{ 
+          scale: 1, 
+          opacity: 1, 
+          rotate: 0,
+          x: 0
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 500,
+          damping: 25
+        }}
         className={cn(
-          "rounded-full p-1 flex items-center justify-center",
+          "rounded-full flex items-center justify-center relative",
           config.bgColor,
-          size === 'sm' ? 'p-0.5' : size === 'lg' ? 'p-1.5' : 'p-1'
+          size === 'sm' ? 'p-0.5' : size === 'lg' ? 'p-1.5' : 'p-1',
+          state === 'completed' && "shadow-glow transition-shadow",
+          state === 'paused' && "border border-amber-400",
+          isSignificantTransition && "overflow-visible"
         )}
       >
         <Icon 
@@ -482,7 +523,7 @@ export const WorkflowStateBadge: React.FC<WorkflowStateBadgeProps> = ({
     if (state === 'completed' && prevState === 'running') {
       return { 
         scale: [1, 1.05, 1],
-        backgroundColor: ['#4338ca', '#10b981', '#10b981'],
+        boxShadow: ['0 0 0px rgba(16, 185, 129, 0)', '0 0 10px rgba(16, 185, 129, 0.8)', '0 0 5px rgba(16, 185, 129, 0.5)'],
         transition: { duration: 0.5 }
       };
     }
@@ -498,6 +539,17 @@ export const WorkflowStateBadge: React.FC<WorkflowStateBadgeProps> = ({
     return {};
   };
   
+  // Determine if we should show a success completion animation
+  useEffect(() => {
+    if (prevState === 'running' && state === 'completed') {
+      // If we transitioned from running to completed, apply a special animation
+      const timer = setTimeout(() => {
+        // Any additional effects after completion
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [prevState, state]);
+  
   return (
     <motion.div
       animate={getBadgeAnimation()}
@@ -510,11 +562,45 @@ export const WorkflowStateBadge: React.FC<WorkflowStateBadgeProps> = ({
           (state === 'running' || state === 'retrying') && "animate-pulse-subtle",
           state === 'failed' && "animate-error-shake",
           state === 'paused' && "animate-warning-flash border",
+          state === 'completed' && "shadow-glow relative",
           className
         )}
       >
         <StateChangeAnimation state={state} size="sm" />
         <span className="ml-1 whitespace-nowrap">{stateConfig[state].label}</span>
+        
+        {/* Success checkmark overlay animation - only show when transition from running to completed */}
+        {state === 'completed' && prevState === 'running' && (
+          <motion.div 
+            className="absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{ duration: 1.5, times: [0, 0.3, 1] }}
+          >
+            <svg className="h-full w-full absolute inset-0" viewBox="0 0 50 50">
+              <motion.circle
+                cx="25"
+                cy="25"
+                r="20"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.8, 0] }}
+                transition={{ duration: 1.2, delay: 0.2 }}
+              />
+              <motion.path
+                d="M15,25 L22,32 L35,18"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="animate-checkmark"
+              />
+            </svg>
+          </motion.div>
+        )}
       </Badge>
     </motion.div>
   );

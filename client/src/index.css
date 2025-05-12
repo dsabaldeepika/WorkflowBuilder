@@ -81,6 +81,22 @@
     }
   }
   
+  /* Success checkmark animation for completed states */
+  .animate-checkmark {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: draw-checkmark 0.8s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  }
+
+  @keyframes draw-checkmark {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  
   @keyframes pulse-subtle {
     0%, 100% {
       opacity: 1;
