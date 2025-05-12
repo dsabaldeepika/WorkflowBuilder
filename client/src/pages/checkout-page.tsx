@@ -2,151 +2,77 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { 
-  CheckCircle, 
-  CheckCircle2, 
-  CreditCard, 
-  X, 
-  Lock, 
-  Calendar, 
-  CreditCard as CardIcon 
-} from 'lucide-react';
+import { CheckCircle, CheckCircle2, CreditCard, X } from 'lucide-react';
 import { API_ENDPOINTS, ROUTES } from '@/../../shared/config';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Mock checkout form without Stripe
+// Make sure to call loadStripe outside of a component's render to avoid recreating the Stripe object
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  throw new Error('Missing Stripe public key');
+}
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+
 const CheckoutForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel: () => void }) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const { toast } = useToast();
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [name, setName] = useState('');
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Simple validation
-    const errors: Record<string, string> = {};
-    
-    if (!cardNumber) errors.cardNumber = 'Card number is required';
-    if (!expiryDate) errors.expiryDate = 'Expiry date is required';
-    if (!cvc) errors.cvc = 'CVC is required';
-    if (!name) errors.name = 'Name is required';
-    
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
+
+    if (!stripe || !elements) {
+      // Stripe.js has not loaded yet
       return;
     }
-    
+
     setIsProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
+    setErrorMessage('');
+
+    // Confirm payment
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.origin + '/account/billing?success=true',
+      },
+      redirect: 'if_required',
+    });
+
+    if (error) {
+      setErrorMessage(error.message || 'An error occurred during payment');
+      toast({
+        title: 'Payment Failed',
+        description: error.message || 'An error occurred during payment',
+        variant: 'destructive',
+      });
       setIsProcessing(false);
+    } else {
+      // Payment succeeded
       toast({
         title: 'Payment Successful',
         description: 'Your subscription has been activated!',
       });
       onSuccess();
-    }, 1500);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="cardName">Name on Card</Label>
-          <Input 
-            id="cardName" 
-            placeholder="John Smith" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
-        </div>
+        <PaymentElement />
         
-        <div className="space-y-2">
-          <Label htmlFor="cardNumber">Card Number</Label>
-          <div className="relative">
-            <Input 
-              id="cardNumber" 
-              placeholder="1234 5678 9012 3456" 
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim())}
-              maxLength={19}
-            />
-            <CardIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {errorMessage && (
+          <div className="p-3 rounded bg-destructive/10 text-destructive text-sm">
+            {errorMessage}
           </div>
-          {formErrors.cardNumber && <p className="text-sm text-destructive">{formErrors.cardNumber}</p>}
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="expiry">Expiry Date</Label>
-            <div className="relative">
-              <Input 
-                id="expiry" 
-                placeholder="MM/YY" 
-                value={expiryDate}
-                onChange={(e) => {
-                  let value = e.target.value.replace(/\D/g, '');
-                  if (value.length > 2) {
-                    value = value.slice(0, 2) + '/' + value.slice(2, 4);
-                  }
-                  setExpiryDate(value);
-                }}
-                maxLength={5}
-              />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            </div>
-            {formErrors.expiryDate && <p className="text-sm text-destructive">{formErrors.expiryDate}</p>}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="cvc">CVC</Label>
-            <div className="relative">
-              <Input 
-                id="cvc" 
-                placeholder="123" 
-                value={cvc}
-                onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))}
-                maxLength={3}
-              />
-              <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            </div>
-            {formErrors.cvc && <p className="text-sm text-destructive">{formErrors.cvc}</p>}
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="country">Country</Label>
-          <Select defaultValue="us">
-            <SelectTrigger>
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="us">United States</SelectItem>
-              <SelectItem value="ca">Canada</SelectItem>
-              <SelectItem value="uk">United Kingdom</SelectItem>
-              <SelectItem value="au">Australia</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex items-center space-x-2 pt-2">
-          <Lock className="h-4 w-4 text-green-600" />
-          <span className="text-sm text-muted-foreground">
-            Your payment information is secure. We use encryption to protect your data.
-          </span>
-        </div>
+        )}
         
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between mt-6">
           <Button 
@@ -161,7 +87,7 @@ const CheckoutForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel
           
           <Button 
             type="submit" 
-            disabled={isProcessing}
+            disabled={!stripe || isProcessing}
           >
             {isProcessing ? (
               <>
@@ -182,29 +108,27 @@ const CheckoutForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel
 };
 
 export default function CheckoutPage() {
-  const [loading, setLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const [location] = useLocation();
   const { toast } = useToast();
 
   // Get query parameters
   const searchParams = new URLSearchParams(window.location.search);
   const planId = searchParams.get('planId');
+  const priceId = searchParams.get('priceId');
   const billingPeriod = searchParams.get('billingPeriod') || 'monthly';
 
   // Redirect if no plan selected
   useEffect(() => {
-    if (!planId) {
+    if (!planId && !priceId) {
       navigate(ROUTES.pricing);
-    } else {
-      // Simulate loading
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 1000);
     }
-  }, [planId, navigate]);
+  }, [planId, priceId, navigate]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -212,6 +136,47 @@ export default function CheckoutPage() {
       navigate(ROUTES.auth);
     }
   }, [user, navigate]);
+
+  // Get the client secret
+  useEffect(() => {
+    if (!user || (!planId && !priceId)) return;
+
+    const createPaymentIntent = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        
+        const response = await apiRequest('POST', API_ENDPOINTS.subscriptions.createSubscription, {
+          planId: planId ? parseInt(planId) : undefined,
+          priceId,
+          billingPeriod,
+        });
+        
+        const data = await response.json();
+        
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else if (data.url) {
+          // Redirect to Stripe Checkout page if returned instead of client secret
+          window.location.href = data.url;
+          return;
+        } else {
+          setError('Failed to initialize payment');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to initialize payment');
+        toast({
+          title: 'Error',
+          description: err.message || 'Failed to initialize payment',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    createPaymentIntent();
+  }, [user, planId, priceId, billingPeriod, toast]);
 
   const handlePaymentSuccess = () => {
     setSuccess(true);
@@ -266,15 +231,32 @@ export default function CheckoutPage() {
         <div className="flex justify-center py-20">
           <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" />
         </div>
-      ) : (
+      ) : error ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Error</CardTitle>
+            <CardDescription>There was a problem initializing the payment</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive">{error}</p>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => navigate('/pricing')}>
+              Return to Pricing
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : clientSecret ? (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Payment Information</CardTitle>
-              <CardDescription>Enter your card details to complete payment</CardDescription>
+              <CardDescription>Your payment is securely processed by Stripe</CardDescription>
             </CardHeader>
             <CardContent>
-              <CheckoutForm onSuccess={handlePaymentSuccess} onCancel={handleCancel} />
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <CheckoutForm onSuccess={handlePaymentSuccess} onCancel={handleCancel} />
+              </Elements>
             </CardContent>
           </Card>
 
@@ -312,7 +294,7 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

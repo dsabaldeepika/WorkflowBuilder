@@ -93,14 +93,26 @@ export default function PricingPage() {
     setLoading(plan.id);
     
     try {
-      // Directly navigate to checkout page with plan info
-      navigate(`${ROUTES.checkout}?planId=${plan.id}&billingPeriod=${billingPeriod}`);
+      const priceId = billingPeriod === "yearly" ? plan.stripePriceIdYearly : plan.stripePriceIdMonthly;
+      
+      const res = await apiRequest("POST", API_ENDPOINTS.subscriptions.createSubscription, {
+        planId: plan.id,
+        priceId,
+        billingPeriod
+      });
+      
+      const data = await res.json();
+      
+      if (data.url) {
+        window.location.href = data.url;
+      }
     } catch (error: any) {
       toast({
         title: "Checkout failed",
         description: error.message || "Something went wrong. Please try again.",
         variant: "destructive"
       });
+    } finally {
       setLoading(null);
     }
   };

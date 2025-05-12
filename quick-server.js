@@ -18,13 +18,8 @@ app.use(cors());
 // Serve static files
 app.use(express.static(path.join(__dirname)));
 
-// Serve the quick launcher as the main entry point
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'quick-launch.html'));
-});
-
 // Serve the standalone workflow page
-app.get('/direct-launch', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'direct-launch.html'));
 });
 
