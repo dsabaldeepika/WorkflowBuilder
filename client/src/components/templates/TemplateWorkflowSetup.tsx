@@ -70,410 +70,510 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   // Fetch template details
   const { data: template, isLoading: isTemplateLoading, error } = useQuery<WorkflowTemplate>({
     queryKey: ['/api/workflow/templates', templateId],
-    queryFn: async () => {
+    queryFn: () => {
       if (!templateId) return null;
       return fetch(`/api/workflow/templates/${templateId}`).then(res => res.json());
     },
     enabled: !!templateId
   });
 
+  // Extract template nodes and edges
+  const templateNodes = template?.nodes 
+    ? (typeof template.nodes === 'string' ? JSON.parse(template.nodes) : template.nodes) 
+    : [];
+    
+  const templateEdges = template?.edges 
+    ? (typeof template.edges === 'string' ? JSON.parse(template.edges) : template.edges) 
+    : [];
+
+  // Extract required credentials from the template
   useEffect(() => {
-    // Set default workflow name and description from template
     if (template) {
+      // Prepare workflow name using template name as a base
       setWorkflowName(`${template.name} Workflow`);
-      setWorkflowDescription(template.description || '');
+      setWorkflowDescription(template.description);
       
-      // Load workflow data from template
+      // Load the workflow data into the store (for the canvas preview)
       if (template.nodes && template.edges) {
         try {
-          // Parse nodes and edges if they're strings, or use directly if already objects
-          const nodes = typeof template.nodes === 'string' 
-            ? JSON.parse(template.nodes) 
-            : template.nodes;
+          loadWorkflowFromTemplate(template);
+        } catch (err) {
+          console.error('Error loading workflow template:', err);
+        }
+      }
+      
+      // Extract required credentials from node configs
+      const extractedCredentials: Record<string, string> = {};
+      
+      // Process nodes to find all credential placeholders
+      const processNodes = (nodes: any[]) => {
+        return nodes.map(node => {
+          if (!node.data?.config) return node;
           
-          const edges = typeof template.edges === 'string'
-            ? JSON.parse(template.edges)
-            : template.edges;
-            
-          loadWorkflowFromTemplate(nodes, edges);
-          
-          // Extract credential fields needed
-          const requiredCredentials: Record<string, string> = {};
-          nodes.forEach((node: any) => {
-            if (node.data?.config) {
-              Object.entries(node.data.config).forEach(([key, value]) => {
-                if (typeof value === 'string' && value.includes('${')) {
-                  // Extract the credential name from ${credential_name}
-                  const match = value.match(/\${([^}]+)}/);
-                  if (match && match[1]) {
-                    requiredCredentials[match[1]] = '';
-                  }
+          // Check if config contains credential placeholders
+          Object.entries(node.data.config).forEach(([key, value]) => {
+            if (typeof value === 'string' && value.includes('${')) {
+              // Extract credential name from placeholder pattern ${CREDENTIAL_NAME}
+              const match = value.match(/\${([^}]+)}/);
+              if (match && match[1]) {
+                const credentialName = match[1];
+                // Add to credentials if not already present
+                if (!extractedCredentials[credentialName]) {
+                  extractedCredentials[credentialName] = '';
                 }
-              });
+              }
             }
           });
           
-          setCredentials(requiredCredentials);
-        } catch (error) {
-          console.error('Error parsing template data:', error);
-          toast({
-            title: "Error loading template",
-            description: "Failed to load the workflow template data.",
-            variant: "destructive"
-          });
-        }
-      }
+          return node;
+        });
+      };
+      
+      // Extract credentials
+      const updatedNodes = processNodes(templateNodes);
+      
+      // Set the extracted credentials
+      setCredentials(extractedCredentials);
+      
+      // Check if credentials are complete (no credentials needed = complete)
+      setCredentialsComplete(Object.keys(extractedCredentials).length === 0);
     }
-  }, [template, loadWorkflowFromTemplate, toast]);
-
-  // Check if all credentials are filled
+  }, [template, loadWorkflowFromTemplate]);
+  
+  // Update credentialsComplete status whenever credentials change
   useEffect(() => {
-    const allFilled = Object.values(credentials).every(value => value.trim() !== '');
-    setCredentialsComplete(allFilled);
+    const allFilled = Object.values(credentials).every(val => val.trim() !== '');
+    setCredentialsComplete(Object.keys(credentials).length === 0 || allFilled);
   }, [credentials]);
-
+  
+  // Handle credential input changes
   const handleCredentialChange = (key: string, value: string) => {
     setCredentials(prev => ({
       ...prev,
       [key]: value
     }));
   };
-
-  const applyCredentialsToWorkflow = () => {
-    const updatedNodes = nodes.map(node => {
-      if (!node.data?.config) return node;
-      
-      const updatedConfig = { ...node.data.config };
-      
-      Object.entries(updatedConfig).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.includes('${')) {
-          // Replace all ${credential_name} with actual values
-          Object.entries(credentials).forEach(([credKey, credValue]) => {
-            const regex = new RegExp(`\\$\\{${credKey}\\}`, 'g');
-            updatedConfig[key] = (updatedConfig[key] as string).replace(regex, credValue);
-          });
-        }
-      });
-      
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          config: updatedConfig
-        }
-      };
-    });
-    
-    return updatedNodes;
-  };
-
+  
+  // Handle workflow saving
   const handleSaveWorkflow = async () => {
+    if (!template) return;
+    
     setIsLoading(true);
     
     try {
-      // Apply credentials to nodes before saving
-      const updatedNodes = applyCredentialsToWorkflow();
-      
-      // Prepare workflow params
-      const workflowParams = {
+      // Save the workflow
+      const savedWorkflow = await saveWorkflow({
         name: workflowName,
         description: workflowDescription,
-        nodes: updatedNodes, 
-        edges
-      };
-      
-      // Save workflow with updated nodes
-      await saveWorkflow(workflowParams);
-      
-      toast({
-        title: "Workflow saved!",
-        description: "Your customized workflow has been saved successfully.",
+        templateId: template.id,
+        credentials
       });
       
-      // Navigate to dashboard or workflows list
-      navigate('/');
+      toast({
+        title: "Workflow created successfully",
+        description: "Your new workflow is ready to use.",
+      });
+      
+      // Navigate to the workflow builder
+      navigate('/workflows');
     } catch (error) {
       console.error('Error saving workflow:', error);
       toast({
-        title: "Save failed",
-        description: "There was a problem saving your workflow.",
-        variant: "destructive"
+        title: "Failed to create workflow",
+        description: "There was an error creating your workflow. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isTemplateLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
-        <span className="ml-3">Loading template...</span>
-      </div>
-    );
-  }
-
-  if (error || !template) {
-    return (
-      <div className="container mx-auto p-8 text-center">
-        <Alert variant="destructive" className="mb-6">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            Failed to load the template. It may not exist or there was a server error.
-          </AlertDescription>
-        </Alert>
-        <Button asChild variant="outline">
-          <Link to="/templates">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Templates
-          </Link>
-        </Button>
-      </div>
-    );
-  }
-
-  // Parse or use node data for visualization
-  const templateNodes = template.nodes 
-    ? (typeof template.nodes === 'string' ? JSON.parse(template.nodes) : template.nodes) 
-    : [];
-  const templateEdges = template.edges 
-    ? (typeof template.edges === 'string' ? JSON.parse(template.edges) : template.edges) 
-    : [];
+  // Calculate progress percentage for progress bar
+  const calculateProgress = () => {
+    let progress = 30; // Start with 30% for viewing the template
+    
+    if (workflowName.trim().length > 0) {
+      progress += 20; // Add 20% for naming the workflow
+    }
+    
+    if (credentialsComplete) {
+      progress += 50; // Add remaining 50% when credentials are complete
+    } else if (Object.keys(credentials).length > 0) {
+      // Calculate partial progress based on filled credentials
+      const filledCount = Object.values(credentials).filter(v => v.trim().length > 0).length;
+      const totalCount = Object.keys(credentials).length;
+      if (totalCount > 0) {
+        progress += Math.floor((filledCount / totalCount) * 40); // Up to 40% for partial credential completion
+      }
+    } else {
+      // No credentials required, so add the full 50%
+      progress += 50;
+    }
+    
+    return Math.min(progress, 100); // Cap at 100%
+  };
 
   return (
-    <div className="container max-w-7xl mx-auto p-4 md:p-8">
-      {/* Header with back button */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            asChild 
-            className="mb-4 md:mb-0"
-          >
-            <Link to="/templates">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50">
+      {/* Hero header with template info */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+        <div className="container mx-auto py-10 px-4">
+          <div className="flex items-center mb-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/templates')}
+              className="text-white hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Templates
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold">{template.name}</h1>
-          <p className="text-gray-600 mt-2">{template.description}</p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button 
-            variant="default" 
-            disabled={!credentialsComplete || isLoading}
-            onClick={handleSaveWorkflow}
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save & Activate
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-      
-      {/* Template metadata */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <Badge variant="secondary" className="capitalize">
-          {template.category}
-        </Badge>
-        {template.tags?.map((tag, i) => (
-          <Badge key={i} variant="outline">
-            {tag}
-          </Badge>
-        ))}
-        <Badge variant="secondary" className={
-          template.complexity === 'simple' ? 'bg-green-100 text-green-800' :
-          template.complexity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-red-100 text-red-800'
-        }>
-          {template.complexity} complexity
-        </Badge>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: Configuration */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Cog className="h-5 w-5 mr-2" />
-                Workflow Configuration
-              </CardTitle>
-              <CardDescription>
-                Customize your workflow before saving
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="workflowName">Workflow Name</Label>
-                <Input 
-                  id="workflowName"
-                  value={workflowName}
-                  onChange={(e) => setWorkflowName(e.target.value)}
-                  placeholder="Enter a name for your workflow"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="workflowDescription">Description</Label>
-                <Input 
-                  id="workflowDescription"
-                  value={workflowDescription}
-                  onChange={(e) => setWorkflowDescription(e.target.value)}
-                  placeholder="Enter a description"
-                />
-              </div>
-              
-              <Separator className="my-4" />
-              
-              {Object.keys(credentials).length > 0 ? (
-                <>
-                  <h3 className="text-md font-medium mb-2">Required Credentials</h3>
-                  
-                  <Alert className="mb-4 bg-amber-50 text-amber-800 border-amber-200">
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Credentials Required</AlertTitle>
-                    <AlertDescription>
-                      This workflow requires the following credentials to function properly.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="space-y-4">
-                    {Object.entries(credentials).map(([key, value]) => (
-                      <div key={key} className="space-y-2">
-                        <Label htmlFor={`credential-${key}`} className="flex items-center">
-                          {key.replace(/_/g, ' ')}
-                          {value.trim() !== '' && (
-                            <Check className="h-4 w-4 ml-2 text-green-500" />
-                          )}
-                        </Label>
-                        <Input
-                          id={`credential-${key}`}
-                          value={value}
-                          onChange={(e) => handleCredentialChange(key, e.target.value)}
-                          placeholder={`Enter ${key.replace(/_/g, ' ')}`}
-                          type={key.toLowerCase().includes('key') || key.toLowerCase().includes('secret') || key.toLowerCase().includes('password') ? 'password' : 'text'}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <Alert className="bg-green-50 text-green-800 border-green-200">
-                  <Check className="h-4 w-4" />
-                  <AlertTitle>No Credentials Required</AlertTitle>
-                  <AlertDescription>
-                    This workflow doesn't require any credentials and is ready to use.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full" 
-                disabled={!credentialsComplete || isLoading}
-                onClick={handleSaveWorkflow}
-              >
-                {!credentialsComplete ? 'Fill in all credentials to continue' : 'Save & Activate Workflow'}
-              </Button>
-            </CardFooter>
-          </Card>
+            </Button>
+          </div>
           
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Workflow className="h-5 w-5 mr-2" />
-                Workflow Components
-              </CardTitle>
-              <CardDescription>
-                This workflow contains {templateNodes.length} nodes and {templateEdges.length} connections
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Accordion type="single" collapsible className="w-full">
-                {templateNodes.map((node: any, index: number) => (
-                  <AccordionItem key={index} value={`node-${index}`}>
-                    <AccordionTrigger className="text-sm font-medium">
-                      {node.data?.label || node.id}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="text-sm space-y-2 text-muted-foreground">
-                        <div><span className="font-medium text-foreground">Type:</span> {node.type}</div>
-                        {node.data?.service && (
-                          <div><span className="font-medium text-foreground">Service:</span> {node.data.service}</div>
-                        )}
-                        {node.data?.event && (
-                          <div><span className="font-medium text-foreground">Event:</span> {node.data.event}</div>
-                        )}
-                        {node.data?.action && (
-                          <div><span className="font-medium text-foreground">Action:</span> {node.data.action}</div>
-                        )}
-                        {node.data?.config && Object.keys(node.data.config).length > 0 && (
-                          <div>
-                            <span className="font-medium text-foreground">Configuration:</span>
-                            <ul className="pl-4 mt-1 space-y-1">
-                              {Object.entries(node.data.config).map(([key, value], i) => (
-                                <li key={i}>
-                                  {key}: {typeof value === 'string' && value.includes('${') ? (
-                                    <span className="text-amber-600">(Requires credential)</span>
-                                  ) : (
-                                    <span className="text-gray-600">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+          {/* Loading, Error, or Template Not Found States */}
+          {isTemplateLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-lg font-medium text-blue-100">Loading amazing automation template...</p>
+            </div>
+          ) : error ? (
+            <div className="p-6 bg-white/10 backdrop-blur-sm rounded-lg text-center max-w-2xl mx-auto">
+              <h2 className="text-xl font-semibold text-white mb-2">Failed to load template</h2>
+              <p className="text-blue-100 mb-4">We encountered an error while loading the template details. Please try again.</p>
+              <Button onClick={() => navigate('/templates')} variant="outline" className="border-white/30 text-white hover:bg-white/20">
+                Return to Templates
+              </Button>
+            </div>
+          ) : !template ? (
+            <div className="p-6 bg-white/10 backdrop-blur-sm rounded-lg text-center max-w-2xl mx-auto">
+              <h2 className="text-xl font-semibold text-white mb-2">Template not found</h2>
+              <p className="text-blue-100 mb-4">We couldn't find the template you're looking for. Please select another template.</p>
+              <Button onClick={() => navigate('/templates')} variant="outline" className="border-white/30 text-white hover:bg-white/20">
+                Browse Templates
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center max-w-3xl mx-auto">
+              <h1 className="text-3xl md:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">
+                {template.name}
+              </h1>
+              <p className="text-lg text-blue-100 mb-6 max-w-2xl mx-auto">
+                {template.description}
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 mb-8">
+                {template.tags?.map((tag, i) => (
+                  <Badge key={i} className="bg-white/20 hover:bg-white/30 text-white border-none">
+                    {tag}
+                  </Badge>
                 ))}
-              </Accordion>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          )}
         </div>
-        
-        {/* Right column: Workflow Canvas */}
-        <div className="lg:col-span-2">
-          <Card className="h-[600px] flex flex-col">
-            <CardHeader className="p-4 pb-0">
-              <CardTitle className="text-lg">Workflow Preview</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 flex-grow">
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 h-full flex flex-col justify-center items-center">
-                <img 
-                  src={template.coverImage || getTemplatePreviewImage(template)}
-                  alt={`${template.name} workflow preview`}
-                  className="max-w-full object-contain rounded mb-4"
-                  style={{ maxHeight: '300px' }}
-                  onError={(e) => {
-                    // Fallback to placeholder image if loading fails
-                    const target = e.target as HTMLImageElement;
-                    target.src = defaultTemplatePreview;
-                  }}
-                />
-                <div className="text-center mt-4">
-                  <h3 className="font-medium">Workflow Structure</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {templateNodes.length} nodes · {templateEdges.length} connections
-                  </p>
+      </div>
+
+      {/* Main content */}
+      {template && !isTemplateLoading && !error && (
+        <div className="container mx-auto py-8 px-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Setup progress indicator */}
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-semibold text-gray-800">Setup Progress</h2>
+                <Badge className={credentialsComplete ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>
+                  {credentialsComplete ? "Ready to Launch" : "Configuration Needed"}
+                </Badge>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 h-2.5 rounded-full transition-all duration-500 ease-in-out" 
+                  style={{ width: `${calculateProgress()}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left column: Workflow visualization */}
+              <div className="lg:col-span-2 order-2 lg:order-1">
+                <div className="mb-8">
+                  <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                    <div className="p-6 bg-gradient-to-r from-indigo-50 to-blue-50">
+                      <h2 className="text-2xl font-bold text-gray-800 mb-2">Workflow Visualization</h2>
+                      <p className="text-gray-600 mb-6">See how data flows between services in this automation</p>
+                      
+                      <div className="bg-white rounded-lg border border-gray-100 shadow-inner p-6 flex flex-col justify-center items-center">
+                        <img 
+                          src={template.coverImage || getTemplatePreviewImage(template)}
+                          alt={`${template.name} workflow preview`}
+                          className="max-w-full object-contain rounded mb-6"
+                          style={{ maxHeight: '320px' }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = defaultTemplatePreview;
+                          }}
+                        />
+                        <div className="text-center">
+                          <div className="flex items-center justify-center gap-4 mb-4">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                              <span className="text-sm text-gray-600">Trigger</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                              <span className="text-sm text-gray-600">Action</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                              <span className="text-sm text-gray-600">Logic</span>
+                            </div>
+                          </div>
+                          <p className="text-gray-600">
+                            <span className="font-semibold">{templateNodes.length} nodes</span> · <span className="font-semibold">{templateEdges.length} connections</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 border-t border-gray-100">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-800">How It Works</h3>
+                      <div className="space-y-6">
+                        {templateNodes.map((node: any, index: number) => (
+                          <div key={index} className="flex gap-4">
+                            <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-800">{node.data?.label || node.id}</h4>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {node.data?.service && `Service: ${node.data.service}`}
+                                {node.data?.event && ` • Event: ${node.data.event}`}
+                                {node.data?.action && ` • Action: ${node.data.action}`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                  <div className="p-6">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Component Details</h2>
+                    <p className="text-gray-600 mb-6">Technical details of each workflow component</p>
+                    
+                    <Accordion type="single" collapsible className="w-full">
+                      {templateNodes.map((node: any, index: number) => (
+                        <AccordionItem key={index} value={`node-${index}`} className="border-b border-gray-100">
+                          <AccordionTrigger className="py-4 text-gray-800 hover:text-indigo-600 hover:no-underline">
+                            {node.data?.label || node.id}
+                          </AccordionTrigger>
+                          <AccordionContent className="bg-gray-50 p-4 rounded-lg">
+                            <div className="space-y-3 text-sm">
+                              <div className="flex">
+                                <span className="font-medium w-32 text-gray-700">Type:</span> 
+                                <span className="text-gray-600">{node.type}</span>
+                              </div>
+                              {node.data?.service && (
+                                <div className="flex">
+                                  <span className="font-medium w-32 text-gray-700">Service:</span> 
+                                  <span className="text-gray-600">{node.data.service}</span>
+                                </div>
+                              )}
+                              {node.data?.event && (
+                                <div className="flex">
+                                  <span className="font-medium w-32 text-gray-700">Event:</span> 
+                                  <span className="text-gray-600">{node.data.event}</span>
+                                </div>
+                              )}
+                              {node.data?.action && (
+                                <div className="flex">
+                                  <span className="font-medium w-32 text-gray-700">Action:</span> 
+                                  <span className="text-gray-600">{node.data.action}</span>
+                                </div>
+                              )}
+                              
+                              {node.data?.config && Object.keys(node.data.config).length > 0 && (
+                                <div>
+                                  <span className="font-medium text-gray-700 block mb-2">Configuration:</span>
+                                  <div className="bg-white p-3 border border-gray-200 rounded-md">
+                                    <ul className="space-y-2">
+                                      {Object.entries(node.data.config).map(([key, value], i) => (
+                                        <li key={i} className="flex flex-wrap">
+                                          <span className="font-medium text-gray-700 mr-2">{key}:</span>
+                                          {typeof value === 'string' && value.includes('${') ? (
+                                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
+                                              Requires credential
+                                            </Badge>
+                                          ) : (
+                                            <code className="text-xs bg-gray-100 p-1 rounded text-gray-700">
+                                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                            </code>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              
+              {/* Right column: Configuration form */}
+              <div className="order-1 lg:order-2">
+                <div className="sticky top-4 space-y-6">
+                  <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                    <div className="p-6">
+                      <h2 className="text-xl font-bold text-gray-800 mb-4">Setup Your Workflow</h2>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="workflow-name" className="text-gray-700">Workflow Name</Label>
+                          <Input
+                            id="workflow-name"
+                            value={workflowName}
+                            onChange={(e) => setWorkflowName(e.target.value)}
+                            placeholder="Enter workflow name"
+                            className="mt-1 border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="workflow-description" className="text-gray-700">Description (optional)</Label>
+                          <Input
+                            id="workflow-description"
+                            value={workflowDescription}
+                            onChange={(e) => setWorkflowDescription(e.target.value)}
+                            placeholder="Enter workflow description"
+                            className="mt-1 border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-800">
+                          Connection Details
+                        </h2>
+                        <Badge className={Object.keys(credentials).length > 0 ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
+                          {Object.keys(credentials).length > 0 ? "Credentials Needed" : "No Credentials Required"}
+                        </Badge>
+                      </div>
+                      
+                      {Object.keys(credentials).length > 0 ? (
+                        <>
+                          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded mb-6">
+                            <h3 className="text-indigo-800 font-medium mb-1 flex items-center">
+                              <Info className="h-4 w-4 mr-2" />
+                              Secure Connection
+                            </h3>
+                            <p className="text-sm text-indigo-700">
+                              Your credentials are securely encrypted and only used to connect your services.
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-6">
+                            {Object.entries(credentials).map(([key, value]) => (
+                              <div key={key}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <Label htmlFor={`credential-${key}`} className="text-gray-700 flex items-center">
+                                    {key.replace(/_/g, ' ')}
+                                  </Label>
+                                  {value.trim() !== '' ? (
+                                    <Badge className="bg-green-100 text-green-800 flex items-center">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Provided
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-amber-100 text-amber-800">Required</Badge>
+                                  )}
+                                </div>
+                                <Input
+                                  id={`credential-${key}`}
+                                  value={value}
+                                  onChange={(e) => handleCredentialChange(key, e.target.value)}
+                                  placeholder={`Enter ${key.replace(/_/g, ' ')}`}
+                                  type={key.toLowerCase().includes('key') || key.toLowerCase().includes('secret') || key.toLowerCase().includes('password') ? 'password' : 'text'}
+                                  className={`border-gray-300 ${value.trim() !== '' ? 'border-green-300 bg-green-50' : ''}`}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {key.toLowerCase().includes('api') ? 
+                                    "API key from your account settings" : 
+                                    key.toLowerCase().includes('token') ? 
+                                      "Authentication token for secure access" : 
+                                      "Required for connection"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                          <h3 className="text-green-800 font-medium mb-1 flex items-center">
+                            <Check className="h-4 w-4 mr-2" />
+                            Ready to Go
+                          </h3>
+                          <p className="text-sm text-green-700">
+                            This workflow is ready to use without any additional credentials.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                      <Button 
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md" 
+                        disabled={!credentialsComplete || isLoading}
+                        onClick={handleSaveWorkflow}
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                            Creating Workflow...
+                          </>
+                        ) : !credentialsComplete ? (
+                          'Complete Required Fields'
+                        ) : (
+                          'Create & Activate Workflow'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Quick help section */}
+                  <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-md overflow-hidden text-white">
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold mb-3">Need Help?</h3>
+                      <p className="mb-4 text-blue-100">
+                        Confused about where to find your credentials or how to configure this workflow?
+                      </p>
+                      <div className="space-y-3">
+                        <a href="#" className="flex items-center text-white hover:text-blue-200 transition-colors">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Integration Guide
+                        </a>
+                        <a href="#" className="flex items-center text-white hover:text-blue-200 transition-colors">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Get API Keys for {template.name}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
