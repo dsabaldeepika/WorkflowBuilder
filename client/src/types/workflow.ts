@@ -112,6 +112,8 @@ export interface NodeTemplate {
     required?: boolean;
     allowedConnections?: string[];
   }>;
+  // Group template flag - indicates if this template contains multiple nodes
+  isGroupTemplate?: boolean;
 }
 
 // Workflow execution definitions

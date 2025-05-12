@@ -712,9 +712,100 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
+  saveCurrentNodesAsTemplate: (name: string, description: string, category: NodeCategory) => {
+    const { nodes } = get();
+    
+    if (nodes.length === 0) {
+      console.error('No nodes to save as template');
+      return null;
+    }
+    
+    // Get the configuration from the current nodes
+    const nodeConfigurations = nodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      data: {
+        label: node.data.label,
+        category: node.data.category,
+        nodeType: node.data.nodeType,
+        icon: node.data.icon,
+        description: node.data.description,
+        configuration: node.data.configuration,
+        color: node.data.color,
+        backgroundColor: node.data.backgroundColor,
+        borderColor: node.data.borderColor,
+        theme: node.data.theme,
+        colorLabel: node.data.colorLabel,
+      },
+      position: {
+        x: node.position.x,
+        y: node.position.y
+      }
+    }));
+    
+    const template: NodeTemplate = {
+      id: `custom-${Date.now()}`,
+      name,
+      description,
+      category,
+      nodeType: 'action', // Default
+      icon: 'settings',
+      configuration: {
+        nodes: nodeConfigurations,
+        nodesCount: nodes.length
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isFavorite: false,
+      isCustom: true,
+      isGroupTemplate: true // Flag to identify group templates
+    };
+    
+    // Add the template to the store
+    get().addCustomTemplate(template);
+    return template;
+  },
+  
   applyNodeTemplate: (template) => {
     const { nodes, addNode } = get();
     
+    // Check if this is a group template containing multiple nodes
+    if (template.isGroupTemplate && template.configuration.nodes) {
+      const nodeConfigs = template.configuration.nodes;
+      
+      // Calculate offset to position the group properly
+      let offsetX = 0;
+      let offsetY = 0;
+      
+      // If there are existing nodes, position relative to them
+      if (nodes.length > 0) {
+        const lastNode = nodes[nodes.length - 1];
+        offsetX = lastNode.position.x + 300;
+        offsetY = lastNode.position.y;
+      }
+      
+      // Create all nodes in the group
+      nodeConfigs.forEach(nodeConfig => {
+        const newNode: Node<NodeData> = {
+          id: `node-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          type: nodeConfig.type as string,
+          position: {
+            x: nodeConfig.position.x + offsetX,
+            y: nodeConfig.position.y + offsetY
+          },
+          data: {
+            ...nodeConfig.data,
+            label: nodeConfig.data.label,
+          }
+        };
+        
+        addNode(newNode);
+      });
+      
+      return;
+    }
+    
+    // Handle single node templates (existing logic)
     // Create a position that doesn't overlap with existing nodes
     const position = { 
       x: Math.random() * 300 + 100, 

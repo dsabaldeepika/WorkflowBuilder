@@ -32,10 +32,14 @@ import {
   Star,
   Copy,
   Bookmark,
-  Clock
+  Clock,
+  Package,
+  Layers,
+  LayoutTemplate
 } from 'lucide-react';
 import { NodeType, NodeCategory, NodeTemplate } from '@/types/workflow';
 import { useWorkflowStore } from '@/store/useWorkflowStore';
+import { NodeTemplatePresets } from './NodeTemplatePresets';
 
 interface CustomNodeTemplatesProps {
   isOpen: boolean;
@@ -52,6 +56,7 @@ export function CustomNodeTemplates({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<NodeTemplate | null>(null);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [isSavingWorkflowAsTemplate, setIsSavingWorkflowAsTemplate] = useState(false);
   const [newTemplate, setNewTemplate] = useState<Partial<NodeTemplate>>({
     name: '',
     description: '',
@@ -59,15 +64,63 @@ export function CustomNodeTemplates({
     nodeType: 'action',
     configuration: {}
   });
+  const [workflowTemplate, setWorkflowTemplate] = useState({
+    name: '',
+    description: '',
+    category: 'custom' as NodeCategory
+  });
   
   // Access templates from store
   const { 
+    nodes,
     customTemplates,
     addCustomTemplate,
     removeCustomTemplate,
     updateCustomTemplate,
-    duplicateCustomTemplate
+    duplicateCustomTemplate,
+    saveCurrentNodesAsTemplate
   } = useWorkflowStore();
+  
+  // Handler for saving current workflow as template
+  const handleSaveWorkflowAsTemplate = () => {
+    if (!workflowTemplate.name || !workflowTemplate.description) {
+      toast({
+        title: 'Error',
+        description: 'Name and description are required',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    if (nodes.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'There are no nodes in the current workflow to save',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    const template = saveCurrentNodesAsTemplate(
+      workflowTemplate.name,
+      workflowTemplate.description,
+      workflowTemplate.category
+    );
+    
+    if (template) {
+      setIsSavingWorkflowAsTemplate(false);
+      setWorkflowTemplate({
+        name: '',
+        description: '',
+        category: 'custom' as NodeCategory
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Workflow saved as template successfully'
+      });
+    }
+  };
   
   // Filtered templates based on search
   const filteredTemplates = customTemplates.filter(template => 
@@ -181,20 +234,31 @@ export function CustomNodeTemplates({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsCreatingTemplate(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Template
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsSavingWorkflowAsTemplate(true)}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Save Current
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreatingTemplate(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Template
+            </Button>
+          </div>
         </div>
         
         <Tabs defaultValue="all">
-          <TabsList className="grid grid-cols-3 mb-4">
+          <TabsList className="grid grid-cols-5 mb-4">
             <TabsTrigger value="all">All Templates</TabsTrigger>
             <TabsTrigger value="favorites">Favorites</TabsTrigger>
-            <TabsTrigger value="recent">Recently Used</TabsTrigger>
+            <TabsTrigger value="recent">Recent</TabsTrigger>
+            <TabsTrigger value="presets">Presets</TabsTrigger>
+            <TabsTrigger value="groups">Node Groups</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="h-full">
