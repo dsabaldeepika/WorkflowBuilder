@@ -257,8 +257,11 @@ export function TemplatePreviewModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => onUseTemplate(template)}>
-            Use This Template
+          <Button 
+            onClick={() => onUseTemplate(template)}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          >
+            Configure & Use Template
           </Button>
         </DialogFooter>
       </DialogContent>
