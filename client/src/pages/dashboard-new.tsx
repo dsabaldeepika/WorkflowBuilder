@@ -155,6 +155,19 @@ export default function Dashboard() {
           <Card className="col-span-1 hover:shadow-md transition-shadow">
             <CardContent className="p-6 flex flex-col items-center text-center">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Activity className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-medium">Health Dashboard</h3>
+              <p className="text-muted-foreground text-sm mt-1 mb-4">Monitor workflow performance</p>
+              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/health-dashboard'}>
+                View Metrics
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="col-span-1 hover:shadow-md transition-shadow">
+            <CardContent className="p-6 flex flex-col items-center text-center">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Zap className="h-6 w-6 text-primary" />
               </div>
               <h3 className="font-medium">State Animations</h3>
@@ -165,6 +178,29 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Health Monitoring Feature Highlight */}
+        <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+              <div className="mb-4 md:mb-0">
+                <h2 className="text-xl font-bold text-blue-800 flex items-center">
+                  <Activity className="mr-2 h-5 w-5 text-blue-600" />
+                  New Feature: Workflow Health Monitoring
+                </h2>
+                <p className="text-blue-600 mt-1">
+                  Track performance metrics, identify bottlenecks, and optimize your workflows with our new health dashboard
+                </p>
+              </div>
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => window.location.href = '/health-dashboard'}
+              >
+                Explore Health Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Main content tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

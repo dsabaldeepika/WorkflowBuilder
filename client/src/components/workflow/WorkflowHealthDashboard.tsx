@@ -65,7 +65,12 @@ const WorkflowHealthDashboard: React.FC = () => {
   const fetchHealthData = async () => {
     try {
       setIsRefreshing(true);
-      const response = await apiRequest('GET', '/api/health-monitoring-data');
+      const response = await fetch('/api/health-monitoring-data', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       const healthData = await response.json();
       setData({
         ...mockExecutionData, // Fallback for any missing properties
