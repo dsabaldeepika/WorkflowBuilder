@@ -261,10 +261,14 @@ export const StateChangeAnimation: React.FC<StateChangeAnimationProps> = ({
     <AnimatePresence mode="wait">
       <motion.div
         key={currentState}
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 10, opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        initial={{ y: -10, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 10, opacity: 0, scale: 0.9 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 300, 
+          damping: 20 
+        }}
         className={className}
       >
         <WorkflowStateIndicator 
@@ -359,7 +363,11 @@ export const WorkflowStateProgressBar: React.FC<WorkflowStateProgressBarProps> =
   };
   
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn(
+      "space-y-1 relative", 
+      isCompleted && "animate-success-particles",
+      className
+    )}>
       <div className="flex justify-between items-center">
         <div className="flex items-center">
           <StateChangeAnimation state={state} size="sm" />
@@ -407,7 +415,8 @@ export const WorkflowStateProgressBar: React.FC<WorkflowStateProgressBarProps> =
           className={cn(
             "h-full rounded-full relative z-10", 
             config.bgColor,
-            progress === 100 && "shadow-glow"
+            state === 'completed' && progress === 100 && "shadow-glow",
+            state === 'failed' && "bg-rose-500"
           )}
           initial={{ width: '0%' }}
           animate={{ width: `${progress}%` }}
@@ -499,6 +508,8 @@ export const WorkflowStateBadge: React.FC<WorkflowStateBadgeProps> = ({
         className={cn(
           "transition-all duration-300 flex items-center gap-1 px-2.5 py-0.5",
           (state === 'running' || state === 'retrying') && "animate-pulse-subtle",
+          state === 'failed' && "animate-error-shake",
+          state === 'paused' && "animate-warning-flash border",
           className
         )}
       >
