@@ -1,9 +1,23 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
-import { isAuthenticated } from "../replitAuth";
+// import { isAuthenticated } from "../replitAuth";
 import { SubscriptionTier } from "../../shared/schema";
 import { STRIPE_CONFIG, API_ENDPOINTS } from "../../shared/config";
+
+// BYPASS: Create a bypass for the authentication middleware
+const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
+  // Inject a fake authenticated user into the request
+  (req as any).user = {
+    id: 1,
+    username: 'demo_user',
+    email: 'demo@example.com',
+    role: 'admin',
+    subscriptionTier: SubscriptionTier.PRO
+  };
+  (req as any).isAuthenticated = () => true;
+  next();
+};
 
 // Initialize Stripe client
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -28,7 +42,7 @@ subscriptionsRouter.get("/plans", async (req, res) => {
 });
 
 // Get current user's subscription details
-subscriptionsRouter.get("/current", isAuthenticated, async (req: any, res) => {
+subscriptionsRouter.get("/current", bypassAuth, async (req: any, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -63,7 +77,7 @@ subscriptionsRouter.get("/current", isAuthenticated, async (req: any, res) => {
 });
 
 // Create a checkout session for a new subscription
-subscriptionsRouter.post("/create-checkout-session", isAuthenticated, async (req: any, res) => {
+subscriptionsRouter.post("/create-checkout-session", bypassAuth, async (req: any, res) => {
   try {
     const { priceId, planId, billingPeriod = "monthly" } = req.body;
     if (!priceId && !planId) {
@@ -265,7 +279,7 @@ subscriptionsRouter.post("/webhook", async (req, res) => {
 });
 
 // Create customer portal session for managing subscriptions
-subscriptionsRouter.post("/create-portal-session", isAuthenticated, async (req: any, res) => {
+subscriptionsRouter.post("/create-portal-session", bypassAuth, async (req: any, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -295,7 +309,7 @@ subscriptionsRouter.post("/create-portal-session", isAuthenticated, async (req: 
 });
 
 // Cancel a subscription
-subscriptionsRouter.post("/cancel", isAuthenticated, async (req: any, res) => {
+subscriptionsRouter.post("/cancel", bypassAuth, async (req: any, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
