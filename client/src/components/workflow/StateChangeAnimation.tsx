@@ -105,7 +105,8 @@ export const stateConfig = {
     bgColor: 'bg-slate-100',
     borderColor: 'border-slate-200',
     label: 'Idle',
-    description: 'Waiting to start'
+    description: 'Waiting to start',
+    shouldAnimate: false
   },
   waiting: {
     icon: AlertCircle,
@@ -113,7 +114,8 @@ export const stateConfig = {
     bgColor: 'bg-orange-100',
     borderColor: 'border-orange-200',
     label: 'Requires Setup',
-    description: 'Configuration needed'
+    description: 'Configuration needed',
+    shouldAnimate: false
   },
   starting: {
     icon: PlayCircle,
@@ -121,13 +123,15 @@ export const stateConfig = {
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-200',
     label: 'Starting',
-    description: 'Initializing workflow'
+    description: 'Initializing workflow',
+    shouldAnimate: false
   },
   running: {
     icon: Loader2,
     color: 'text-blue-500',
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-200',
+    shouldAnimate: true,
     label: 'Running',
     description: 'Workflow in progress',
     animate: true
@@ -208,7 +212,7 @@ export const WorkflowStateIndicator: React.FC<WorkflowStateIndicatorProps> = ({
           className={cn(
             sizeClasses[size],
             config.color,
-            (config.animate && animate) && "animate-spin"
+            (animate) && "animate-spin"
           )} 
         />
       </motion.div>
