@@ -120,7 +120,17 @@ export async function setupAuth(app: Express) {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
+      failureMessage: true,
     })(req, res, next);
+  });
+  
+  // Add a debug route to check authentication status
+  app.get("/api/auth/status", (req, res) => {
+    res.json({
+      isAuthenticated: req.isAuthenticated(),
+      user: req.user ? { id: (req.user as any).claims?.sub } : null,
+      session: req.session ? { id: req.sessionID } : null,
+    });
   });
 
   app.get("/api/logout", (req, res) => {
