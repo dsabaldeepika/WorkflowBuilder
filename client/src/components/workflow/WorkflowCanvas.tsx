@@ -45,15 +45,24 @@ const customEdgeTypes = {
   default: ValidatedEdge,
 };
 
-export function WorkflowCanvas() {
+// Add readOnly prop to support template preview mode
+interface WorkflowCanvasProps {
+  readOnly?: boolean;
+}
+
+export function WorkflowCanvas({ readOnly = false }: WorkflowCanvasProps) {
   return (
     <ReactFlowProvider>
-      <WorkflowCanvasContent />
+      <WorkflowCanvasContent readOnly={readOnly} />
     </ReactFlowProvider>
   );
 }
 
-function WorkflowCanvasContent() {
+interface WorkflowCanvasContentProps {
+  readOnly?: boolean;
+}
+
+function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps) {
   // State for onboarding and guided tour
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
@@ -373,13 +382,13 @@ function WorkflowCanvasContent() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
+          onNodesChange={readOnly ? undefined : onNodesChange}
+          onEdgesChange={readOnly ? undefined : onEdgesChange}
+          onConnect={readOnly ? undefined : onConnect}
           nodeTypes={customNodeTypes}
           edgeTypes={customEdgeTypes}
-          onNodeClick={onNodeClick}
-          onEdgeClick={onEdgeClick}
+          onNodeClick={readOnly ? undefined : onNodeClick}
+          onEdgeClick={readOnly ? undefined : onEdgeClick}
           connectionLineType={ConnectionLineType.SmoothStep}
           fitView
           minZoom={0.2}
@@ -388,6 +397,13 @@ function WorkflowCanvasContent() {
           snapToGrid
           snapGrid={[20, 20]}
           className="workflow-canvas"
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
+          elementsSelectable={!readOnly}
+          zoomOnScroll={true}
+          panOnScroll={true}
+          zoomOnPinch={true}
+          panOnDrag={true}
         >
           <Background />
           <Controls />
@@ -421,29 +437,31 @@ function WorkflowCanvasContent() {
             </div>
           </Panel>
           
-          {/* Add workflow controls */}
-          <WorkflowControls 
-            onNodeStateChange={handleNodeStateChange}
-            onSave={async () => {
-              try {
-                await saveWorkflow();
-                // Toast message is now handled in the saveWorkflow function
-              } catch (error) {
-                console.error('Error saving workflow', error);
-                // Error handling is also done in the saveWorkflow function
-              }
-            }}
-            onExport={handleExport}
-            onImport={handleImport}
-            schedule={schedule}
-            onScheduleChange={updateSchedule}
-            subscriptionTier="PROFESSIONAL"
-            maxRunsPerMonth={1000}
-            currentRunCount={42}
-          />
+          {/* Add workflow controls - hide in readOnly mode */}
+          {!readOnly && (
+            <WorkflowControls 
+              onNodeStateChange={handleNodeStateChange}
+              onSave={async () => {
+                try {
+                  await saveWorkflow();
+                  // Toast message is now handled in the saveWorkflow function
+                } catch (error) {
+                  console.error('Error saving workflow', error);
+                  // Error handling is also done in the saveWorkflow function
+                }
+              }}
+              onExport={handleExport}
+              onImport={handleImport}
+              schedule={schedule}
+              onScheduleChange={updateSchedule}
+              subscriptionTier="PROFESSIONAL"
+              maxRunsPerMonth={1000}
+              currentRunCount={42}
+            />
+          )}
           
-          {/* Onboarding guide */}
-          {showGuide && onboardingSteps.length > 0 && (
+          {/* Onboarding guide - hide in readOnly mode */}
+          {!readOnly && showGuide && onboardingSteps.length > 0 && (
             <OnboardingGuide
               steps={onboardingSteps}
               currentStepIndex={currentStepIndex}
@@ -452,23 +470,24 @@ function WorkflowCanvasContent() {
             />
           )}
           
-          {/* Workflow Suggestions */}
-          <WorkflowSuggestions 
-            nodes={nodes}
-            edges={edges}
-            onAddNode={(nodeType: string) => {
-              setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
-              setShowNodePicker(true);
-            }}
-            onConnect={(sourceId: string, targetId: string) => {
-              // Find the source and target nodes
-              const source = nodes.find(node => node.id === sourceId);
-              const target = nodes.find(node => node.id === targetId);
-              
-              if (source && target) {
-                onConnect({
-                  source: sourceId,
-                  target: targetId,
+          {/* Workflow Suggestions - hide in readOnly mode */}
+          {!readOnly && (
+            <WorkflowSuggestions 
+              nodes={nodes}
+              edges={edges}
+              onAddNode={(nodeType: string) => {
+                setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
+                setShowNodePicker(true);
+              }}
+              onConnect={(sourceId: string, targetId: string) => {
+                // Find the source and target nodes
+                const source = nodes.find(node => node.id === sourceId);
+                const target = nodes.find(node => node.id === targetId);
+                
+                if (source && target) {
+                  onConnect({
+                    source: sourceId,
+                    target: targetId,
                   sourceHandle: 'output',
                   targetHandle: 'input',
                 });
