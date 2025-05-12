@@ -200,7 +200,7 @@ export const WorkflowStateIndicator: React.FC<WorkflowStateIndicatorProps> = ({
           className={cn(
             sizeClasses[size],
             config.color,
-            (config.shouldAnimate && animate) && "animate-spin"
+            (animate && (state === 'running' || state === 'retrying')) && "animate-spin"
           )} 
         />
       </motion.div>
