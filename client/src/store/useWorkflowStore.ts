@@ -785,7 +785,7 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
       }
       
       // Create all nodes in the group
-      nodeConfigs.forEach(nodeConfig => {
+      nodeConfigs.forEach((nodeConfig: any) => {
         const newNode: Node<NodeData> = {
           id: `node-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           type: nodeConfig.type as string,

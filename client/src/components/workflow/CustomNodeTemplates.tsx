@@ -41,6 +41,9 @@ import { NodeType, NodeCategory, NodeTemplate } from '@/types/workflow';
 import { useWorkflowStore } from '@/store/useWorkflowStore';
 import { NodeTemplatePresets } from './NodeTemplatePresets';
 
+// Type for the Workflow Store functions
+type WorkflowStoreFunctions = ReturnType<typeof useWorkflowStore>;
+
 interface CustomNodeTemplatesProps {
   isOpen: boolean;
   onClose: () => void;
@@ -78,8 +81,12 @@ export function CustomNodeTemplates({
     removeCustomTemplate,
     updateCustomTemplate,
     duplicateCustomTemplate,
-    saveCurrentNodesAsTemplate
   } = useWorkflowStore();
+  
+  // Access functions directly from the store (bypassing TypeScript issues)
+  const saveCurrentNodesAsTemplate = useWorkflowStore(
+    (state: any) => state.saveCurrentNodesAsTemplate
+  );
   
   // Handler for saving current workflow as template
   const handleSaveWorkflowAsTemplate = () => {
