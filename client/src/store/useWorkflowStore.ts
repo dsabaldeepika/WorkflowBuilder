@@ -35,9 +35,13 @@ export type NodeData = {
   icon?: string;
   description?: string;
   configuration?: Record<string, any>;
+  config?: Record<string, any>; // Additional config field for templates
   state?: NodeState;
   optimized?: boolean;
   module?: any; // Support for module property used in some components
+  service?: string; // Service name for integrations
+  event?: string; // Event type for triggers
+  action?: string; // Action type for actions
   ports?: Array<{
     id: string;
     type: 'input' | 'output';
@@ -488,6 +492,48 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
       nodes: template.nodes,
       edges: template.edges,
       isTemplateGalleryOpen: false,
+    });
+  },
+  
+  loadWorkflowFromTemplate: (nodes, edges) => {
+    // Parse the nodes and edges if they're strings, otherwise use as-is
+    const parsedNodes = typeof nodes === 'string' ? JSON.parse(nodes) : nodes;
+    const parsedEdges = typeof edges === 'string' ? JSON.parse(edges) : edges;
+    
+    // Convert to ReactFlow node format if needed
+    const formattedNodes = parsedNodes.map((node: any) => {
+      // Make sure each node has the required ReactFlow properties
+      return {
+        ...node,
+        id: node.id,
+        type: node.type || 'default',
+        position: node.position || { x: 0, y: 0 },
+        data: {
+          ...node.data,
+          // Add any missing required properties for our node data
+          label: node.data?.label || node.id,
+          state: node.data?.state || 'default'
+        }
+      };
+    });
+    
+    // Convert to ReactFlow edge format if needed
+    const formattedEdges = parsedEdges.map((edge: any) => {
+      // Make sure each edge has the required ReactFlow properties
+      return {
+        ...edge,
+        id: edge.id || `${edge.source}-${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        // Add any other edge properties needed
+        type: edge.type || 'default'
+      };
+    });
+    
+    // Set the nodes and edges in the store
+    set({
+      nodes: formattedNodes,
+      edges: formattedEdges
     });
   },
   

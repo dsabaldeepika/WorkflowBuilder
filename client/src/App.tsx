@@ -14,6 +14,7 @@ import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
 import WorkflowMonitoring from "@/pages/workflow-monitoring";
 import HealthDashboardPage from "@/pages/health-dashboard-page";
 import TemplatesPage from "@/pages/templates-page";
+import TemplateSetupPage from "@/pages/template-setup-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
 // Temporarily disabled to fix Stripe.js loading issue
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/monitoring" component={WorkflowMonitoring} />
       <Route path="/health-dashboard" component={HealthDashboardPage} />
       <Route path={ROUTES.templates} component={TemplatesPage} />
+      <Route path="/template-setup/:id" component={TemplateSetupPage} />
       <Route path={ROUTES.pricing} component={PricingPage} />
       {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
       <Route path={ROUTES.checkout} component={PricingPage} />
