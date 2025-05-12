@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PumpFlux - Workflow Health Dashboard</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --panel-bg: #ffffff;
+      --card-bg: #ffffff;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+    }
+    
+    .card {
+      background-color: var(--panel-bg);
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border);
+    }
+    
+    .header {
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tab {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .tab.active {
+      border-bottom: 2px solid var(--primary);
+      color: var(--primary);
+    }
+    
+    .progress-bar {
+      height: 8px;
+      border-radius: 4px;
+      background-color: #e5e7eb;
+      overflow: hidden;
+    }
+    
+    .progress-value {
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+    
+    .success-progress { background-color: #10b981; }
+    .warning-progress { background-color: #f59e0b; }
+    .danger-progress { background-color: #ef4444; }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .status-dot.green { background-color: #10b981; }
+    .status-dot.yellow { background-color: #f59e0b; }
+    .status-dot.red { background-color: #ef4444; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Header -->
+  <header class="header p-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <h1 class="text-2xl font-bold flex items-center">
+        <i class="fas fa-project-diagram text-blue-500 mr-2"></i>
+        PumpFlux
+      </h1>
+      <div class="text-sm px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+        Health Dashboard
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <select class="p-2 border rounded-md text-sm">
+        <option>Last 24 Hours</option>
+        <option>Last 7 Days</option>
+        <option>Last 30 Days</option>
+        <option>Custom Range</option>
+      </select>
+      <button class="px-3 py-2 bg-blue-500 text-white rounded-md flex items-center text-sm hover:bg-blue-600">
+        <i class="fas fa-sync-alt mr-2"></i>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- Dashboard Content -->
+  <main class="container mx-auto py-6 px-4">
+    <!-- Health Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-1">Success Rate</h3>
+        <div class="flex items-center">
+          <div class="status-dot green mr-2"></div>
+          <div class="text-2xl font-bold">94%</div>
+        </div>
+        <div class="progress-bar mt-2">
+          <div class="progress-value success-progress" style="width: 94%"></div>
+        </div>
+      </div>
+
+      <div class="card p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-1">Total Executions</h3>
+        <div class="flex items-center">
+          <i class="fas fa-bolt text-gray-400 mr-2"></i>
+          <div class="text-2xl font-bold">156</div>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          142 successful / 14 failed
+        </div>
+      </div>
+
+      <div class="card p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-1">Avg. Execution Time</h3>
+        <div class="flex items-center">
+          <i class="fas fa-clock text-gray-400 mr-2"></i>
+          <div class="text-2xl font-bold">1.6s</div>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          Across all successful executions
+        </div>
+      </div>
+
+      <div class="card p-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-1">Retry Rate</h3>
+        <div class="flex items-center">
+          <i class="fas fa-redo text-gray-400 mr-2"></i>
+          <div class="text-2xl font-bold">8%</div>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          12 runs needed retries
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs for Detailed Analysis -->
+    <div class="mb-6">
+      <div class="flex border-b">
+        <div class="tab active">Error Analysis</div>
+        <div class="tab">Node Performance</div>
+        <div class="tab">Performance History</div>
+      </div>
+    </div>
+
+    <!-- Error Analysis Section -->
+    <div class="card p-6 mb-6">
+      <h2 class="text-lg font-bold mb-2">Most Frequent Errors</h2>
+      <div class="text-sm text-gray-500 mb-4">Common issues affecting workflow reliability</div>
+      
+      <div class="space-y-4">
+        <div class="flex items-start p-3 border rounded-md hover:bg-gray-50">
+          <div class="p-2 rounded-md bg-red-100 mr-3">
+            <i class="fas fa-exclamation-circle text-red-500"></i>
+          </div>
+          <div>
+            <div class="font-medium">API Rate Limit Exceeded</div>
+            <div class="text-sm text-gray-500">Occurred 5 times</div>
+            <div class="mt-2 text-sm p-2 bg-amber-50 text-amber-800 rounded-sm">
+              <span class="font-medium">Suggestion:</span> Consider implementing delay between API calls or upgrading API tier.
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start p-3 border rounded-md hover:bg-gray-50">
+          <div class="p-2 rounded-md bg-blue-100 mr-3">
+            <i class="fas fa-plug text-blue-500"></i>
+          </div>
+          <div>
+            <div class="font-medium">Connection timeout when connecting to payment API</div>
+            <div class="text-sm text-gray-500">Occurred 3 times</div>
+            <div class="mt-2 text-sm p-2 bg-amber-50 text-amber-800 rounded-sm">
+              <span class="font-medium">Suggestion:</span> Check API endpoint configuration or contact the payment provider.
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start p-3 border rounded-md hover:bg-gray-50">
+          <div class="p-2 rounded-md bg-yellow-100 mr-3">
+            <i class="fas fa-key text-yellow-500"></i>
+          </div>
+          <div>
+            <div class="font-medium">Authentication failed for Twitter API</div>
+            <div class="text-sm text-gray-500">Occurred 2 times</div>
+            <div class="mt-2 text-sm p-2 bg-amber-50 text-amber-800 rounded-sm">
+              <span class="font-medium">Suggestion:</span> Verify API credentials and permissions.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="mt-4 w-full py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+        View Full Error Log
+      </button>
+    </div>
+
+    <!-- Node Performance -->
+    <div class="card p-6 mb-6 hidden">
+      <h2 class="text-lg font-bold mb-2">Node Performance</h2>
+      <div class="text-sm text-gray-500 mb-4">Performance metrics for individual workflow nodes</div>
+      
+      <div class="space-y-6">
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">Facebook Lead Trigger</div>
+            <div class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-md">
+              1.2% errors
+            </div>
+          </div>
+          <div class="flex justify-between text-sm text-gray-500">
+            <span>Avg. execution: 0.3s</span>
+            <span>Health: Good</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-value success-progress" style="width: 98.8%"></div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">HubSpot Contact Creator</div>
+            <div class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-md">
+              7.5% errors
+            </div>
+          </div>
+          <div class="flex justify-between text-sm text-gray-500">
+            <span>Avg. execution: 1.2s</span>
+            <span>Health: Poor</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-value danger-progress" style="width: 92.5%"></div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <div class="font-medium">Email Notification</div>
+            <div class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-md">
+              2.8% errors
+            </div>
+          </div>
+          <div class="flex justify-between text-sm text-gray-500">
+            <span>Avg. execution: 0.5s</span>
+            <span>Health: Fair</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-value warning-progress" style="width: 97.2%"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="mt-4 w-full py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+        View Detailed Node Metrics
+      </button>
+    </div>
+
+    <!-- Performance History -->
+    <div class="card p-6 mb-6 hidden">
+      <h2 class="text-lg font-bold mb-2">Performance History</h2>
+      <div class="text-sm text-gray-500 mb-4">Execution time and error rate trends</div>
+      
+      <div class="h-64 flex items-center justify-center">
+        <div class="text-center text-gray-500 italic">
+          Interactive charts would be displayed here showing:
+          <ul class="list-disc list-inside text-left mt-4">
+            <li>Execution time trends over the selected time period</li>
+            <li>Error rate changes over time</li>
+            <li>Success/failure ratio changes</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-4 mt-4">
+        <button class="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 flex items-center">
+          <i class="fas fa-chart-bar mr-2"></i>
+          Bar Chart
+        </button>
+        <button class="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 flex items-center">
+          <i class="fas fa-chart-line mr-2"></i>
+          Line Chart
+        </button>
+        <button class="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 flex items-center">
+          <i class="fas fa-chart-pie mr-2"></i>
+          Pie Chart
+        </button>
+      </div>
+    </div>
+
+    <!-- Optimization Recommendations -->
+    <div class="card p-6">
+      <h2 class="text-lg font-bold mb-2 flex items-center">
+        <i class="fas fa-bolt text-blue-500 mr-2"></i>
+        Optimization Recommendations
+      </h2>
+      <div class="text-sm text-gray-500 mb-4">AI-generated suggestions to improve workflow performance</div>
+      
+      <div class="space-y-3">
+        <div class="p-3 bg-blue-50 border border-blue-100 rounded-md">
+          <div class="font-medium text-blue-700">Configure retry policies for "HubSpot Contact Creator"</div>
+          <div class="text-sm text-blue-600 mt-1">
+            This node has a high failure rate (7.5%). Adding exponential backoff retry logic could improve reliability.
+          </div>
+        </div>
+        <div class="p-3 bg-blue-50 border border-blue-100 rounded-md">
+          <div class="font-medium text-blue-700">Add rate limiting for Facebook API calls</div>
+          <div class="text-sm text-blue-600 mt-1">
+            5 failures due to "API Rate Limit Exceeded" errors. Implementing per-minute request throttling is recommended.
+          </div>
+        </div>
+        <div class="p-3 bg-blue-50 border border-blue-100 rounded-md">
+          <div class="font-medium text-blue-700">Increase timeout for external API calls</div>
+          <div class="text-sm text-blue-600 mt-1">
+            Several connection timeouts detected. Consider increasing the default timeout from 10s to 15s.
+          </div>
+        </div>
+      </div>
+
+      <button class="mt-4 w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+        Apply Recommended Optimizations
+      </button>
+    </div>
+  </main>
+
+  <script>
+    // Simple tab switching functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabs = document.querySelectorAll('.tab');
+      const contentSections = document.querySelectorAll('.card:not(:last-child)');
+      
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => {
+          // Update tab styling
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          
+          // Show the corresponding content
+          contentSections.forEach(section => section.classList.add('hidden'));
+          if (contentSections[index]) {
+            contentSections[index].classList.remove('hidden');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
