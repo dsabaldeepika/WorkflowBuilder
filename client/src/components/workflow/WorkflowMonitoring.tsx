@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { apiRequest } from '@/lib/queryClient';
+import WorkflowHealthDashboard from './WorkflowHealthDashboard';
 
 // Error types and categories from the backend
 enum ErrorCategory {
@@ -163,7 +164,7 @@ interface WorkflowMonitoringProps {
 export default function WorkflowMonitoring({ className = '' }: WorkflowMonitoringProps) {
   const [timeframe, setTimeframe] = useState<'hour' | 'day' | 'week' | 'month'>('day');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('health');
   const [isLoading, setIsLoading] = useState(false);
   const [errorLogs, setErrorLogs] = useState(mockErrorLogs);
   const [workflows, setWorkflows] = useState(mockWorkflows);
@@ -243,8 +244,9 @@ export default function WorkflowMonitoring({ className = '' }: WorkflowMonitorin
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-[400px]">
+        <TabsList className="grid grid-cols-4 w-[500px]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="health">Health Dashboard</TabsTrigger>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="errors">Error Logs</TabsTrigger>
         </TabsList>
@@ -341,6 +343,10 @@ export default function WorkflowMonitoring({ className = '' }: WorkflowMonitorin
               </Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="health">
+          <WorkflowHealthDashboard />
         </TabsContent>
         
         <TabsContent value="workflows" className="space-y-4">

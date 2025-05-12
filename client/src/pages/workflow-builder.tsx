@@ -6,7 +6,6 @@ import { TemplateGallery } from "@/components/workflow/TemplateGallery";
 import { AgentBuilder } from "@/components/workflow/AgentBuilder";
 import { CustomNodeTemplates } from "@/components/workflow/CustomNodeTemplates";
 import WorkflowMonitoring from "@/components/workflow/WorkflowMonitoring";
-import { FeatureGrid } from "@/components/FeatureGrid";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
 import { 
@@ -28,7 +27,6 @@ export default function WorkflowBuilder() {
   const [workflowName, setWorkflowName] = useState("My Workflow");
   const [activeTab, setActiveTab] = useState<string>("builder");
   const [workflowEnabled, setWorkflowEnabled] = useState(false);
-  const [featureGridExpanded, setFeatureGridExpanded] = useState(true);
   const { 
     saveWorkflow, 
     clearWorkflow, 
@@ -338,14 +336,6 @@ export default function WorkflowBuilder() {
           </div>
         </div>
       </header>
-
-      {/* Feature Grid */}
-      <div className="py-2 px-4 bg-gray-50 border-b border-gray-200">
-        <FeatureGrid 
-          expanded={featureGridExpanded} 
-          onToggleExpanded={() => setFeatureGridExpanded(!featureGridExpanded)} 
-        />
-      </div>
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">

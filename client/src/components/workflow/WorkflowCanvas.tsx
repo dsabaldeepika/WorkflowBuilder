@@ -26,6 +26,7 @@ import OnboardingGuide from './OnboardingGuide';
 import TriggerScheduleDialog, { ScheduleOptions } from './TriggerScheduleDialog';
 import { WorkflowNodePicker } from './WorkflowNodePicker';
 import { AgentBuilder } from '../agent/AgentBuilder';
+import WorkflowSuggestions from './WorkflowSuggestions';
 import { Clock, Plus, Sparkles } from 'lucide-react';
 
 // Define custom node types outside of component to avoid recreation on each render
@@ -450,6 +451,40 @@ function WorkflowCanvasContent() {
               onCompleteStep={handleCompleteStep}
             />
           )}
+          
+          {/* Workflow Suggestions */}
+          <WorkflowSuggestions 
+            nodes={nodes}
+            edges={edges}
+            onAddNode={(nodeType) => {
+              setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
+              setShowNodePicker(true);
+            }}
+            onConnect={(sourceId, targetId) => {
+              // Find the source and target nodes
+              const source = nodes.find(node => node.id === sourceId);
+              const target = nodes.find(node => node.id === targetId);
+              
+              if (source && target) {
+                onConnect({
+                  source: sourceId,
+                  target: targetId,
+                  sourceHandle: 'output',
+                  targetHandle: 'input',
+                });
+                
+                toast({
+                  title: "Nodes Connected",
+                  description: `Connected ${source.data.label} to ${target.data.label}`,
+                });
+              }
+            }}
+            onDismiss={(suggestionId) => {
+              // Optionally track dismissed suggestions in localStorage
+              const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
+              localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
+            }}
+          />
         </ReactFlow>
       )}
       
