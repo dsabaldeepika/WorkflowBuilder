@@ -97,8 +97,19 @@ export const WorkflowStateHistory: React.FC<{ className?: string }> = ({ classNa
 
 export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying' | 'waiting';
 
+// Define the structure of state configuration
+interface StateConfigType {
+  icon: React.FC<any>;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  label: string;
+  description: string;
+  shouldAnimate: boolean;
+}
+
 // Configuration for each workflow state
-export const stateConfig = {
+export const stateConfig: Record<WorkflowState, StateConfigType> = {
   idle: {
     icon: Clock,
     color: 'text-slate-400',
