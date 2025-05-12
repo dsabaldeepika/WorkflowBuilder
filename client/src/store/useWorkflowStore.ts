@@ -45,6 +45,12 @@ export type NodeData = {
     required?: boolean;
     allowedConnections?: string[];
   }>;
+  // Visual customization properties
+  color?: string;         // Color code like '#FF5733' or 'red'
+  backgroundColor?: string; // Background color
+  borderColor?: string;   // Border color
+  theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom'; // Visual theme
+  colorLabel?: string;    // User-friendly label for the color ("Marketing", "Sales", etc.)
 };
 
 interface WorkflowStoreState {
@@ -64,6 +70,13 @@ interface WorkflowStoreState {
     message?: string;
   }>;
   customTemplates: NodeTemplate[];
+  nodeColors: Record<string, {
+    color?: string;
+    backgroundColor?: string;
+    borderColor?: string;
+    theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom';
+    colorLabel?: string;
+  }>;
   
   // Actions
   addNode: (node: Node<NodeData>) => void;
@@ -114,6 +127,26 @@ interface WorkflowStoreState {
   removeCustomTemplate: (id: string) => void;
   duplicateCustomTemplate: (id: string) => void;
   applyNodeTemplate: (template: NodeTemplate) => void;
+  
+  // Node color customization
+  updateNodeColor: (
+    nodeId: string, 
+    colorData: {
+      color?: string;
+      backgroundColor?: string;
+      borderColor?: string;
+      theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom';
+      colorLabel?: string;
+    }
+  ) => void;
+  bulkUpdateNodeColors: (colorData: {
+    nodeIds: string[];
+    color?: string;
+    backgroundColor?: string;
+    borderColor?: string;
+    theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom';
+    colorLabel?: string;
+  }) => void;
 }
 
 export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
@@ -129,6 +162,7 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   nodeStates: {},
   connectionValidations: {},
   customTemplates: loadCustomTemplates(),
+  nodeColors: {},
   schedule: {
     enabled: false,
     frequency: 'once',
@@ -728,5 +762,75 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     if (template.isCustom) {
       get().updateCustomTemplate(template.id, { updatedAt: new Date().toISOString() });
     }
+  },
+
+  // Node color customization
+  updateNodeColor: (nodeId, colorData) => {
+    set((state) => {
+      // Update the node color state
+      const updatedNodeColors = {
+        ...state.nodeColors,
+        [nodeId]: colorData
+      };
+      
+      // Update the node data as well
+      const updatedNodes = state.nodes.map(node => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              color: colorData.color,
+              backgroundColor: colorData.backgroundColor,
+              borderColor: colorData.borderColor,
+              theme: colorData.theme,
+              colorLabel: colorData.colorLabel
+            }
+          };
+        }
+        return node;
+      });
+      
+      return {
+        nodeColors: updatedNodeColors,
+        nodes: updatedNodes
+      };
+    });
+  },
+  
+  bulkUpdateNodeColors: (colorData) => {
+    const { nodeIds, ...colors } = colorData;
+    
+    set((state) => {
+      const updatedNodeColors = { ...state.nodeColors };
+      
+      // Update color state for each node
+      nodeIds.forEach(nodeId => {
+        updatedNodeColors[nodeId] = colors;
+      });
+      
+      // Update node data with new colors
+      const updatedNodes = state.nodes.map(node => {
+        if (nodeIds.includes(node.id)) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              color: colors.color,
+              backgroundColor: colors.backgroundColor,
+              borderColor: colors.borderColor,
+              theme: colors.theme,
+              colorLabel: colors.colorLabel
+            }
+          };
+        }
+        return node;
+      });
+      
+      return {
+        nodeColors: updatedNodeColors,
+        nodes: updatedNodes
+      };
+    });
   }
 }));
