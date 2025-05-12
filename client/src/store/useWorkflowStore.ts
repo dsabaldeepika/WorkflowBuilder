@@ -45,12 +45,6 @@ export type NodeData = {
     required?: boolean;
     allowedConnections?: string[];
   }>;
-  // Visual customization properties
-  color?: string;         // Color code like '#FF5733' or 'red'
-  backgroundColor?: string; // Background color
-  borderColor?: string;   // Border color
-  theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom'; // Visual theme
-  colorLabel?: string;    // User-friendly label for the color ("Marketing", "Sales", etc.)
 };
 
 interface WorkflowStoreState {
@@ -70,13 +64,6 @@ interface WorkflowStoreState {
     message?: string;
   }>;
   customTemplates: NodeTemplate[];
-  nodeColors: Record<string, {
-    color?: string;
-    backgroundColor?: string;
-    borderColor?: string;
-    theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom';
-    colorLabel?: string;
-  }>;
   
   // Actions
   addNode: (node: Node<NodeData>) => void;
@@ -127,26 +114,6 @@ interface WorkflowStoreState {
   removeCustomTemplate: (id: string) => void;
   duplicateCustomTemplate: (id: string) => void;
   applyNodeTemplate: (template: NodeTemplate) => void;
-  
-  // Node color customization
-  updateNodeColor: (
-    nodeId: string, 
-    colorData: {
-      color?: string;
-      backgroundColor?: string;
-      borderColor?: string;
-      theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom';
-      colorLabel?: string;
-    }
-  ) => void;
-  bulkUpdateNodeColors: (colorData: {
-    nodeIds: string[];
-    color?: string;
-    backgroundColor?: string;
-    borderColor?: string;
-    theme?: 'default' | 'light' | 'dark' | 'colorful' | 'minimal' | 'custom';
-    colorLabel?: string;
-  }) => void;
 }
 
 export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
@@ -162,7 +129,6 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   nodeStates: {},
   connectionValidations: {},
   customTemplates: loadCustomTemplates(),
-  nodeColors: {},
   schedule: {
     enabled: false,
     frequency: 'once',
@@ -712,100 +678,9 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
-  saveCurrentNodesAsTemplate: (name: string, description: string, category: NodeCategory) => {
-    const { nodes } = get();
-    
-    if (nodes.length === 0) {
-      console.error('No nodes to save as template');
-      return null;
-    }
-    
-    // Get the configuration from the current nodes
-    const nodeConfigurations = nodes.map(node => ({
-      id: node.id,
-      type: node.type,
-      data: {
-        label: node.data.label,
-        category: node.data.category,
-        nodeType: node.data.nodeType,
-        icon: node.data.icon,
-        description: node.data.description,
-        configuration: node.data.configuration,
-        color: node.data.color,
-        backgroundColor: node.data.backgroundColor,
-        borderColor: node.data.borderColor,
-        theme: node.data.theme,
-        colorLabel: node.data.colorLabel,
-      },
-      position: {
-        x: node.position.x,
-        y: node.position.y
-      }
-    }));
-    
-    const template: NodeTemplate = {
-      id: `custom-${Date.now()}`,
-      name,
-      description,
-      category,
-      nodeType: 'action', // Default
-      icon: 'settings',
-      configuration: {
-        nodes: nodeConfigurations,
-        nodesCount: nodes.length
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isFavorite: false,
-      isCustom: true,
-      isGroupTemplate: true // Flag to identify group templates
-    };
-    
-    // Add the template to the store
-    get().addCustomTemplate(template);
-    return template;
-  },
-  
   applyNodeTemplate: (template) => {
     const { nodes, addNode } = get();
     
-    // Check if this is a group template containing multiple nodes
-    if (template.isGroupTemplate && template.configuration.nodes) {
-      const nodeConfigs = template.configuration.nodes;
-      
-      // Calculate offset to position the group properly
-      let offsetX = 0;
-      let offsetY = 0;
-      
-      // If there are existing nodes, position relative to them
-      if (nodes.length > 0) {
-        const lastNode = nodes[nodes.length - 1];
-        offsetX = lastNode.position.x + 300;
-        offsetY = lastNode.position.y;
-      }
-      
-      // Create all nodes in the group
-      nodeConfigs.forEach((nodeConfig: any) => {
-        const newNode: Node<NodeData> = {
-          id: `node-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          type: nodeConfig.type as string,
-          position: {
-            x: nodeConfig.position.x + offsetX,
-            y: nodeConfig.position.y + offsetY
-          },
-          data: {
-            ...nodeConfig.data,
-            label: nodeConfig.data.label,
-          }
-        };
-        
-        addNode(newNode);
-      });
-      
-      return;
-    }
-    
-    // Handle single node templates (existing logic)
     // Create a position that doesn't overlap with existing nodes
     const position = { 
       x: Math.random() * 300 + 100, 
@@ -830,19 +705,10 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
         category: template.category,
         description: template.description,
         icon: template.icon,
-        // Preserve configuration but mark user-editable fields
-        configuration: {
-          ...template.configuration,
-          requiresConfiguration: true, // Flag to indicate this needs user input
-          templateApplied: true,       // Flag to indicate this came from a template
-          templateId: template.id,     // Reference to the source template
-          lastApplied: new Date().toISOString()
-        },
+        configuration: template.configuration,
         inputs: template.inputs || {},
         outputs: template.outputs || {},
-        ports: template.ports || [],
-        // Set default state to indicate configuration needed
-        state: template.nodeType === 'trigger' ? 'waiting' : 'idle'
+        ports: template.ports || []
       }
     };
     
@@ -853,75 +719,5 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     if (template.isCustom) {
       get().updateCustomTemplate(template.id, { updatedAt: new Date().toISOString() });
     }
-  },
-
-  // Node color customization
-  updateNodeColor: (nodeId, colorData) => {
-    set((state) => {
-      // Update the node color state
-      const updatedNodeColors = {
-        ...state.nodeColors,
-        [nodeId]: colorData
-      };
-      
-      // Update the node data as well
-      const updatedNodes = state.nodes.map(node => {
-        if (node.id === nodeId) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              color: colorData.color,
-              backgroundColor: colorData.backgroundColor,
-              borderColor: colorData.borderColor,
-              theme: colorData.theme,
-              colorLabel: colorData.colorLabel
-            }
-          };
-        }
-        return node;
-      });
-      
-      return {
-        nodeColors: updatedNodeColors,
-        nodes: updatedNodes
-      };
-    });
-  },
-  
-  bulkUpdateNodeColors: (colorData) => {
-    const { nodeIds, ...colors } = colorData;
-    
-    set((state) => {
-      const updatedNodeColors = { ...state.nodeColors };
-      
-      // Update color state for each node
-      nodeIds.forEach(nodeId => {
-        updatedNodeColors[nodeId] = colors;
-      });
-      
-      // Update node data with new colors
-      const updatedNodes = state.nodes.map(node => {
-        if (nodeIds.includes(node.id)) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              color: colors.color,
-              backgroundColor: colors.backgroundColor,
-              borderColor: colors.borderColor,
-              theme: colors.theme,
-              colorLabel: colors.colorLabel
-            }
-          };
-        }
-        return node;
-      });
-      
-      return {
-        nodeColors: updatedNodeColors,
-        nodes: updatedNodes
-      };
-    });
   }
 }));

@@ -32,17 +32,10 @@ import {
   Star,
   Copy,
   Bookmark,
-  Clock,
-  Package,
-  Layers,
-  LayoutTemplate
+  Clock
 } from 'lucide-react';
 import { NodeType, NodeCategory, NodeTemplate } from '@/types/workflow';
 import { useWorkflowStore } from '@/store/useWorkflowStore';
-import { NodeTemplatePresets } from './NodeTemplatePresets';
-
-// Type for the Workflow Store functions
-type WorkflowStoreFunctions = ReturnType<typeof useWorkflowStore>;
 
 interface CustomNodeTemplatesProps {
   isOpen: boolean;
@@ -59,7 +52,6 @@ export function CustomNodeTemplates({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<NodeTemplate | null>(null);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
-  const [isSavingWorkflowAsTemplate, setIsSavingWorkflowAsTemplate] = useState(false);
   const [newTemplate, setNewTemplate] = useState<Partial<NodeTemplate>>({
     name: '',
     description: '',
@@ -67,67 +59,15 @@ export function CustomNodeTemplates({
     nodeType: 'action',
     configuration: {}
   });
-  const [workflowTemplate, setWorkflowTemplate] = useState({
-    name: '',
-    description: '',
-    category: 'custom' as NodeCategory
-  });
   
   // Access templates from store
   const { 
-    nodes,
     customTemplates,
     addCustomTemplate,
     removeCustomTemplate,
     updateCustomTemplate,
-    duplicateCustomTemplate,
+    duplicateCustomTemplate
   } = useWorkflowStore();
-  
-  // Access functions directly from the store (bypassing TypeScript issues)
-  const saveCurrentNodesAsTemplate = useWorkflowStore(
-    (state: any) => state.saveCurrentNodesAsTemplate
-  );
-  
-  // Handler for saving current workflow as template
-  const handleSaveWorkflowAsTemplate = () => {
-    if (!workflowTemplate.name || !workflowTemplate.description) {
-      toast({
-        title: 'Error',
-        description: 'Name and description are required',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    if (nodes.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'There are no nodes in the current workflow to save',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    const template = saveCurrentNodesAsTemplate(
-      workflowTemplate.name,
-      workflowTemplate.description,
-      workflowTemplate.category
-    );
-    
-    if (template) {
-      setIsSavingWorkflowAsTemplate(false);
-      setWorkflowTemplate({
-        name: '',
-        description: '',
-        category: 'custom' as NodeCategory
-      });
-      
-      toast({
-        title: 'Success',
-        description: 'Workflow saved as template successfully'
-      });
-    }
-  };
   
   // Filtered templates based on search
   const filteredTemplates = customTemplates.filter(template => 
@@ -137,7 +77,6 @@ export function CustomNodeTemplates({
 
   // Handle template selection
   const handleSelectTemplate = (template: NodeTemplate) => {
-    console.log("Selected template:", template);
     setSelectedTemplate(template);
     onSelectTemplate(template);
     onClose();
@@ -228,7 +167,6 @@ export function CustomNodeTemplates({
           <DialogTitle>Custom Node Templates</DialogTitle>
           <DialogDescription>
             Create, manage, and use your custom node templates to streamline your workflow creation.
-            Templates provide pre-configured node settings that can be customized after adding to your workflow.
           </DialogDescription>
         </DialogHeader>
 
@@ -242,31 +180,20 @@ export function CustomNodeTemplates({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsSavingWorkflowAsTemplate(true)}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Current
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCreatingTemplate(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Template
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsCreatingTemplate(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Template
+          </Button>
         </div>
         
         <Tabs defaultValue="all">
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="all">All Templates</TabsTrigger>
             <TabsTrigger value="favorites">Favorites</TabsTrigger>
-            <TabsTrigger value="recent">Recent</TabsTrigger>
-            <TabsTrigger value="presets">Presets</TabsTrigger>
-            <TabsTrigger value="groups">Node Groups</TabsTrigger>
+            <TabsTrigger value="recent">Recently Used</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="h-full">
@@ -475,93 +402,6 @@ export function CustomNodeTemplates({
               </div>
             </ScrollArea>
           </TabsContent>
-          
-          {/* Presets tab - uses NodeTemplatePresets component */}
-          <TabsContent value="presets" className="h-full">
-            <ScrollArea className="h-[400px] pr-4">
-              <NodeTemplatePresets onSelectTemplate={handleSelectTemplate} />
-            </ScrollArea>
-          </TabsContent>
-          
-          {/* Node Groups tab - shows group templates */}
-          <TabsContent value="groups" className="h-full">
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {customTemplates.filter(t => t.isGroupTemplate).length === 0 ? (
-                  <div className="col-span-2 flex flex-col items-center justify-center py-8 text-center">
-                    <Layers className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium">No Group Templates</h3>
-                    <p className="text-muted-foreground mt-1 max-w-md">
-                      Save your workflow as a template to create reusable node groups. 
-                      Node groups allow you to save multiple connected nodes as a single template.
-                    </p>
-                    <Button 
-                      className="mt-4"
-                      onClick={() => setIsSavingWorkflowAsTemplate(true)}
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Current Workflow
-                    </Button>
-                  </div>
-                ) : (
-                  customTemplates
-                    .filter(template => template.isGroupTemplate)
-                    .map((template) => (
-                      <Card 
-                        key={template.id}
-                        className="cursor-pointer transition-all hover:shadow-md overflow-hidden"
-                        onClick={() => handleSelectTemplate(template)}
-                      >
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between">
-                            <CardTitle className="text-base">{template.name}</CardTitle>
-                            <div className="flex space-x-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => handleToggleFavorite(template.id, template.isFavorite, e)}
-                              >
-                                <Star 
-                                  className={`h-4 w-4 ${template.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
-                                />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => handleDuplicateTemplate(template.id, e)}
-                              >
-                                <Copy className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => handleDeleteTemplate(template.id, e)}
-                              >
-                                <Trash2 className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </div>
-                          </div>
-                          <CardDescription className="line-clamp-2">
-                            {template.description}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Layers className="h-4 w-4" />
-                            <span>{template.configuration.nodesCount || 0} nodes in this group</span>
-                          </div>
-                        </CardContent>
-                        <CardFooter className="pt-0">
-                          <p className="text-xs text-muted-foreground">
-                            Created: {new Date(template.createdAt).toLocaleDateString()}
-                          </p>
-                        </CardFooter>
-                      </Card>
-                    ))
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
         </Tabs>
 
         <DialogFooter className="mt-4">
@@ -655,77 +495,6 @@ export function CustomNodeTemplates({
             <Button onClick={handleCreateTemplate}>
               <Save className="mr-2 h-4 w-4" />
               Save Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Save Workflow as Template Modal */}
-      <Dialog open={isSavingWorkflowAsTemplate} onOpenChange={(open) => !open && setIsSavingWorkflowAsTemplate(false)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Save Workflow as Template</DialogTitle>
-            <DialogDescription>
-              Save your current workflow as a reusable template. This will create a template containing all the nodes and their configurations.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="templateName" className="text-right">
-                Name
-              </Label>
-              <Input
-                id="templateName"
-                value={workflowTemplate.name}
-                onChange={(e) => setWorkflowTemplate({...workflowTemplate, name: e.target.value})}
-                className="col-span-3"
-                placeholder="My Workflow Template"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="templateDescription" className="text-right">
-                Description
-              </Label>
-              <Textarea
-                id="templateDescription"
-                value={workflowTemplate.description}
-                onChange={(e) => setWorkflowTemplate({...workflowTemplate, description: e.target.value})}
-                className="col-span-3"
-                placeholder="Describe what this workflow template does..."
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="templateCategory" className="text-right">
-                Category
-              </Label>
-              <select
-                id="templateCategory"
-                value={workflowTemplate.category}
-                onChange={(e) => setWorkflowTemplate({...workflowTemplate, category: e.target.value as NodeCategory})}
-                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="custom">Custom</option>
-                <option value="automation">Automation</option>
-                <option value="integration">Integration</option>
-                <option value="ai">AI & ML</option>
-                <option value="data">Data Processing</option>
-                <option value="messaging">Messaging</option>
-                <option value="crm">CRM</option>
-                <option value="social">Social Media</option>
-                <option value="ecommerce">E-commerce</option>
-                <option value="utility">Utility</option>
-              </select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSavingWorkflowAsTemplate(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveWorkflowAsTemplate}>
-              <Save className="mr-2 h-4 w-4" />
-              Save as Template
             </Button>
           </DialogFooter>
         </DialogContent>

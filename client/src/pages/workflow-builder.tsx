@@ -5,7 +5,6 @@ import { AIAssistant } from "@/components/workflow/AIAssistant";
 import { TemplateGallery } from "@/components/workflow/TemplateGallery";
 import { AgentBuilder } from "@/components/workflow/AgentBuilder";
 import { CustomNodeTemplates } from "@/components/workflow/CustomNodeTemplates";
-import { ColorToolbar } from "@/components/workflow/ColorToolbar";
 import WorkflowMonitoring from "@/components/workflow/WorkflowMonitoring";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Link } from "wouter";
@@ -382,20 +381,8 @@ export default function WorkflowBuilder() {
           </div>
         </aside>
 
-        {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Color Toolbar - Only visible when in builder mode */}
-          {activeTab === 'builder' && (
-            <div className="px-4 pt-3">
-              <ColorToolbar />
-            </div>
-          )}
-          
-          {/* Workflow Canvas */}
-          <div className="flex-1">
-            <WorkflowCanvas />
-          </div>
-        </div>
+        {/* Workflow Canvas */}
+        <WorkflowCanvas />
       </div>
 
       {/* Node Picker Modal */}
