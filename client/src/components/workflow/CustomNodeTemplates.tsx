@@ -137,6 +137,7 @@ export function CustomNodeTemplates({
 
   // Handle template selection
   const handleSelectTemplate = (template: NodeTemplate) => {
+    console.log("Selected template:", template);
     setSelectedTemplate(template);
     onSelectTemplate(template);
     onClose();

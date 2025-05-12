@@ -37,6 +37,7 @@ interface NodeTemplatePresetProps {
 export function NodeTemplatePresets({ onSelectTemplate }: NodeTemplatePresetProps) {
   const { toast } = useToast();
   const { addCustomTemplate } = useWorkflowStore();
+  console.log("NodeTemplatePresets component loaded");
   
   // Common preset categories
   const presetCategories = [
@@ -397,7 +398,8 @@ export function NodeTemplatePresets({ onSelectTemplate }: NodeTemplatePresetProp
       ...template,
       id: `custom-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      isGroupTemplate: false
     };
     
     addCustomTemplate(newTemplate);
