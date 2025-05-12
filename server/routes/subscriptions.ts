@@ -1,9 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
-import Stripe from "stripe";
 import { storage } from "../storage";
 // import { isAuthenticated } from "../replitAuth";
 import { SubscriptionTier } from "../../shared/schema";
-import { STRIPE_CONFIG, API_ENDPOINTS } from "../../shared/config";
+import { API_ENDPOINTS } from "../../shared/config";
 
 // BYPASS: Create a bypass for the authentication middleware
 const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
@@ -18,16 +17,6 @@ const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
   (req as any).isAuthenticated = () => true;
   next();
 };
-
-// Initialize Stripe client
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Missing required Stripe secret key");
-}
-
-// @ts-ignore Bypassing Stripe API version mismatch for now
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16" as any,
-});
 
 export const subscriptionsRouter = Router();
 
@@ -78,10 +67,10 @@ subscriptionsRouter.get("/current", bypassAuth, async (req: any, res) => {
 });
 
 // Create a checkout session for a new subscription
-subscriptionsRouter.post("/create-checkout-session", bypassAuth, async (req: any, res) => {
+subscriptionsRouter.post("/create-subscription", bypassAuth, async (req: any, res) => {
   try {
-    const { priceId, planId, billingPeriod = "monthly" } = req.body;
-    if (!priceId && !planId) {
+    const { planId, billingPeriod = "monthly" } = req.body;
+    if (!planId) {
       return res.status(400).json({ error: "Missing required parameters" });
     }
 
@@ -95,193 +84,103 @@ subscriptionsRouter.post("/create-checkout-session", bypassAuth, async (req: any
       return res.status(404).json({ error: "User not found" });
     }
 
-    // If no specific priceId was provided but planId was, lookup the plan
-    let stripePriceId = priceId;
-    if (!stripePriceId && planId) {
-      const plan = await storage.getSubscriptionPlan(planId);
-      if (!plan) {
-        return res.status(404).json({ error: "Subscription plan not found" });
-      }
-      
-      stripePriceId = billingPeriod === "yearly" 
-        ? plan.stripePriceIdYearly 
-        : plan.stripePriceIdMonthly;
+    // Get the plan details
+    const plan = await storage.getSubscriptionPlan(planId);
+    if (!plan) {
+      return res.status(404).json({ error: "Subscription plan not found" });
     }
+    
+    // Generate a mock client secret
+    const mockClientSecret = `mock_client_secret_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    
+    // Store metadata for later use
+    const metadataKey = `checkout_${mockClientSecret}`;
+    req.session[metadataKey] = {
+      userId: userId,
+      planId: planId,
+      billingPeriod: billingPeriod,
+      tier: plan.tier,
+      createdAt: new Date()
+    };
 
-    // Check if user already has a Stripe customer ID
-    let customerId = user.stripeCustomerId;
-    if (!customerId) {
-      // Create a new customer
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          userId: user.id.toString()
-        }
-      });
-      
-      customerId = customer.id;
-      // Update user with Stripe customer ID
-      await storage.updateUserStripeInfo(userId, { customerId });
-    }
-
-    // Create a new checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: stripePriceId,
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url: STRIPE_CONFIG.successUrl + '&session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: STRIPE_CONFIG.cancelUrl,
-      metadata: {
-        userId: user.id.toString(),
-        planId: planId?.toString() || "",
-        billingPeriod
-      }
-    });
-
-    res.json({ url: session.url });
+    // Return the mock client secret
+    res.status(200).json({ clientSecret: mockClientSecret });
   } catch (error: any) {
-    console.error("Error creating checkout session:", error);
+    console.error("Error creating subscription:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Handle subscription webhooks from Stripe
-subscriptionsRouter.post("/webhook", async (req, res) => {
-  const sig = req.headers["stripe-signature"] as string;
-  const endpointSecret = STRIPE_CONFIG.webhookSecret;
-
-  // Only verify the signature if an endpoint secret is configured
-  let event;
-  if (endpointSecret) {
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err: any) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  } else {
-    // If no secret is configured, just use the raw body (useful for testing)
-    event = req.body;
-  }
-
-  // Handle the event
+// Complete the subscription process
+subscriptionsRouter.post("/complete-subscription", bypassAuth, async (req: any, res) => {
   try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const userId = parseInt(session.metadata.userId, 10);
-        const subscriptionId = session.subscription;
-        
-        // Update user with subscription ID
-        await storage.updateUserStripeInfo(userId, { 
-          customerId: session.customer,
-          subscriptionId: subscriptionId as string 
-        });
-        
-        // Retrieve the subscription to get more details
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
-        
-        // Determine the tier based on the price ID or metadata
-        let tier = SubscriptionTier.FREE;
-        if (session.metadata.planId) {
-          const plan = await storage.getSubscriptionPlan(parseInt(session.metadata.planId, 10));
-          if (plan) {
-            tier = plan.tier as SubscriptionTier;
-          }
-        }
-        
-        // Update user's subscription details
-        await storage.updateUserSubscription(userId, {
-          tier,
-          status: subscription.status,
-          subscriptionId: subscription.id,
-          // @ts-ignore Access current_period_end property
-          periodEnd: new Date((subscription.current_period_end || 0) * 1000)
-        });
-        
-        // Create a subscription history record
-        if (session.metadata.planId) {
-          // @ts-ignore Bypassing type issues for webhook properties
-          await storage.createSubscriptionHistory({
-            userId,
-            subscriptionPlanId: parseInt(session.metadata.planId, 10),
-            stripeSubscriptionId: subscription.id,
-            stripeInvoiceId: subscription.latest_invoice as string,
-            billingPeriod: session.metadata.billingPeriod || "monthly",
-            status: subscription.status,
-            // @ts-ignore Access period properties
-            startDate: new Date((subscription.current_period_start || 0) * 1000),
-            // @ts-ignore Access period properties
-            endDate: new Date((subscription.current_period_end || 0) * 1000),
-            amount: session.amount_total ? session.amount_total / 100 : 0,
-            currency: session.currency?.toUpperCase() || "USD"
-          });
-        }
-        
-        break;
-      }
-      
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object;
-        if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-          const userId = parseInt(subscription.metadata.userId, 10);
-          
-          // Update subscription period end date
-          await storage.updateUserSubscription(userId, {
-            tier: subscription.metadata.tier || SubscriptionTier.FREE,
-            status: subscription.status,
-            periodEnd: new Date(subscription.current_period_end * 1000)
-          });
-        }
-        break;
-      }
-      
-      case "customer.subscription.updated": {
-        const subscription = event.data.object;
-        const userId = parseInt(subscription.metadata.userId, 10);
-        
-        if (userId) {
-          // @ts-ignore Bypassing type issues for now
-          await storage.updateUserSubscription(userId, {
-            tier: SubscriptionTier.PRO, // Default to PRO
-            status: subscription.status,
-            // @ts-ignore Access current_period_end property
-            periodEnd: new Date((subscription.current_period_end || 0) * 1000)
-          });
-        }
-        break;
-      }
-      
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object;
-        const userId = parseInt(subscription.metadata.userId, 10);
-        
-        if (userId) {
-          // Reset user to free tier when subscription is canceled
-          await storage.updateUserSubscription(userId, {
-            tier: SubscriptionTier.FREE,
-            status: "canceled",
-            subscriptionId: null,
-            periodEnd: null
-          });
-          
-          // Update subscription history if needed
-          // This logic could be expanded based on your requirements
-        }
-        break;
-      }
+    const { clientSecret } = req.body;
+    if (!clientSecret) {
+      return res.status(400).json({ error: "Missing client secret" });
     }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Get metadata from session
+    const metadataKey = `checkout_${clientSecret}`;
+    const metadata = req.session[metadataKey];
     
-    res.status(200).json({ received: true });
+    if (!metadata) {
+      return res.status(400).json({ error: "Invalid client secret or session expired" });
+    }
+
+    // Get the plan
+    const plan = await storage.getSubscriptionPlan(metadata.planId);
+    if (!plan) {
+      return res.status(404).json({ error: "Subscription plan not found" });
+    }
+
+    // Calculate subscription period end date (1 month or 1 year from now)
+    const periodEnd = new Date();
+    if (metadata.billingPeriod === "yearly") {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
+
+    // Update user's subscription details
+    await storage.updateUserSubscription(userId, {
+      tier: plan.tier as SubscriptionTier,
+      status: "active",
+      subscriptionId: `mock_sub_${Date.now()}`,
+      periodEnd: periodEnd
+    });
+
+    // Create a subscription history record
+    await storage.createSubscriptionHistory({
+      userId,
+      subscriptionPlanId: metadata.planId,
+      stripeSubscriptionId: `mock_sub_${Date.now()}`,
+      stripeInvoiceId: `mock_inv_${Date.now()}`,
+      billingPeriod: metadata.billingPeriod,
+      status: "active",
+      startDate: new Date(),
+      endDate: periodEnd,
+      amount: metadata.billingPeriod === "yearly" ? plan.priceYearly : plan.priceMonthly,
+      currency: "USD"
+    });
+
+    // Clean up session
+    delete req.session[metadataKey];
+
+    res.status(200).json({ 
+      success: true, 
+      subscription: {
+        id: `mock_sub_${Date.now()}`,
+        status: "active",
+        currentPeriodEnd: periodEnd
+      }
+    });
   } catch (error: any) {
-    console.error(`Error handling webhook: ${error.message}`);
+    console.error("Error completing subscription:", error);
     res.status(500).json({ error: error.message });
   }
 });
