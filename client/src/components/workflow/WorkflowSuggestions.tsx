@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, Lightbulb, ChevronLeft, ChevronRight, PlusCircle, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Node, Edge } from 'reactflow';
-import { NodeData } from '@/types/workflow';
+import { NodeData } from '@/store/useWorkflowStore';
 
 interface Suggestion {
   id: string;

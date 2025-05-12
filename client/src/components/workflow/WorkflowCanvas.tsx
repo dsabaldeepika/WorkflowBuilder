@@ -26,6 +26,7 @@ import OnboardingGuide from './OnboardingGuide';
 import TriggerScheduleDialog, { ScheduleOptions } from './TriggerScheduleDialog';
 import { WorkflowNodePicker } from './WorkflowNodePicker';
 import { AgentBuilder } from '../agent/AgentBuilder';
+import WorkflowSuggestions from './WorkflowSuggestions';
 import { Clock, Plus, Sparkles } from 'lucide-react';
 
 // Define custom node types outside of component to avoid recreation on each render
