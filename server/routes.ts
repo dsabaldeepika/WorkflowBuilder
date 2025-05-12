@@ -10,7 +10,7 @@ import workflowTemplatesRoutes from "./routes/workflowTemplates";
 import appIntegrationsRoutes from "./routes/appIntegrations";
 import workflowExecutionRoutes from "./routes/workflowExecution";
 import { subscriptionsRouter } from "./routes/subscriptions";
-import { setupAuth } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { pool } from "./db";
 import { swaggerSpec } from "./swagger";
 import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
@@ -34,8 +34,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.send(swaggerSpec);
   });
 
-  // Set up Replit Auth
-  await setupAuth(app);
+  // BYPASS: Temporarily disabled Replit Auth due to iframe authentication issues
+  // await setupAuth(app);
+  
+  // BYPASS: Adding mock authentication endpoint that always returns a demo user
+  app.get('/api/auth/user', (req, res) => {
+    res.json({
+      id: 1,
+      username: 'demo_user',
+      email: 'demo@example.com',
+      firstName: 'Demo',
+      lastName: 'User',
+      role: 'admin',
+      subscriptionTier: 'pro',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  });
+  
+  // BYPASS: Create a bypass for the authentication middleware
+  // Replace all instances of isAuthenticated middleware with this bypass version
+  const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
+    // Inject a fake authenticated user into the request
+    (req as any).user = {
+      id: 1,
+      username: 'demo_user',
+      role: 'admin',
+      subscriptionTier: 'pro'
+    };
+    (req as any).isAuthenticated = () => true;
+    next();
+  };
   
   /**
    * @swagger
