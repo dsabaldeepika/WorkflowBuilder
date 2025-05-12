@@ -198,17 +198,8 @@ subscriptionsRouter.post("/create-portal-session", bypassAuth, async (req: any, 
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (!user.stripeCustomerId) {
-      return res.status(400).json({ error: "No Stripe customer found for this user" });
-    }
-
-    // Create a customer portal session
-    const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
-      return_url: `${req.protocol}://${req.get("host")}/account/billing`,
-    });
-
-    res.json({ url: session.url });
+    // Simply redirect to the billing page
+    res.json({ url: `/account/billing` });
   } catch (error: any) {
     console.error("Error creating portal session:", error);
     res.status(500).json({ error: error.message });
@@ -228,26 +219,19 @@ subscriptionsRouter.post("/cancel", bypassAuth, async (req: any, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (!user.stripeSubscriptionId) {
-      return res.status(400).json({ error: "No active subscription found" });
-    }
-
-    // Cancel the subscription at period end
-    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-      cancel_at_period_end: true,
-    });
+    // Calculate end date (end of current month)
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+    endDate.setDate(0); // Last day of the current month
 
     // Update user record
-    // @ts-ignore Bypassing type issues for now
     await storage.updateUserSubscription(userId, {
       tier: SubscriptionTier.PRO, // Default to PRO until end date
-      status: subscription.status,
-      // @ts-ignore Access current_period_end property 
-      periodEnd: new Date((subscription.current_period_end || 0) * 1000)
+      status: "canceled",
+      subscriptionId: null,
+      periodEnd: endDate
     });
 
-    // @ts-ignore Access current_period_end property
-    const endDate = new Date((subscription.current_period_end || 0) * 1000);
     res.json({ 
       canceled: true, 
       willEndOn: endDate 
