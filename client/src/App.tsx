@@ -16,7 +16,8 @@ import HealthDashboardPage from "@/pages/health-dashboard-page";
 import TemplatesPage from "@/pages/templates-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
-import CheckoutPage from "@/pages/checkout-page";
+// Temporarily disabled to fix Stripe.js loading issue
+// import CheckoutPage from "@/pages/checkout-page";
 import { useAuth } from "@/hooks/useAuth";
 
 // Protected route component
@@ -57,7 +58,8 @@ function Router() {
       <Route path="/health-dashboard" component={HealthDashboardPage} />
       <Route path={ROUTES.templates} component={TemplatesPage} />
       <Route path={ROUTES.pricing} component={PricingPage} />
-      <Route path={ROUTES.checkout} component={CheckoutPage} />
+      {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
+      <Route path={ROUTES.checkout} component={PricingPage} />
       <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
       <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
