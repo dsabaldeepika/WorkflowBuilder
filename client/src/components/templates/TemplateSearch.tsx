@@ -159,17 +159,12 @@ export function TemplateSearch() {
   const getTemplatePreviewImage = (template: WorkflowTemplate) => {
     // Special case matching for template ID 13 (Pipedrive to Google Sheets)
     if (template.id === 13 || 
-        (template.name && (
-          template.name.toLowerCase().includes('pipedrive') || 
-          (template.name.toLowerCase().includes('google') && template.name.toLowerCase().includes('sheet'))
-        ))
+        (template.name && 
+         template.name.toLowerCase().includes('pipedrive') && 
+         template.name.toLowerCase().includes('google') && 
+         template.name.toLowerCase().includes('sheet'))
     ) {
       return pipedriveToGoogleSheetsPreview;
-    }
-    
-    // Special case for PumpFlux Workflow
-    if (template.name && template.name.toLowerCase().includes('pumpflux')) {
-      return pumpfluxWorkflowPreview;
     }
     
     // Match by keywords in template name
