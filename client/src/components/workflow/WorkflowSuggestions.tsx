@@ -69,17 +69,7 @@ export function WorkflowSuggestions({ className, nodes, edges, onAddNode, onConn
         actionLabel: 'Add Trigger',
         priority: 'high',
         action: () => {
-          addNode({
-            id: `node-${Date.now()}`,
-            type: 'trigger',
-            position: { x: 250, y: 200 },
-            data: { 
-              label: 'New Trigger',
-              description: 'Starts your workflow',
-              icon: 'trigger',
-              configuration: {}
-            }
-          });
+          onAddNode('trigger');
         }
       });
     }
@@ -93,17 +83,7 @@ export function WorkflowSuggestions({ className, nodes, edges, onAddNode, onConn
         actionLabel: 'Add Action',
         priority: 'high',
         action: () => {
-          addNode({
-            id: `node-${Date.now()}`,
-            type: 'action',
-            position: { x: 500, y: 200 },
-            data: { 
-              label: 'New Action',
-              description: 'Performs an action',
-              icon: 'action',
-              configuration: {}
-            }
-          });
+          onAddNode('action');
         }
       });
     }
@@ -131,11 +111,7 @@ export function WorkflowSuggestions({ className, nodes, edges, onAddNode, onConn
             const actionNode = nodes.find(node => node.type === 'action' && !edges.some(edge => edge.source === triggerNode?.id && edge.target === node.id));
             
             if (triggerNode && actionNode) {
-              connectNodes({
-                id: `edge-${Date.now()}`,
-                source: triggerNode.id,
-                target: actionNode.id
-              });
+              onConnect(triggerNode.id, actionNode.id);
             }
           }
         });
@@ -151,17 +127,7 @@ export function WorkflowSuggestions({ className, nodes, edges, onAddNode, onConn
         actionLabel: 'Add Trigger',
         priority: 'high',
         action: () => {
-          addNode({
-            id: `node-${Date.now()}`,
-            type: 'trigger',
-            position: { x: 150, y: 200 },
-            data: { 
-              label: 'New Trigger',
-              description: 'Starts your workflow',
-              icon: 'trigger',
-              configuration: {}
-            }
-          });
+          onAddNode('trigger');
         }
       });
     }
@@ -268,6 +234,10 @@ export function WorkflowSuggestions({ className, nodes, edges, onAddNode, onConn
   
   // Handle closing the suggestion
   const closeSuggestion = () => {
+    if (suggestions.length > 0) {
+      const currentSuggestion = suggestions[currentIndex];
+      onDismiss(currentSuggestion.id);
+    }
     setVisible(false);
   };
   

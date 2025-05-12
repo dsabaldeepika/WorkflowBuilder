@@ -456,11 +456,11 @@ function WorkflowCanvasContent() {
           <WorkflowSuggestions 
             nodes={nodes}
             edges={edges}
-            onAddNode={(nodeType) => {
+            onAddNode={(nodeType: string) => {
               setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
               setShowNodePicker(true);
             }}
-            onConnect={(sourceId, targetId) => {
+            onConnect={(sourceId: string, targetId: string) => {
               // Find the source and target nodes
               const source = nodes.find(node => node.id === sourceId);
               const target = nodes.find(node => node.id === targetId);
@@ -479,7 +479,7 @@ function WorkflowCanvasContent() {
                 });
               }
             }}
-            onDismiss={(suggestionId) => {
+            onDismiss={(suggestionId: string) => {
               // Optionally track dismissed suggestions in localStorage
               const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
               localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
