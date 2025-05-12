@@ -5,6 +5,7 @@ import { X, Lightbulb, ChevronLeft, ChevronRight, PlusCircle, ArrowRight } from 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Node, Edge } from 'reactflow';
 import { NodeData } from '@/store/useWorkflowStore';
+import { NodeCategory } from '@/types/workflow';
 
 interface Suggestion {
   id: string;
@@ -53,11 +54,14 @@ const WorkflowSuggestions: React.FC<WorkflowSuggestionsProps> = ({
       });
     }
     
-    // Suggestion for ending a workflow without an output
+    // Suggestion for ending a workflow without an output action
     const hasOutput = nodes.some(node => 
       node.data.nodeType === 'output' || 
       node.data.type === 'output' || 
-      node.data.category === 'output'
+      // Since 'output' is not in NodeCategory, check if it's a messaging or action node
+      // which are common output actions
+      node.data.category === 'messaging' || 
+      (node.data.type && node.data.type.includes('output'))
     );
     
     if (nodes.length > 0 && !hasOutput) {

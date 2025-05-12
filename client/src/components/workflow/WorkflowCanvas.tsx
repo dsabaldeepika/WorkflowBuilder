@@ -451,6 +451,42 @@ function WorkflowCanvasContent() {
               onCompleteStep={handleCompleteStep}
             />
           )}
+          
+          {/* Workflow Suggestions */}
+          <Panel position="bottom-right" className="p-2">
+            <WorkflowSuggestions 
+              nodes={nodes}
+              edges={edges}
+              onAddNode={(nodeType) => {
+                setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
+                setShowNodePicker(true);
+              }}
+              onConnect={(sourceId, targetId) => {
+                // Find the source and target nodes
+                const source = nodes.find(node => node.id === sourceId);
+                const target = nodes.find(node => node.id === targetId);
+                
+                if (source && target) {
+                  onConnect({
+                    source: sourceId,
+                    target: targetId,
+                    sourceHandle: 'output',
+                    targetHandle: 'input',
+                  });
+                  
+                  toast({
+                    title: "Nodes Connected",
+                    description: `Connected ${source.data.label} to ${target.data.label}`,
+                  });
+                }
+              }}
+              onDismiss={(suggestionId) => {
+                // Optionally track dismissed suggestions in localStorage
+                const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
+                localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
+              }}
+            />
+          </Panel>
         </ReactFlow>
       )}
       
