@@ -1,95 +1,118 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 interface TemplateFavoriteButtonProps {
   templateId: number;
   initialFavorited?: boolean;
-  variant?: 'default' | 'outline' | 'ghost';
-  size?: 'default' | 'sm' | 'lg' | 'icon';
   onFavoriteChange?: (templateId: number, isFavorited: boolean) => void;
+  size?: 'sm' | 'md' | 'lg';
 }
-
-const LOCAL_STORAGE_KEY = 'favoriteTemplates';
 
 export function TemplateFavoriteButton({
   templateId,
   initialFavorited = false,
-  variant = 'ghost',
-  size = 'icon',
   onFavoriteChange,
+  size = 'md'
 }: TemplateFavoriteButtonProps) {
-  const { toast } = useToast();
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
-  
-  // Load favorite state from localStorage on component mount and when initialFavorited changes
+  const { toast } = useToast();
+
+  // Load favorite status from localStorage on mount
   useEffect(() => {
-    const savedFavorites = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const savedFavorites = localStorage.getItem('favoriteTemplates');
     if (savedFavorites) {
-      const favorites = JSON.parse(savedFavorites);
-      setIsFavorited(favorites.includes(templateId));
-    } else {
-      setIsFavorited(initialFavorited);
+      try {
+        const favorites = JSON.parse(savedFavorites);
+        setIsFavorited(favorites.includes(templateId));
+      } catch (e) {
+        console.error('Error parsing favorites from localStorage:', e);
+      }
     }
-  }, [templateId, initialFavorited]);
-  
-  const toggleFavorite = () => {
-    // Toggle the favorite state
-    const newFavoritedState = !isFavorited;
-    setIsFavorited(newFavoritedState);
-    
-    // Update localStorage
-    const savedFavorites = localStorage.getItem(LOCAL_STORAGE_KEY);
+  }, [templateId]);
+
+  const handleToggleFavorite = () => {
+    // Get current favorites
+    const savedFavorites = localStorage.getItem('favoriteTemplates');
     let favorites: number[] = [];
     
     if (savedFavorites) {
-      favorites = JSON.parse(savedFavorites);
+      try {
+        favorites = JSON.parse(savedFavorites);
+      } catch (e) {
+        console.error('Error parsing favorites from localStorage:', e);
+      }
     }
     
-    if (newFavoritedState) {
-      // Add to favorites if not already in there
-      if (!favorites.includes(templateId)) {
-        favorites.push(templateId);
-      }
-      
+    // Update favorites
+    let newFavorites: number[];
+    if (isFavorited) {
+      newFavorites = favorites.filter(id => id !== templateId);
       toast({
-        title: "Added to favorites",
-        description: "Template has been added to your favorites.",
+        title: "Template removed from favorites",
+        description: "The template has been removed from your favorites.",
+        variant: "default"
       });
     } else {
-      // Remove from favorites
-      favorites = favorites.filter(id => id !== templateId);
-      
+      newFavorites = [...favorites, templateId];
       toast({
-        title: "Removed from favorites",
-        description: "Template has been removed from your favorites.",
+        title: "Template added to favorites",
+        description: "The template has been added to your favorites.",
+        variant: "default"
       });
     }
     
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(favorites));
+    // Save to localStorage
+    localStorage.setItem('favoriteTemplates', JSON.stringify(newFavorites));
     
-    // Notify parent component about the change
+    // Update state and call callback
+    setIsFavorited(!isFavorited);
     if (onFavoriteChange) {
-      onFavoriteChange(templateId, newFavoritedState);
+      onFavoriteChange(templateId, !isFavorited);
     }
-    
-    // Here you could also make an API call to sync with the server
-    // This is just a client-side implementation for now
   };
-  
+
+  // Calculate size parameters based on size prop
+  const getButtonSize = () => {
+    switch (size) {
+      case 'sm':
+        return {
+          buttonClass: 'h-7 w-7',
+          iconClass: 'h-3.5 w-3.5'
+        };
+      case 'lg':
+        return {
+          buttonClass: 'h-10 w-10',
+          iconClass: 'h-5 w-5'
+        };
+      case 'md':
+      default:
+        return {
+          buttonClass: 'h-8 w-8',
+          iconClass: 'h-4 w-4'
+        };
+    }
+  };
+
+  const { buttonClass, iconClass } = getButtonSize();
+
   return (
     <Button
+      variant="ghost"
+      size="icon"
+      className={`${buttonClass} rounded-full ${
+        isFavorited 
+          ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200 hover:text-yellow-700' 
+          : 'bg-white/80 text-gray-400 hover:bg-white hover:text-yellow-500'
+      }`}
       onClick={(e) => {
-        e.stopPropagation();
-        toggleFavorite();
+        e.stopPropagation(); // Prevent triggering any parent click events
+        handleToggleFavorite();
       }}
-      variant={variant}
-      size={size}
-      className={`${isFavorited ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground hover:text-foreground'}`}
-      title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+      aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
     >
-      <Star className="h-4 w-4" fill={isFavorited ? "currentColor" : "none"} />
+      <Star className={iconClass} fill={isFavorited ? "currentColor" : "none"} />
     </Button>
   );
 }

@@ -32,7 +32,10 @@ import {
   Filter, 
   Sparkles,
   LayoutGrid,
-  PlusCircle
+  PlusCircle,
+  List,
+  Calendar,
+  Info
 } from "lucide-react";
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +44,8 @@ import { useToast } from '@/hooks/use-toast';
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
 import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
 import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
-import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets.svg";
+import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets-updated.svg";
+import pumpfluxWorkflowPreview from "@/assets/templates/pumpflux-workflow.svg";
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -79,6 +83,7 @@ export function TemplateSearch() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Build the query string based on filters
   const buildQueryString = () => {
@@ -160,6 +165,11 @@ export function TemplateSearch() {
         ))
     ) {
       return pipedriveToGoogleSheetsPreview;
+    }
+    
+    // Special case for PumpFlux Workflow
+    if (template.name && template.name.toLowerCase().includes('pumpflux')) {
+      return pumpfluxWorkflowPreview;
     }
     
     // Match by keywords in template name
@@ -420,93 +430,200 @@ export function TemplateSearch() {
                     : `All Templates (${filteredTemplates.length})`
                 }
               </h2>
-              <div className="flex items-center text-sm text-gray-600">
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                <span>Grid view</span>
+              <div className="flex items-center">
+                <div className="bg-gray-100 rounded-md p-1 flex">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`px-2 ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-1" />
+                    <span className="text-xs">Grid</span>
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`px-2 ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List className="h-4 w-4 mr-1" />
+                    <span className="text-xs">List</span>
+                  </Button>
+                </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredTemplates.map((template) => (
-                <Card key={template.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 border-gray-200 overflow-hidden group">
-                  {/* Image Preview */}
-                  <div className="relative h-48 bg-gradient-to-tr from-indigo-50 to-blue-50 overflow-hidden">
-                    <img 
-                      src={getTemplatePreviewImage(template)}
-                      alt={`${template.name} workflow preview`}
-                      className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-300 p-4"
-                    />
-                    <div className="absolute top-3 right-3">
-                      <TemplateFavoriteButton 
-                        templateId={template.id} 
-                        initialFavorited={favoriteIds.includes(template.id)}
-                        onFavoriteChange={(templateId, isFavorited) => {
-                          const newFavorites = isFavorited 
-                            ? [...favoriteIds, templateId]
-                            : favoriteIds.filter(id => id !== templateId);
-                          setFavoriteIds(newFavorites);
-                        }}
+            {/* Grid View */}
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredTemplates.map((template) => (
+                  <Card key={template.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 border-gray-200 overflow-hidden group">
+                    {/* Image Preview */}
+                    <div className="relative h-48 bg-gradient-to-tr from-indigo-50 to-blue-50 overflow-hidden">
+                      <img 
+                        src={getTemplatePreviewImage(template)}
+                        alt={`${template.name} workflow preview`}
+                        className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-300 p-4"
                       />
-                    </div>
-                  </div>
-                  
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl group-hover:text-indigo-700 transition-colors duration-200">
-                          {template.name}
-                        </CardTitle>
-                        <CardDescription className="mt-1 line-clamp-2 h-10">
-                          {template.description}
-                        </CardDescription>
+                      <div className="absolute top-3 right-3">
+                        <TemplateFavoriteButton 
+                          templateId={template.id} 
+                          initialFavorited={favoriteIds.includes(template.id)}
+                          onFavoriteChange={(templateId, isFavorited) => {
+                            const newFavorites = isFavorited 
+                              ? [...favoriteIds, templateId]
+                              : favoriteIds.filter(id => id !== templateId);
+                            setFavoriteIds(newFavorites);
+                          }}
+                        />
                       </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="flex-grow pb-3">
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {template.tags?.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="bg-gray-50">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {(template.tags?.length || 0) > 3 && (
-                        <Badge variant="outline" className="bg-gray-50">
-                          +{(template.tags?.length || 0) - 3} more
-                        </Badge>
-                      )}
                     </div>
                     
-                    <div className="flex gap-4 text-xs text-gray-500">
-                      <div className="flex items-center">
-                        <FileBadge className="h-3.5 w-3.5 mr-1" />
-                        <span className="capitalize">{template.category?.replace(/-/g, ' ')}</span>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl group-hover:text-indigo-700 transition-colors duration-200">
+                            {template.name}
+                          </CardTitle>
+                          <CardDescription className="mt-1 line-clamp-2 h-10">
+                            {template.description}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <Clock className="h-3.5 w-3.5 mr-1" />
-                        <span>{template.estimatedDuration}</span>
+                    </CardHeader>
+                    
+                    <CardContent className="flex-grow pb-3">
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {template.tags?.slice(0, 3).map((tag, index) => (
+                          <Badge key={index} variant="outline" className="bg-gray-50">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {(template.tags?.length || 0) > 3 && (
+                          <Badge variant="outline" className="bg-gray-50">
+                            +{(template.tags?.length || 0) - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-4 text-xs text-gray-500">
+                        <div className="flex items-center">
+                          <FileBadge className="h-3.5 w-3.5 mr-1" />
+                          <span className="capitalize">{template.category?.replace(/-/g, ' ')}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="h-3.5 w-3.5 mr-1" />
+                          <span>{template.estimatedDuration}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    
+                    <CardFooter className="pt-3 border-t border-gray-100">
+                      <div className="w-full flex flex-wrap justify-between items-center">
+                        <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
+                          {template.complexity || 'medium'} complexity
+                        </Badge>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleUseTemplate(template)}
+                          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
+                        >
+                          <Zap className="h-3.5 w-3.5 mr-2" />
+                          Use Template
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+            
+            {/* List View */}
+            {viewMode === 'list' && (
+              <div className="flex flex-col space-y-4">
+                {filteredTemplates.map((template) => (
+                  <Card key={template.id} className="hover:shadow-md transition-shadow duration-300 border-gray-200 overflow-hidden group">
+                    <div className="flex flex-col md:flex-row">
+                      {/* Image Preview (smaller in list view) */}
+                      <div className="relative w-full md:w-48 h-40 bg-gradient-to-tr from-indigo-50 to-blue-50 overflow-hidden">
+                        <img 
+                          src={getTemplatePreviewImage(template)}
+                          alt={`${template.name} workflow preview`}
+                          className="w-full h-full object-contain p-4"
+                        />
+                        <div className="absolute top-2 right-2">
+                          <TemplateFavoriteButton 
+                            templateId={template.id} 
+                            initialFavorited={favoriteIds.includes(template.id)}
+                            onFavoriteChange={(templateId, isFavorited) => {
+                              const newFavorites = isFavorited 
+                                ? [...favoriteIds, templateId]
+                                : favoriteIds.filter(id => id !== templateId);
+                              setFavoriteIds(newFavorites);
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-xl font-bold group-hover:text-indigo-700 transition-colors duration-200">
+                              {template.name}
+                            </h3>
+                            <p className="text-gray-500 mt-1 mb-3">{template.description}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {template.tags?.slice(0, 5).map((tag, index) => (
+                            <Badge key={index} variant="outline" className="bg-gray-50">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {(template.tags?.length || 0) > 5 && (
+                            <Badge variant="outline" className="bg-gray-50">
+                              +{(template.tags?.length || 0) - 5} more
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center">
+                            <FileBadge className="h-4 w-4 mr-1 text-indigo-600" />
+                            <span className="capitalize">{template.category?.replace(/-/g, ' ')}</span>
+                          </div>
+                          {template.estimatedDuration && (
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-1 text-indigo-600" />
+                              <span>{template.estimatedDuration}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1 text-indigo-600" />
+                            <span>Updated {template.updatedAt ? new Date(template.updatedAt).toLocaleDateString() : 'recently'}</span>
+                          </div>
+                          <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
+                            {template.complexity || 'medium'} complexity
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex justify-end">
+                          <Button 
+                            onClick={() => handleUseTemplate(template)}
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
+                          >
+                            <Zap className="h-4 w-4 mr-2" />
+                            Use Template
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                  
-                  <CardFooter className="pt-3 border-t border-gray-100">
-                    <div className="w-full flex flex-wrap justify-between items-center">
-                      <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
-                        {template.complexity || 'medium'} complexity
-                      </Badge>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleUseTemplate(template)}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
-                      >
-                        <Zap className="h-3.5 w-3.5 mr-2" />
-                        Use Template
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </>
         )}
         
