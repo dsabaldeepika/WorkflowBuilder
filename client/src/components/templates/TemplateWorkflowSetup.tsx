@@ -14,7 +14,10 @@ import { useWorkflowStore } from '@/store/useWorkflowStore';
 import { ArrowLeft, Check, Cog, ExternalLink, Info, Save, Workflow } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { WorkflowCanvas } from '../workflow/WorkflowCanvas';
+// Import template preview images
+import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
+import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
+import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
 
 interface TemplateWorkflowSetupProps {
   templateId?: string | null;
@@ -35,6 +38,21 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     nodes,
     edges
   } = useWorkflowStore();
+  
+  // Function to get appropriate preview image based on template name
+  const getTemplatePreviewImage = (template: WorkflowTemplate) => {
+    // Match template with preview image
+    const templateName = template.name.toLowerCase();
+    
+    if (templateName.includes('facebook') && (templateName.includes('hubspot') || templateName.includes('lead'))) {
+      return facebookToHubspotPreview;
+    } else if (templateName.includes('customer') && templateName.includes('follow')) {
+      return customerFollowUpPreview;
+    }
+    
+    // Default placeholder for any other templates
+    return defaultTemplatePreview;
+  };
 
   // Fetch template details
   const { data: template, isLoading: isTemplateLoading, error } = useQuery<WorkflowTemplate>({
@@ -419,9 +437,25 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
             <CardHeader className="p-4 pb-0">
               <CardTitle className="text-lg">Workflow Preview</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow p-0 relative">
-              <div className="absolute inset-0">
-                <WorkflowCanvas readOnly={true} />
+            <CardContent className="p-4 flex-grow">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 h-full flex flex-col justify-center items-center">
+                <img 
+                  src={template.coverImage || getTemplatePreviewImage(template)}
+                  alt={`${template.name} workflow preview`}
+                  className="max-w-full object-contain rounded mb-4"
+                  style={{ maxHeight: '300px' }}
+                  onError={(e) => {
+                    // Fallback to placeholder image if loading fails
+                    const target = e.target as HTMLImageElement;
+                    target.src = defaultTemplatePreview;
+                  }}
+                />
+                <div className="text-center mt-4">
+                  <h3 className="font-medium">Workflow Structure</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {templateNodes.length} nodes · {templateEdges.length} connections
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
