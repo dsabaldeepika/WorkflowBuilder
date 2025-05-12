@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PumpFlux Workflow Builder</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --panel-bg: #1e293b;
+      --card-bg: #334155;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border: #475569;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .header {
+      background-color: var(--panel-bg);
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+    }
+    
+    .header h1 i {
+      margin-right: 0.5rem;
+      color: var(--primary);
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background-color 0.2s;
+    }
+    
+    .button:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .button-outline {
+      background-color: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+    
+    .button-outline:hover {
+      background-color: rgba(59, 130, 246, 0.1);
+    }
+    
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .sidebar {
+      width: 300px;
+      background-color: var(--panel-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .sidebar-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    
+    .search-box {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 0.5rem;
+      background-color: var(--bg-color);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+    }
+    
+    .node-categories {
+      padding: 0.5rem 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .category {
+      margin-bottom: 0.5rem;
+    }
+    
+    .category-header {
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .category-items {
+      padding: 0.25rem 0;
+    }
+    
+    .node-item {
+      padding: 0.5rem 1rem 0.5rem 2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-left: 3px solid transparent;
+      transition: background-color 0.2s;
+    }
+    
+    .node-item:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-left-color: var(--primary);
+    }
+    
+    .node-item i {
+      color: var(--text-secondary);
+      width: 20px;
+      text-align: center;
+    }
+    
+    .workflow-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-color);
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+      overflow: hidden;
+    }
+    
+    .node {
+      position: absolute;
+      width: 200px;
+      background-color: var(--card-bg);
+      border-radius: 6px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      user-select: none;
+    }
+    
+    .node-header {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: move;
+    }
+    
+    .node-header i {
+      color: var(--primary);
+    }
+    
+    .node-title {
+      font-weight: 600;
+      flex: 1;
+    }
+    
+    .node-menu {
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    
+    .node-body {
+      padding: 0.75rem;
+    }
+    
+    .node-port {
+      display: flex;
+      align-items: center;
+      margin: 0.5rem 0;
+    }
+    
+    .port-handle {
+      width: 12px;
+      height: 12px;
+      background-color: var(--primary);
+      border-radius: 50%;
+      margin: 0 0.5rem;
+      cursor: pointer;
+    }
+    
+    .port-label {
+      flex: 1;
+      font-size: 0.875rem;
+    }
+    
+    .panel {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background-color: var(--panel-bg);
+      border-radius: 6px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .panel-button {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .panel-button:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .right-panel {
+      width: 300px;
+      background-color: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .right-panel-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    
+    .right-panel-content {
+      padding: 1rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 0.5rem;
+      background-color: var(--bg-color);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+    }
+    
+    .connection-line {
+      stroke: var(--primary);
+      stroke-width: 2px;
+      fill: none;
+    }
+    
+    .welcome-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      padding: 2rem;
+      background-color: var(--panel-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      max-width: 500px;
+    }
+    
+    .welcome-title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+    
+    .welcome-text {
+      margin-bottom: 1.5rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(59, 130, 246, 0.3);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+    
+    /* State colors */
+    .node-success {
+      border-top: 3px solid var(--success);
+    }
+    
+    .node-warning {
+      border-top: 3px solid var(--warning);
+    }
+    
+    .node-error {
+      border-top: 3px solid var(--danger);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>
+      <i class="fas fa-project-diagram"></i>
+      PumpFlux Workflow Builder
+    </h1>
+    <div class="header-actions">
+      <button class="button button-outline">
+        <i class="far fa-file"></i>
+        New
+      </button>
+      <button class="button">
+        <i class="far fa-save"></i>
+        Save
+      </button>
+      <button class="button button-outline">
+        <i class="fas fa-play"></i>
+        Test
+      </button>
+    </div>
+  </header>
+  
+  <div class="main-container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Available Nodes</div>
+      </div>
+      <div class="search-box">
+        <input type="text" class="search-input" placeholder="Search nodes...">
+      </div>
+      <div class="node-categories">
+        <div class="category">
+          <div class="category-header">
+            <span>CRM</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="category-items">
+            <div class="node-item" draggable="true" data-type="hubspot">
+              <i class="fab fa-hubspot"></i>
+              <span>HubSpot</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="salesforce">
+              <i class="fas fa-cloud"></i>
+              <span>Salesforce</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="zoho">
+              <i class="fas fa-address-book"></i>
+              <span>Zoho CRM</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="category">
+          <div class="category-header">
+            <span>Communication</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="category-items">
+            <div class="node-item" draggable="true" data-type="email">
+              <i class="fas fa-envelope"></i>
+              <span>Email</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="slack">
+              <i class="fab fa-slack"></i>
+              <span>Slack</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="sms">
+              <i class="fas fa-sms"></i>
+              <span>SMS</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="category">
+          <div class="category-header">
+            <span>Productivity</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="category-items">
+            <div class="node-item" draggable="true" data-type="google-sheets">
+              <i class="fas fa-table"></i>
+              <span>Google Sheets</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="docs">
+              <i class="fas fa-file-alt"></i>
+              <span>Google Docs</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="calendar">
+              <i class="fas fa-calendar"></i>
+              <span>Calendar</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="category">
+          <div class="category-header">
+            <span>Social Media</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="category-items">
+            <div class="node-item" draggable="true" data-type="facebook">
+              <i class="fab fa-facebook"></i>
+              <span>Facebook</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="twitter">
+              <i class="fab fa-twitter"></i>
+              <span>Twitter</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="linkedin">
+              <i class="fab fa-linkedin"></i>
+              <span>LinkedIn</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="category">
+          <div class="category-header">
+            <span>AI & ML</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="category-items">
+            <div class="node-item" draggable="true" data-type="openai">
+              <i class="fas fa-brain"></i>
+              <span>OpenAI</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="sentiment">
+              <i class="fas fa-comment-dots"></i>
+              <span>Sentiment Analysis</span>
+            </div>
+            <div class="node-item" draggable="true" data-type="nlp">
+              <i class="fas fa-language"></i>
+              <span>NLP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="workflow-area">
+      <div class="canvas" id="workflow-canvas">
+        <div class="welcome-message">
+          <h2 class="welcome-title">Start Building Your Workflow</h2>
+          <p class="welcome-text">
+            Drag and drop nodes from the left sidebar onto this canvas. 
+            Connect them together to create automated workflows.
+            Each node represents an action or trigger in your workflow.
+          </p>
+          <button class="button" id="add-trigger-btn">
+            <i class="fas fa-plus"></i>
+            Add a Trigger
+          </button>
+        </div>
+      </div>
+      
+      <div class="panel">
+        <button class="panel-button" title="Zoom In">
+          <i class="fas fa-plus"></i>
+        </button>
+        <button class="panel-button" title="Zoom Out">
+          <i class="fas fa-minus"></i>
+        </button>
+        <button class="panel-button" title="Reset View">
+          <i class="fas fa-expand"></i>
+        </button>
+        <button class="panel-button" title="Delete Selected">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+    
+    <div class="right-panel">
+      <div class="right-panel-header">
+        Properties
+      </div>
+      <div class="right-panel-content">
+        <div class="form-group">
+          <label class="form-label">Workflow Name</label>
+          <input type="text" class="form-input" value="New Workflow">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Schedule</label>
+          <select class="form-input">
+            <option>Manual Trigger</option>
+            <option>Every hour</option>
+            <option>Daily</option>
+            <option>Weekly</option>
+            <option>Monthly</option>
+            <option>Custom...</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Tags</label>
+          <input type="text" class="form-input" placeholder="Add tags...">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('workflow-canvas');
+      const addTriggerBtn = document.getElementById('add-trigger-btn');
+      let isDragging = false;
+      let currentNode = null;
+      let offset = { x: 0, y: 0 };
+      let nodeCounter = 0;
+      
+      // Make node items draggable
+      const nodeItems = document.querySelectorAll('.node-item');
+      nodeItems.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+      });
+      
+      // Allow dropping on canvas
+      canvas.addEventListener('dragover', handleDragOver);
+      canvas.addEventListener('drop', handleDrop);
+      
+      // Add a trigger node when the welcome button is clicked
+      addTriggerBtn.addEventListener('click', () => {
+        createNode({ type: 'trigger', x: canvas.offsetWidth / 2 - 100, y: canvas.offsetHeight / 2 - 100 });
+        document.querySelector('.welcome-message').style.display = 'none';
+      });
+      
+      function handleDragStart(e) {
+        const nodeType = e.target.dataset.type;
+        e.dataTransfer.setData('text/plain', nodeType);
+      }
+      
+      function handleDragOver(e) {
+        e.preventDefault();
+      }
+      
+      function handleDrop(e) {
+        e.preventDefault();
+        const nodeType = e.dataTransfer.getData('text/plain');
+        const x = e.clientX - canvas.getBoundingClientRect().left;
+        const y = e.clientY - canvas.getBoundingClientRect().top;
+        
+        createNode({ type: nodeType, x, y });
+        
+        // Hide welcome message when first node is added
+        document.querySelector('.welcome-message').style.display = 'none';
+      }
+      
+      function createNode({ type, x, y }) {
+        const node = document.createElement('div');
+        node.className = 'node';
+        node.id = `node-${++nodeCounter}`;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        
+        let icon, title;
+        
+        switch(type) {
+          case 'trigger':
+            icon = 'fas fa-bolt';
+            title = 'Workflow Trigger';
+            node.style.borderTop = '3px solid #f59e0b';
+            break;
+          case 'hubspot':
+            icon = 'fab fa-hubspot';
+            title = 'HubSpot';
+            break;
+          case 'salesforce':
+            icon = 'fas fa-cloud';
+            title = 'Salesforce';
+            break;
+          case 'slack':
+            icon = 'fab fa-slack';
+            title = 'Slack';
+            break;
+          case 'email':
+            icon = 'fas fa-envelope';
+            title = 'Email';
+            break;
+          case 'google-sheets':
+            icon = 'fas fa-table';
+            title = 'Google Sheets';
+            break;
+          case 'facebook':
+            icon = 'fab fa-facebook';
+            title = 'Facebook';
+            break;
+          case 'openai':
+            icon = 'fas fa-brain';
+            title = 'OpenAI';
+            break;
+          default:
+            icon = 'fas fa-cog';
+            title = type.charAt(0).toUpperCase() + type.slice(1);
+        }
+        
+        node.innerHTML = `
+          <div class="node-header">
+            <i class="${icon}"></i>
+            <div class="node-title">${title}</div>
+            <div class="node-menu">
+              <i class="fas fa-ellipsis-v"></i>
+            </div>
+          </div>
+          <div class="node-body">
+            <div class="node-port">
+              <div class="port-handle input-port"></div>
+              <div class="port-label">Input</div>
+            </div>
+            <div class="node-port">
+              <div class="port-label">Output</div>
+              <div class="port-handle output-port"></div>
+            </div>
+          </div>
+        `;
+        
+        canvas.appendChild(node);
+        
+        // Make node draggable
+        const nodeHeader = node.querySelector('.node-header');
+        nodeHeader.addEventListener('mousedown', e => {
+          isDragging = true;
+          currentNode = node;
+          offset = {
+            x: e.clientX - node.offsetLeft,
+            y: e.clientY - node.offsetTop
+          };
+          
+          // Prevent text selection during drag
+          e.preventDefault();
+        });
+      }
+      
+      // Handle node dragging
+      document.addEventListener('mousemove', e => {
+        if (!isDragging || !currentNode) return;
+        
+        const x = e.clientX - offset.x;
+        const y = e.clientY - offset.y;
+        
+        currentNode.style.left = `${x}px`;
+        currentNode.style.top = `${y}px`;
+      });
+      
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+        currentNode = null;
+      });
+      
+      // Toggle categories
+      const categoryHeaders = document.querySelectorAll('.category-header');
+      categoryHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+          const items = header.nextElementSibling;
+          const icon = header.querySelector('i');
+          
+          if (items.style.display === 'none') {
+            items.style.display = 'block';
+            icon.className = 'fas fa-chevron-down';
+          } else {
+            items.style.display = 'none';
+            icon.className = 'fas fa-chevron-right';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

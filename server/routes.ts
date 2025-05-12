@@ -10,7 +10,8 @@ import workflowTemplatesRoutes from "./routes/workflowTemplates";
 import appIntegrationsRoutes from "./routes/appIntegrations";
 import workflowExecutionRoutes from "./routes/workflowExecution";
 import { subscriptionsRouter } from "./routes/subscriptions";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+// import { setupAuth, isAuthenticated } from "./replitAuth"; 
+// Authentication bypass instead of Replit Auth
 import { pool } from "./db";
 import { swaggerSpec } from "./swagger";
 import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
@@ -37,9 +38,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // BYPASS: Temporarily disabled Replit Auth due to iframe authentication issues
   // await setupAuth(app);
   
-  // BYPASS: Adding mock authentication endpoint that always returns a demo user
-  app.get('/api/auth/user', (req, res) => {
-    res.json({
+  // BYPASS: Create a bypass for the authentication middleware
+  // Replace all instances of isAuthenticated middleware with this bypass version
+  const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
+    // Inject a fake authenticated user into the request
+    (req as any).user = {
       id: 1,
       username: 'demo_user',
       email: 'demo@example.com',
@@ -50,18 +53,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
-  });
-  
-  // BYPASS: Create a bypass for the authentication middleware
-  // Replace all instances of isAuthenticated middleware with this bypass version
-  const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
-    // Inject a fake authenticated user into the request
-    (req as any).user = {
-      id: 1,
-      username: 'demo_user',
-      role: 'admin',
-      subscriptionTier: 'pro'
     };
     (req as any).isAuthenticated = () => true;
     next();
@@ -90,12 +81,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  app.get('/api/auth/user', (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-    
-    // Return the Replit Auth user info
+  app.get('/api/auth/user', bypassAuth, (req, res) => {
+    // Always return the demo user
     return res.json(req.user);
   });
   

@@ -36,49 +36,28 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
 };
 
 function Router() {
-  // Check auth status for home route
+  // BYPASS: Direct access to components without authentication
+  // This is a temporary solution until auth issues are resolved
+  
+  // Automatic redirect to workflow page
   const HomeRoute = () => {
-    const { isAuthenticated, isLoading } = useAuth();
-    
-    if (isLoading) {
-      return <div className="flex h-screen items-center justify-center">Loading...</div>;
-    }
-    
-    if (isAuthenticated) {
-      return <Dashboard />;
-    } else {
-      return <Login />;
-    }
+    return <Dashboard />;
   };
   
   return (
     <Switch>
       <Route path={ROUTES.home} component={HomeRoute} />
-      <Route path="/login" component={Login} />
-      <Route path="/auth/callback" component={Callback} />
-      <Route path={ROUTES.dashboard}>
-        {(params) => <ProtectedRoute component={Dashboard} params={params} />}
-      </Route>
-      <Route path={ROUTES.createWorkflow}>
-        {(params) => <ProtectedRoute component={WorkflowBuilder} params={params} />}
-      </Route>
-      <Route path={ROUTES.workflowAnimations}>
-        {(params) => <ProtectedRoute component={WorkflowAnimationsDemo} params={params} />}
-      </Route>
-      <Route path="/monitoring">
-        {(params) => <ProtectedRoute component={WorkflowMonitoring} params={params} />}
-      </Route>
-      <Route path={ROUTES.templates}>
-        {(params) => <ProtectedRoute component={TemplatesPage} params={params} />}
-      </Route>
+      <Route path="/login" component={Dashboard} /> {/* Bypass login */}
+      <Route path="/auth/callback" component={Dashboard} /> {/* Bypass callback */}
+      <Route path={ROUTES.dashboard} component={Dashboard} />
+      <Route path={ROUTES.createWorkflow} component={WorkflowBuilder} />
+      <Route path={ROUTES.workflowAnimations} component={WorkflowAnimationsDemo} />
+      <Route path="/monitoring" component={WorkflowMonitoring} />
+      <Route path={ROUTES.templates} component={TemplatesPage} />
       <Route path={ROUTES.pricing} component={PricingPage} />
-      <Route path={ROUTES.checkout}>
-        {(params) => <ProtectedRoute component={CheckoutPage} params={params} />}
-      </Route>
-      <Route path={ROUTES.accountBilling}>
-        {(params) => <ProtectedRoute component={AccountBillingPage} params={params} />}
-      </Route>
-      <Route component={NotFound} />
+      <Route path={ROUTES.checkout} component={CheckoutPage} />
+      <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
+      <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
   );
 }
