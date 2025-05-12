@@ -474,6 +474,93 @@ export function CustomNodeTemplates({
               </div>
             </ScrollArea>
           </TabsContent>
+          
+          {/* Presets tab - uses NodeTemplatePresets component */}
+          <TabsContent value="presets" className="h-full">
+            <ScrollArea className="h-[400px] pr-4">
+              <NodeTemplatePresets onSelectTemplate={handleSelectTemplate} />
+            </ScrollArea>
+          </TabsContent>
+          
+          {/* Node Groups tab - shows group templates */}
+          <TabsContent value="groups" className="h-full">
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {customTemplates.filter(t => t.isGroupTemplate).length === 0 ? (
+                  <div className="col-span-2 flex flex-col items-center justify-center py-8 text-center">
+                    <Layers className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium">No Group Templates</h3>
+                    <p className="text-muted-foreground mt-1 max-w-md">
+                      Save your workflow as a template to create reusable node groups. 
+                      Node groups allow you to save multiple connected nodes as a single template.
+                    </p>
+                    <Button 
+                      className="mt-4"
+                      onClick={() => setIsSavingWorkflowAsTemplate(true)}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Current Workflow
+                    </Button>
+                  </div>
+                ) : (
+                  customTemplates
+                    .filter(template => template.isGroupTemplate)
+                    .map((template) => (
+                      <Card 
+                        key={template.id}
+                        className="cursor-pointer transition-all hover:shadow-md overflow-hidden"
+                        onClick={() => handleSelectTemplate(template)}
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex justify-between">
+                            <CardTitle className="text-base">{template.name}</CardTitle>
+                            <div className="flex space-x-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => handleToggleFavorite(template.id, template.isFavorite, e)}
+                              >
+                                <Star 
+                                  className={`h-4 w-4 ${template.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                                />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => handleDuplicateTemplate(template.id, e)}
+                              >
+                                <Copy className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => handleDeleteTemplate(template.id, e)}
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </div>
+                          <CardDescription className="line-clamp-2">
+                            {template.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Layers className="h-4 w-4" />
+                            <span>{template.configuration.nodesCount || 0} nodes in this group</span>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="pt-0">
+                          <p className="text-xs text-muted-foreground">
+                            Created: {new Date(template.createdAt).toLocaleDateString()}
+                          </p>
+                        </CardFooter>
+                      </Card>
+                    ))
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
         </Tabs>
 
         <DialogFooter className="mt-4">
@@ -567,6 +654,77 @@ export function CustomNodeTemplates({
             <Button onClick={handleCreateTemplate}>
               <Save className="mr-2 h-4 w-4" />
               Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Save Workflow as Template Modal */}
+      <Dialog open={isSavingWorkflowAsTemplate} onOpenChange={(open) => !open && setIsSavingWorkflowAsTemplate(false)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Save Workflow as Template</DialogTitle>
+            <DialogDescription>
+              Save your current workflow as a reusable template. This will create a template containing all the nodes and their configurations.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="templateName" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="templateName"
+                value={workflowTemplate.name}
+                onChange={(e) => setWorkflowTemplate({...workflowTemplate, name: e.target.value})}
+                className="col-span-3"
+                placeholder="My Workflow Template"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="templateDescription" className="text-right">
+                Description
+              </Label>
+              <Textarea
+                id="templateDescription"
+                value={workflowTemplate.description}
+                onChange={(e) => setWorkflowTemplate({...workflowTemplate, description: e.target.value})}
+                className="col-span-3"
+                placeholder="Describe what this workflow template does..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="templateCategory" className="text-right">
+                Category
+              </Label>
+              <select
+                id="templateCategory"
+                value={workflowTemplate.category}
+                onChange={(e) => setWorkflowTemplate({...workflowTemplate, category: e.target.value as NodeCategory})}
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="custom">Custom</option>
+                <option value="automation">Automation</option>
+                <option value="integration">Integration</option>
+                <option value="ai">AI & ML</option>
+                <option value="data">Data Processing</option>
+                <option value="messaging">Messaging</option>
+                <option value="crm">CRM</option>
+                <option value="social">Social Media</option>
+                <option value="ecommerce">E-commerce</option>
+                <option value="utility">Utility</option>
+              </select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSavingWorkflowAsTemplate(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveWorkflowAsTemplate}>
+              <Save className="mr-2 h-4 w-4" />
+              Save as Template
             </Button>
           </DialogFooter>
         </DialogContent>
