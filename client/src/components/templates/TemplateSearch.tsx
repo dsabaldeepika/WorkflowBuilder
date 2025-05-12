@@ -133,14 +133,13 @@ export function TemplateSearch() {
   };
   
   const handleUseTemplate = (template: WorkflowTemplate) => {
-    // This will be expanded later to actually use the template
     toast({
       title: "Template selected",
-      description: `You selected the "${template.name}" template.`,
+      description: `Preparing "${template.name}" template for setup...`,
     });
     setIsPreviewOpen(false);
-    // Navigate to workflow builder with template
-    window.location.href = `/create?template=${template.id}`;
+    // Navigate to the new template setup page
+    window.location.href = `/template-setup/${template.id}`;
   };
 
   return (
