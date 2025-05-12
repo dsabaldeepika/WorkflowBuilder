@@ -31,16 +31,21 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
-    resave: false,
+    resave: false, 
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProduction,
+      sameSite: isDevelopment ? 'lax' : 'none',
       maxAge: sessionTtl,
+      path: '/',
     },
   });
 }
@@ -68,7 +73,8 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
+  // Trust all proxies for Replit environment
+  app.enable("trust proxy");
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
