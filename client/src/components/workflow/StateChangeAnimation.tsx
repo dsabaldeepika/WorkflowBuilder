@@ -133,8 +133,7 @@ export const stateConfig = {
     borderColor: 'border-blue-200',
     shouldAnimate: true,
     label: 'Running',
-    description: 'Workflow in progress',
-    animate: true
+    description: 'Workflow in progress'
   },
   completed: {
     icon: CheckCircle,
@@ -142,7 +141,8 @@ export const stateConfig = {
     bgColor: 'bg-emerald-100',
     borderColor: 'border-emerald-200',
     label: 'Completed',
-    description: 'Successfully completed'
+    description: 'Successfully completed',
+    shouldAnimate: false
   },
   failed: {
     icon: XCircle,
@@ -150,7 +150,8 @@ export const stateConfig = {
     bgColor: 'bg-rose-100',
     borderColor: 'border-rose-200',
     label: 'Failed',
-    description: 'Error encountered'
+    description: 'Error encountered',
+    shouldAnimate: false
   },
   paused: {
     icon: PauseCircle,
@@ -158,7 +159,8 @@ export const stateConfig = {
     bgColor: 'bg-amber-100',
     borderColor: 'border-amber-200',
     label: 'Paused',
-    description: 'Execution paused'
+    description: 'Execution paused',
+    shouldAnimate: false
   },
   retrying: {
     icon: RefreshCcw,
@@ -167,7 +169,7 @@ export const stateConfig = {
     borderColor: 'border-purple-200',
     label: 'Retrying',
     description: 'Attempting again after failure',
-    animate: true
+    shouldAnimate: true
   }
 };
 
@@ -212,7 +214,7 @@ export const WorkflowStateIndicator: React.FC<WorkflowStateIndicatorProps> = ({
           className={cn(
             sizeClasses[size],
             config.color,
-            (animate) && "animate-spin"
+            (config.shouldAnimate && animate) && "animate-spin"
           )} 
         />
       </motion.div>
