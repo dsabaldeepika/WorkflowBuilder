@@ -79,7 +79,7 @@ interface WorkflowStoreState {
   setNodes: (nodes: Node<NodeData>[]) => void;
   setEdges: (edges: Edge[]) => void;
   clearWorkflow: () => void;
-  saveWorkflow: () => void;
+  saveWorkflow: (workflowParams?: { name?: string; description?: string; nodes?: any[]; edges?: any[] }) => Promise<any>;
   loadWorkflow: (workflow: Workflow) => void;
   exportWorkflow: () => Workflow;
   setSelectedNode: (id: string | null) => void;
@@ -249,15 +249,25 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
-  saveWorkflow: () => {
+  saveWorkflow: (workflowParams?: { name?: string; description?: string; nodes?: any[]; edges?: any[] }) => {
     // Return a promise that the components can await and handle UI feedback
     return new Promise(async (resolve, reject) => {
       try {
-        const { nodes, edges } = get();
+        const storeState = get();
         
-        // Collect workflow metadata
-        const name = prompt("Enter workflow name:", "New Workflow") || "New Workflow";
-        const description = prompt("Enter workflow description:", "Created workflow") || "Created workflow";
+        // Use provided params or fall back to store state
+        const nodesToSave = workflowParams?.nodes || storeState.nodes;
+        const edgesToSave = workflowParams?.edges || storeState.edges;
+        
+        // Collect workflow metadata - either from params or prompt user
+        let name, description;
+        if (workflowParams?.name && workflowParams?.description) {
+          name = workflowParams.name;
+          description = workflowParams.description;
+        } else {
+          name = prompt("Enter workflow name:", "New Workflow") || "New Workflow";
+          description = prompt("Enter workflow description:", "Created workflow") || "Created workflow";
+        }
         
         // Get the currently authenticated user's ID
         // This approach works with the existing Replit Auth implementation
@@ -279,8 +289,8 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
           name,
           description,
           // Pass nodes and edges as separate properties as expected by the API
-          nodes: nodes,
-          edges: edges,
+          nodes: nodesToSave,
+          edges: edgesToSave,
           createdByUserId: userId,
           isPublished: false // Set default state as unpublished
         };
