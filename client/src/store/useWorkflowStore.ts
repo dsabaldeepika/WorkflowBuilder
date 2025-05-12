@@ -94,6 +94,7 @@ interface WorkflowStoreState {
   // AI & template features
   generateWorkflowFromDescription: (description: string) => void;
   applyWorkflowTemplate: (template: WorkflowTemplate) => void;
+  loadWorkflowFromTemplate: (nodes: any[], edges: any[]) => void;
   createAgent: (agentConfig: any) => void;
   
   // Node state management

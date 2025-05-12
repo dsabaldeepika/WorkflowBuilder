@@ -488,22 +488,23 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
                   onConnect({
                     source: sourceId,
                     target: targetId,
-                  sourceHandle: 'output',
-                  targetHandle: 'input',
-                });
-                
-                toast({
-                  title: "Nodes Connected",
-                  description: `Connected ${source.data.label} to ${target.data.label}`,
-                });
-              }
-            }}
-            onDismiss={(suggestionId: string) => {
-              // Optionally track dismissed suggestions in localStorage
-              const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
-              localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
-            }}
-          />
+                    sourceHandle: 'output',
+                    targetHandle: 'input'
+                  });
+                  
+                  toast({
+                    title: "Nodes Connected",
+                    description: `Connected ${source.data.label} to ${target.data.label}`,
+                  });
+                }
+              }}
+              onDismiss={(suggestionId: string) => {
+                // Optionally track dismissed suggestions in localStorage
+                const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
+                localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
+              }}
+            />
+          )}
         </ReactFlow>
       )}
       
