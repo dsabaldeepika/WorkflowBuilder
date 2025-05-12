@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard-new";
 import Callback from "@/pages/auth/callback";
 import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
 import WorkflowMonitoring from "@/pages/workflow-monitoring";
+import HealthDashboardPage from "@/pages/health-dashboard-page";
 import TemplatesPage from "@/pages/templates-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
@@ -53,6 +54,7 @@ function Router() {
       <Route path={ROUTES.createWorkflow} component={WorkflowBuilder} />
       <Route path={ROUTES.workflowAnimations} component={WorkflowAnimationsDemo} />
       <Route path="/monitoring" component={WorkflowMonitoring} />
+      <Route path="/health-dashboard" component={HealthDashboardPage} />
       <Route path={ROUTES.templates} component={TemplatesPage} />
       <Route path={ROUTES.pricing} component={PricingPage} />
       <Route path={ROUTES.checkout} component={CheckoutPage} />
