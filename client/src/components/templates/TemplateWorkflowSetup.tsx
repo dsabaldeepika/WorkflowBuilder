@@ -55,8 +55,15 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
       // Load workflow data from template
       if (template.nodes && template.edges) {
         try {
-          const nodes = JSON.parse(template.nodes as string);
-          const edges = JSON.parse(template.edges as string);
+          // Parse nodes and edges if they're strings, or use directly if already objects
+          const nodes = typeof template.nodes === 'string' 
+            ? JSON.parse(template.nodes) 
+            : template.nodes;
+          
+          const edges = typeof template.edges === 'string'
+            ? JSON.parse(template.edges)
+            : template.edges;
+            
           loadWorkflowFromTemplate(nodes, edges);
           
           // Extract credential fields needed
@@ -195,9 +202,13 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     );
   }
 
-  // Parse node data for visualization
-  const templateNodes = template.nodes ? JSON.parse(template.nodes as string) : [];
-  const templateEdges = template.edges ? JSON.parse(template.edges as string) : [];
+  // Parse or use node data for visualization
+  const templateNodes = template.nodes 
+    ? (typeof template.nodes === 'string' ? JSON.parse(template.nodes) : template.nodes) 
+    : [];
+  const templateEdges = template.edges 
+    ? (typeof template.edges === 'string' ? JSON.parse(template.edges) : template.edges) 
+    : [];
 
   return (
     <div className="container max-w-7xl mx-auto p-4 md:p-8">
