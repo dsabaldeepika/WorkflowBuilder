@@ -1,0 +1,2 @@
+[startHealthDashboard]
+command = "node health.cjs"
