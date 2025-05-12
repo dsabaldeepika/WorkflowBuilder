@@ -15,6 +15,8 @@ import { subscriptionsRouter } from "./routes/subscriptions";
 import { pool } from "./db";
 import { swaggerSpec } from "./swagger";
 import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
+import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup middleware
@@ -462,6 +464,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ message: "Failed to delete workflow" });
     }
+  });
+
+  // Direct route to health dashboard (no authentication required)
+  app.get('/health-dashboard', (req, res) => {
+    const htmlPath = path.join(process.cwd(), 'health-dashboard.html');
+    
+    fs.readFile(htmlPath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error reading health dashboard HTML:', err);
+        return res.status(500).send('Error loading health dashboard');
+      }
+      
+      res.set('Content-Type', 'text/html').send(data);
+    });
+  });
+  
+  // API endpoint to provide health monitoring data
+  app.get('/api/health-monitoring-data', (req, res) => {
+    // Sample health monitoring data
+    const healthData = {
+      summary: {
+        totalWorkflows: 24,
+        activeWorkflows: 18,
+        failedWorkflows: 3,
+        successRate: 87.5,
+        averageExecutionTime: 1.2, // in seconds
+        totalExecutions: 1457,
+      },
+      workflowPerformance: [
+        { id: 1, name: "Customer Onboarding", executions: 342, successRate: 98.2, avgTime: 0.8 },
+        { id: 2, name: "Lead Qualification", executions: 256, successRate: 95.7, avgTime: 1.1 },
+        { id: 3, name: "Email Campaign", executions: 189, successRate: 74.5, avgTime: 2.3 },
+        { id: 4, name: "Social Media Posting", executions: 147, successRate: 99.3, avgTime: 0.5 },
+        { id: 5, name: "Support Ticket Handling", executions: 523, successRate: 82.1, avgTime: 1.7 }
+      ],
+      errorBreakdown: {
+        apiConnectionIssues: 42,
+        dataValidationFailures: 23,
+        timeouts: 15,
+        authenticationFailures: 7,
+        rateLimitExceeded: 4
+      },
+      healthMetrics: {
+        systemMemory: 68, // percentage used
+        cpuUsage: 41, // percentage
+        apiAvailability: 99.8, // percentage
+        databaseLatency: 24 // ms
+      },
+      executionTimeline: [
+        { date: '2023-04-01', executions: 42, successRate: 88 },
+        { date: '2023-04-02', executions: 51, successRate: 92 },
+        { date: '2023-04-03', executions: 38, successRate: 84 },
+        { date: '2023-04-04', executions: 45, successRate: 91 },
+        { date: '2023-04-05', executions: 62, successRate: 95 },
+        { date: '2023-04-06', executions: 57, successRate: 89 },
+        { date: '2023-04-07', executions: 49, successRate: 86 }
+      ],
+      optimizationSuggestions: [
+        {
+          workflowId: 3,
+          workflowName: "Email Campaign",
+          suggestion: "Consider increasing timeout threshold for external API calls",
+          potentialImprovement: "Could improve success rate by approximately 12%"
+        },
+        {
+          workflowId: 5,
+          workflowName: "Support Ticket Handling",
+          suggestion: "Implement retry mechanism for database operations",
+          potentialImprovement: "Could reduce failures by approximately 8%"
+        }
+      ]
+    };
+    
+    res.json(healthData);
   });
 
   const httpServer = createServer(app);

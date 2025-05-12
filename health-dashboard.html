@@ -341,6 +341,56 @@
   </main>
 
   <script>
+    // Dashboard data
+    let dashboardData = null;
+    
+    // Fetch data from API
+    async function fetchHealthData() {
+      try {
+        const response = await fetch('/api/health-monitoring-data');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        dashboardData = await response.json();
+        updateDashboard();
+      } catch (error) {
+        console.error('Error fetching health data:', error);
+      }
+    }
+    
+    // Update dashboard with fetched data
+    function updateDashboard() {
+      if (!dashboardData) return;
+      
+      // Update summary cards
+      document.querySelector('.card:nth-child(1) .text-2xl').textContent = dashboardData.summary.successRate + '%';
+      document.querySelector('.card:nth-child(1) .progress-value').style.width = dashboardData.summary.successRate + '%';
+      
+      document.querySelector('.card:nth-child(2) .text-2xl').textContent = dashboardData.summary.totalExecutions;
+      const successFailText = `${dashboardData.summary.totalExecutions - dashboardData.summary.failedWorkflows} successful / ${dashboardData.summary.failedWorkflows} failed`;
+      document.querySelector('.card:nth-child(2) .text-xs').textContent = successFailText;
+      
+      document.querySelector('.card:nth-child(3) .text-2xl').textContent = dashboardData.summary.averageExecutionTime + 's';
+      
+      // More data updates could be added here for other sections
+      
+      // Update optimization recommendations
+      const recommendationsContainer = document.querySelector('.card:last-child .space-y-3');
+      recommendationsContainer.innerHTML = '';
+      
+      dashboardData.optimizationSuggestions.forEach(suggestion => {
+        const suggestionEl = document.createElement('div');
+        suggestionEl.className = 'p-3 bg-blue-50 border border-blue-100 rounded-md';
+        suggestionEl.innerHTML = `
+          <div class="font-medium text-blue-700">${suggestion.suggestion}</div>
+          <div class="text-sm text-blue-600 mt-1">
+            For workflow "${suggestion.workflowName}". ${suggestion.potentialImprovement}
+          </div>
+        `;
+        recommendationsContainer.appendChild(suggestionEl);
+      });
+    }
+    
     // Simple tab switching functionality
     document.addEventListener('DOMContentLoaded', () => {
       const tabs = document.querySelectorAll('.tab');
@@ -359,6 +409,12 @@
           }
         });
       });
+      
+      // Add refresh button functionality
+      document.querySelector('button').addEventListener('click', fetchHealthData);
+      
+      // Initial data fetch
+      fetchHealthData();
     });
   </script>
 </body>
