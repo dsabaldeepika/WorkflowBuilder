@@ -17,6 +17,7 @@ import { Clock, Tag, FileCode, DraftingCompass, LayoutDashboard, Image, Info } f
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
 import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
 import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
+import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets.svg";
 
 interface TemplatePreviewModalProps {
   isOpen: boolean;
@@ -49,7 +50,19 @@ export function TemplatePreviewModal({
   
   // Get the preview image based on template name or ID
   const getTemplatePreviewImage = (template: WorkflowTemplate) => {
-    // Match template with preview image
+    // Match template with preview image based on ID or name
+    
+    // Special case matching for template ID 13 (Pipedrive to Google Sheets)
+    if (template.id === 13 || 
+        (template.name && (
+          template.name.toLowerCase().includes('pipedrive') || 
+          (template.name.toLowerCase().includes('google') && template.name.toLowerCase().includes('sheet'))
+        ))
+    ) {
+      return pipedriveToGoogleSheetsPreview;
+    }
+    
+    // Match by keywords in template name
     const templateName = template.name.toLowerCase();
     
     if (templateName.includes('facebook') && (templateName.includes('hubspot') || templateName.includes('lead'))) {
