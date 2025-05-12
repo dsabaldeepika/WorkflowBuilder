@@ -13,6 +13,43 @@
     box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.5);
   }
   
+  /* Particle burst effect for completed states */
+  .animate-success-particles {
+    position: relative;
+    overflow: visible;
+  }
+  
+  .animate-success-particles::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.7) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    z-index: -1;
+    animation: success-burst 0.8s ease-out forwards;
+  }
+  
+  @keyframes success-burst {
+    0% {
+      width: 0%;
+      height: 0%;
+      opacity: 1;
+    }
+    70% {
+      opacity: 0.7;
+    }
+    100% {
+      width: 200%;
+      height: 200%;
+      opacity: 0;
+    }
+  }
+  
   @keyframes pulse-subtle {
     0%, 100% {
       opacity: 1;

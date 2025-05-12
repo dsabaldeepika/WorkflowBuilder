@@ -95,10 +95,18 @@ export const WorkflowStateHistory: React.FC<{ className?: string }> = ({ classNa
   );
 };
 
-export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying';
+export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying' | 'waiting';
 
 // Configuration for each workflow state
-export const stateConfig = {
+export const stateConfig: Record<WorkflowState, {
+  icon: React.ForwardRefExoticComponent<any>;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  label: string;
+  description: string;
+  animate?: boolean;
+}> = {
   idle: {
     icon: Clock,
     color: 'text-slate-400',
@@ -156,6 +164,14 @@ export const stateConfig = {
     label: 'Retrying',
     description: 'Attempting again after failure',
     animate: true
+  },
+  waiting: {
+    icon: Clock,
+    color: 'text-slate-500',
+    bgColor: 'bg-slate-100',
+    borderColor: 'border-slate-200',
+    label: 'Waiting',
+    description: 'Waiting for input or configuration'
   }
 };
 
@@ -200,7 +216,7 @@ export const WorkflowStateIndicator: React.FC<WorkflowStateIndicatorProps> = ({
           className={cn(
             sizeClasses[size],
             config.color,
-            (animate && (state === 'running' || state === 'retrying')) && "animate-spin"
+            (animate && config.animate) && "animate-spin"
           )} 
         />
       </motion.div>
@@ -424,7 +440,7 @@ export const WorkflowStateBadge: React.FC<WorkflowStateBadgeProps> = ({
   useEffect(() => {
     // Track state changes to animate transitions
     if (prevState !== state) {
-      setPrevState(prevState);
+      setPrevState(state);
     }
   }, [state, prevState]);
   
