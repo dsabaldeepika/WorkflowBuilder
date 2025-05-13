@@ -25,6 +25,7 @@ const PricingPage = lazy(() => import("@/pages/pricing-page"));
 const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
 const CheckoutPage = lazy(() => import("@/pages/checkout-page"));
 const FeatureFlagsPage = lazy(() => import("@/pages/feature-flags-page"));
+const PerformanceOptimizationPage = lazy(() => import("@/pages/performance-optimization-page"));
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
@@ -83,6 +84,7 @@ function Router() {
       <LazyRoute path={ROUTES.checkout} component={CheckoutPage} />
       <LazyRoute path={ROUTES.accountBilling} component={AccountBillingPage} />
       <LazyRoute path={ROUTES.featureFlags} component={FeatureFlagsPage} />
+      <LazyRoute path="/performance" component={PerformanceOptimizationPage} />
       <LazyRoute component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
   );
