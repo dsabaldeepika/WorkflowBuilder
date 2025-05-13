@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { motion } from 'framer-motion';
+import { InlineWorkflowLoading } from '@/components/workflow/InlineWorkflowLoading';
 // Import template preview images
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
 import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
@@ -249,8 +251,23 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
           {/* Loading, Error, or Template Not Found States */}
           {isTemplateLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-lg font-medium text-blue-100">Loading amazing automation template...</p>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 2,
+                  ease: "linear",
+                  repeat: Infinity
+                }}
+                className="mb-4"
+              >
+                <Workflow className="h-16 w-16 text-white" />
+              </motion.div>
+              <InlineWorkflowLoading 
+                size="lg" 
+                text="Loading automation template" 
+                variant="default"
+                className="bg-white/20 text-white" 
+              />
             </div>
           ) : error ? (
             <div className="p-6 bg-white/10 backdrop-blur-sm rounded-lg text-center max-w-2xl mx-auto">

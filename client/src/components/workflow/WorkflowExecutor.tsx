@@ -501,7 +501,7 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
                     <div className="flex flex-col items-center text-center text-muted-foreground">
                       {executionState === 'running' ? (
                         <>
-                          <div className="h-12 w-12 mb-4 relative">
+                          <div className="mb-4">
                             <motion.div
                               animate={{ rotate: 360 }}
                               transition={{
@@ -510,11 +510,15 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
                                 repeat: Infinity
                               }}
                             >
-                              <RotateCw className="h-12 w-12 text-blue-500" />
+                              <Workflow className="h-16 w-16 text-blue-500" />
                             </motion.div>
                           </div>
-                          <p>Workflow is running...</p>
-                          <p className="text-sm">Logs will appear as nodes are executed</p>
+                          <InlineWorkflowLoading 
+                            size="lg" 
+                            text="Workflow is running" 
+                            variant="default" 
+                          />
+                          <p className="text-sm mt-3">Logs will appear as nodes are executed</p>
                         </>
                       ) : (
                         <>
