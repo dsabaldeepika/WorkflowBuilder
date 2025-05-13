@@ -17,6 +17,7 @@ import TemplatesPage from "@/pages/templates-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
 import CheckoutPage from "@/pages/checkout-page";
+import FeatureFlagsPage from "@/pages/feature-flags-page";
 import { useAuth } from "@/hooks/useAuth";
 
 // Protected route component
@@ -59,6 +60,7 @@ function Router() {
       <Route path={ROUTES.pricing} component={PricingPage} />
       <Route path={ROUTES.checkout} component={CheckoutPage} />
       <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
+      <Route path={ROUTES.featureFlags} component={FeatureFlagsPage} />
       <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
   );
