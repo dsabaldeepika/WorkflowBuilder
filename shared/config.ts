@@ -104,6 +104,7 @@ export const SUBSCRIPTION_LIMITS = {
 export const ROUTES = {
   home: '/',
   auth: '/auth',
+  signup: '/signup',
   dashboard: '/dashboard',
   createWorkflow: '/create',
   templates: '/templates',
@@ -114,6 +115,8 @@ export const ROUTES = {
   checkout: '/checkout',
   accountBilling: '/account/billing',
   emailSettings: '/settings/email',
+  subscriptionUsage: '/account/usage',
+  transactionHistory: '/account/transactions',
 }
 
 // Path to subscription plans in Stripe dashboard
@@ -144,6 +147,8 @@ export const API_ENDPOINTS = {
     resumeSubscription: '/api/subscriptions/resume',
     createPortalSession: '/api/subscriptions/create-portal-session',
     webhook: '/api/subscriptions/webhook',
+    usage: '/api/subscriptions/usage',
+    transactions: '/api/subscriptions/transactions',
   },
   templates: {
     list: '/api/templates',

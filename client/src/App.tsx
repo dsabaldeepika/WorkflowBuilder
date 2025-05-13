@@ -16,6 +16,7 @@ import Home from "@/pages/home";
 const NotFound = lazy(() => import("@/pages/not-found"));
 const WorkflowBuilder = lazy(() => import("@/pages/workflow-builder"));
 const Login = lazy(() => import("@/pages/login"));
+const Signup = lazy(() => import("@/pages/signup"));
 const Dashboard = lazy(() => import("@/pages/dashboard-new"));
 const Callback = lazy(() => import("@/pages/auth/callback"));
 const WorkflowAnimationsDemo = lazy(() => import("@/pages/workflow-animations-demo"));
@@ -101,6 +102,10 @@ function Router() {
       
       <Route path="/login">
         <LazyRouteComponent Component={Dashboard} />
+      </Route>
+      
+      <Route path="/signup">
+        <LazyRouteComponent Component={Signup} />
       </Route>
       
       <Route path="/auth/callback">
