@@ -154,17 +154,10 @@ export default function CheckoutPage() {
         setLoading(true);
         setError('');
         
-        const response = await fetch(API_ENDPOINTS.subscriptions.createSubscription, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            planId: planId ? parseInt(planId) : undefined,
-            priceId,
-            billingPeriod,
-          }),
+        const response = await apiRequest('POST', API_ENDPOINTS.subscriptions.createSubscription, {
+          planId: planId ? parseInt(planId) : undefined,
+          priceId,
+          billingPeriod,
         });
         
         const data = await response.json();

@@ -166,35 +166,7 @@ export function TemplateSearch() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold">Workflow Templates</h1>
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setContactModalOpen(true)}
-              className="flex items-center"
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Contact Us
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setTemplateRequestModalOpen(true)}
-              className="flex items-center"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Request Template
-            </Button>
-            <Button 
-              variant="default" 
-              onClick={() => window.location.href = '/create'}
-              className="flex items-center"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Create from Scratch
-            </Button>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold mb-4">Workflow Templates</h1>
         <p className="text-gray-600 mb-6">
           Browse our collection of pre-built workflow templates to get started quickly.
           Use filters to find the perfect template for your needs.
