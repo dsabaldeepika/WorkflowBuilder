@@ -67,6 +67,37 @@ export function WorkflowCanvas({ readOnly = false }: WorkflowCanvasProps) {
   );
 }
 
+// Optimized title panel component using React.memo to prevent unnecessary re-renders
+const WorkflowTitlePanel = React.memo(({ schedule, onScheduleClick }: { 
+  schedule?: any; 
+  onScheduleClick?: () => void;
+}) => {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
+        <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
+      </div>
+      {schedule?.enabled && (
+        <div 
+          className="ml-4 flex items-center gap-1 border rounded-md px-3 py-1 text-sm bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100"
+          onClick={onScheduleClick}
+        >
+          <Clock className="h-4 w-4 text-blue-500" />
+          <span>
+            {schedule.frequency === 'once' ? 'Run once' : 
+            schedule.frequency === 'hourly' ? 'Run hourly' :
+            schedule.frequency === 'daily' ? 'Run daily' :
+            schedule.frequency === 'weekly' ? 'Run weekly' :
+            schedule.frequency === 'monthly' ? 'Run monthly' :
+            'Custom'}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+});
+
 interface WorkflowCanvasContentProps {
   readOnly?: boolean;
 }
@@ -426,7 +457,7 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
     maxZoom: 2,
     defaultViewport: { x: 0, y: 0, zoom: 0.8 },
     snapToGrid: true,
-    snapGrid: [20, 20],
+    snapGrid: [20, 20] as [number, number],
     className: "workflow-canvas",
     nodesDraggable: !readOnly,
     nodesConnectable: !readOnly,
@@ -466,28 +497,10 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
             pannable
           />
           <Panel position="top-left" className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold mb-1">Workflow Builder</h2>
-                <p className="text-sm text-slate-500">Design and connect nodes to create your automation</p>
-              </div>
-              {schedule?.enabled && (
-                <div 
-                  className="ml-4 flex items-center gap-1 border rounded-md px-3 py-1 text-sm bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100"
-                  onClick={() => setShowScheduleDialog(true)}
-                >
-                  <Clock className="h-4 w-4 text-blue-500" />
-                  <span>
-                    {schedule.frequency === 'once' ? 'Run once' : 
-                    schedule.frequency === 'hourly' ? 'Run hourly' :
-                    schedule.frequency === 'daily' ? 'Run daily' :
-                    schedule.frequency === 'weekly' ? 'Run weekly' :
-                    schedule.frequency === 'monthly' ? 'Run monthly' :
-                    'Custom'}
-                  </span>
-                </div>
-              )}
-            </div>
+            <WorkflowTitlePanel 
+              schedule={schedule} 
+              onScheduleClick={() => setShowScheduleDialog(true)}
+            />
           </Panel>
           
           {/* Add workflow controls - hide in readOnly mode */}
