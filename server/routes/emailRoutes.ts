@@ -348,4 +348,165 @@ router.post('/templates/workflow-error',
   }
 );
 
+/**
+ * @swagger
+ * /api/email/config:
+ *   put:
+ *     summary: Update email configuration
+ *     description: Updates the email configuration settings
+ *     tags: [Email]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *                 description: Master switch for all email functionality
+ *               features:
+ *                 type: object
+ *                 properties:
+ *                   auth:
+ *                     type: object
+ *                     properties:
+ *                       enabled:
+ *                         type: boolean
+ *                       sendWelcomeEmail:
+ *                         type: boolean
+ *                       sendLoginNotification:
+ *                         type: boolean
+ *                   workflows:
+ *                     type: object
+ *                     properties:
+ *                       enabled:
+ *                         type: boolean
+ *                       notifyOnError:
+ *                         type: boolean
+ *                       notifyOnSuccess:
+ *                         type: boolean
+ *                       notifyOnScheduledRun:
+ *                         type: boolean
+ *                       errorThreshold:
+ *                         type: number
+ *                   notifications:
+ *                     type: object
+ *                     properties:
+ *                       enabled:
+ *                         type: boolean
+ *                       digestFrequency:
+ *                         type: string
+ *                         enum: [never, daily, weekly, monthly]
+ *                       digestTime:
+ *                         type: string
+ *     responses:
+ *       200:
+ *         description: Email configuration updated successfully
+ *       400:
+ *         description: Invalid configuration data
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to update email configuration
+ */
+router.put('/config', isAuthenticated, (req: Request, res: Response) => {
+  try {
+    const newConfig = req.body;
+    
+    // Validate the new configuration
+    if (typeof newConfig !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid configuration data"
+      });
+    }
+    
+    // Update the configuration
+    if (newConfig.enabled !== undefined) {
+      emailConfig.enabled = !!newConfig.enabled;
+    }
+    
+    // Update feature configs if present
+    if (newConfig.features) {
+      // Auth feature config
+      if (newConfig.features.auth) {
+        const authFeatures = newConfig.features.auth;
+        if (authFeatures.enabled !== undefined) {
+          emailConfig.features.auth.enabled = !!authFeatures.enabled;
+        }
+        if (authFeatures.sendWelcomeEmail !== undefined) {
+          emailConfig.features.auth.sendWelcomeEmail = !!authFeatures.sendWelcomeEmail;
+        }
+        if (authFeatures.sendLoginNotification !== undefined) {
+          emailConfig.features.auth.sendLoginNotification = !!authFeatures.sendLoginNotification;
+        }
+      }
+      
+      // Workflow feature config
+      if (newConfig.features.workflows) {
+        const workflowFeatures = newConfig.features.workflows;
+        if (workflowFeatures.enabled !== undefined) {
+          emailConfig.features.workflows.enabled = !!workflowFeatures.enabled;
+        }
+        if (workflowFeatures.notifyOnError !== undefined) {
+          emailConfig.features.workflows.notifyOnError = !!workflowFeatures.notifyOnError;
+        }
+        if (workflowFeatures.notifyOnSuccess !== undefined) {
+          emailConfig.features.workflows.notifyOnSuccess = !!workflowFeatures.notifyOnSuccess;
+        }
+        if (workflowFeatures.notifyOnScheduledRun !== undefined) {
+          emailConfig.features.workflows.notifyOnScheduledRun = !!workflowFeatures.notifyOnScheduledRun;
+        }
+        if (workflowFeatures.errorThreshold !== undefined && typeof workflowFeatures.errorThreshold === 'number') {
+          emailConfig.features.workflows.errorThreshold = Math.max(1, workflowFeatures.errorThreshold);
+        }
+      }
+      
+      // Notifications feature config
+      if (newConfig.features.notifications) {
+        const notificationFeatures = newConfig.features.notifications;
+        if (notificationFeatures.enabled !== undefined) {
+          emailConfig.features.notifications.enabled = !!notificationFeatures.enabled;
+        }
+        if (notificationFeatures.digestFrequency !== undefined && 
+            ['never', 'daily', 'weekly', 'monthly'].includes(notificationFeatures.digestFrequency)) {
+          emailConfig.features.notifications.digestFrequency = notificationFeatures.digestFrequency as 'never' | 'daily' | 'weekly' | 'monthly';
+        }
+        if (notificationFeatures.digestTime !== undefined && typeof notificationFeatures.digestTime === 'string') {
+          // Validate time format (HH:MM)
+          if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationFeatures.digestTime)) {
+            emailConfig.features.notifications.digestTime = notificationFeatures.digestTime;
+          }
+        }
+      }
+    }
+    
+    // If the API key is not set, warn the user
+    const apiKeyStatus = process.env.SENDGRID_API_KEY ? true : false;
+    
+    return res.status(200).json({
+      success: true,
+      message: "Email configuration updated successfully",
+      config: {
+        ...emailConfig,
+        // Don't expose email sender details
+        senderEmail: emailConfig.senderEmail.replace(/^(.{3}).*(@.*)$/, '$1***$2')
+      },
+      hasApiKey: apiKeyStatus,
+      warning: !apiKeyStatus ? "No SendGrid API key found. Emails will not be sent until an API key is provided." : undefined
+    });
+    
+  } catch (error) {
+    console.error('Error updating email configuration:', error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating email configuration",
+      error: error.message
+    });
+  }
+});
+
 export default router;
