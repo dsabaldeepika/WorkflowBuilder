@@ -95,6 +95,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/execution', workflowExecutionRoutes);
   app.use('/api/subscriptions', subscriptionsRouter);
   
+  // Feature Flags API Endpoints
+  /**
+   * @swagger
+   * /api/feature-flags:
+   *   get:
+   *     summary: Get all feature flags
+   *     description: Retrieves all feature flags with their current status
+   *     tags: [System]
+   *     responses:
+   *       200:
+   *         description: List of all feature flags
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   featureName:
+   *                     type: string
+   *                   isEnabled:
+   *                     type: boolean
+   *                   description:
+   *                     type: string
+   */
+  app.get('/api/feature-flags', bypassAuth, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      res.json(flags);
+    } catch (error) {
+      console.error('Error fetching feature flags:', error);
+      res.status(500).json({ error: 'Failed to fetch feature flags' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/feature-flags/{featureName}:
+   *   get:
+   *     summary: Get a feature flag by name
+   *     description: Retrieves a specific feature flag by its name
+   *     tags: [System]
+   *     parameters:
+   *       - in: path
+   *         name: featureName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Name of the feature flag to retrieve
+   *     responses:
+   *       200:
+   *         description: Feature flag details
+   *       404:
+   *         description: Feature flag not found
+   */
+  app.get('/api/feature-flags/:featureName', bypassAuth, async (req, res) => {
+    try {
+      const { featureName } = req.params;
+      const flag = await storage.getFeatureFlag(featureName);
+      
+      if (!flag) {
+        return res.status(404).json({ error: 'Feature flag not found' });
+      }
+      
+      res.json(flag);
+    } catch (error) {
+      console.error(`Error fetching feature flag ${req.params.featureName}:`, error);
+      res.status(500).json({ error: 'Failed to fetch feature flag' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/feature-flags/{featureName}/status:
+   *   get:
+   *     summary: Check if a feature is enabled
+   *     description: Returns true if the specified feature is enabled, false otherwise
+   *     tags: [System]
+   *     parameters:
+   *       - in: path
+   *         name: featureName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Name of the feature to check
+   *     responses:
+   *       200:
+   *         description: Feature status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 isEnabled:
+   *                   type: boolean
+   */
+  app.get('/api/feature-flags/:featureName/status', async (req, res) => {
+    try {
+      const { featureName } = req.params;
+      const isEnabled = await storage.isFeatureEnabled(featureName);
+      res.json({ isEnabled });
+    } catch (error) {
+      console.error(`Error checking feature status ${req.params.featureName}:`, error);
+      res.status(500).json({ error: 'Failed to check feature status' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/feature-flags/{featureName}:
+   *   put:
+   *     summary: Update a feature flag
+   *     description: Updates the enabled status of a feature flag
+   *     tags: [System]
+   *     parameters:
+   *       - in: path
+   *         name: featureName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Name of the feature flag to update
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - isEnabled
+   *             properties:
+   *               isEnabled:
+   *                 type: boolean
+   *     responses:
+   *       200:
+   *         description: Updated feature flag
+   *       404:
+   *         description: Feature flag not found
+   */
+  app.put('/api/feature-flags/:featureName', bypassAuth, async (req, res) => {
+    try {
+      const { featureName } = req.params;
+      const { isEnabled } = req.body;
+      
+      if (typeof isEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'isEnabled must be a boolean value' });
+      }
+      
+      const flag = await storage.updateFeatureFlag(featureName, isEnabled);
+      
+      if (!flag) {
+        return res.status(404).json({ error: 'Feature flag not found' });
+      }
+      
+      res.json(flag);
+    } catch (error) {
+      console.error(`Error updating feature flag ${req.params.featureName}:`, error);
+      res.status(500).json({ error: 'Failed to update feature flag' });
+    }
+  });
+  
   // API Routes
 
   /**

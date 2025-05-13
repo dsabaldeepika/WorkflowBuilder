@@ -1310,6 +1310,40 @@ export class DatabaseStorage implements IStorage {
     
     return historyRecord;
   }
+
+  // Feature flag methods
+  async getFeatureFlag(featureName: string): Promise<FeatureFlag | undefined> {
+    const [flag] = await db
+      .select()
+      .from(featureFlags)
+      .where(eq(featureFlags.featureName, featureName));
+    
+    return flag;
+  }
+
+  async getFeatureFlags(): Promise<FeatureFlag[]> {
+    return await db
+      .select()
+      .from(featureFlags);
+  }
+
+  async isFeatureEnabled(featureName: string): Promise<boolean> {
+    const flag = await this.getFeatureFlag(featureName);
+    return flag?.isEnabled || false;
+  }
+
+  async updateFeatureFlag(featureName: string, isEnabled: boolean): Promise<FeatureFlag | undefined> {
+    const [flag] = await db
+      .update(featureFlags)
+      .set({ 
+        isEnabled, 
+        updatedAt: new Date() 
+      })
+      .where(eq(featureFlags.featureName, featureName))
+      .returning();
+    
+    return flag;
+  }
 }
 
 export const storage = new DatabaseStorage();
