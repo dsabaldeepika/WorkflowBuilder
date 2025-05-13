@@ -27,6 +27,7 @@ import TriggerScheduleDialog, { ScheduleOptions } from './TriggerScheduleDialog'
 import { WorkflowNodePicker } from './WorkflowNodePicker';
 import { AgentBuilder } from '../agent/AgentBuilder';
 import WorkflowSuggestions from './WorkflowSuggestions';
+import ConnectionSuggestions from './ConnectionSuggestions';
 import { Clock, Plus, Sparkles } from 'lucide-react';
 
 // Define custom node types outside of component to avoid recreation on each render
@@ -75,6 +76,7 @@ function WorkflowCanvasContent() {
     setNodes,
     setEdges,
     setSelectedNode,
+    selectedNodeId,
     saveWorkflow,
     exportWorkflow,
     setNodeState,
@@ -483,6 +485,32 @@ function WorkflowCanvasContent() {
               // Optionally track dismissed suggestions in localStorage
               const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
               localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
+            }}
+          />
+
+          {/* Smart Connection Suggestions with Animations */}
+          <ConnectionSuggestions
+            nodes={nodes}
+            edges={edges}
+            selectedNodeId={selectedNodeId}
+            onConnect={(sourceId, targetId) => {
+              // Find the source and target nodes
+              const source = nodes.find(node => node.id === sourceId);
+              const target = nodes.find(node => node.id === targetId);
+              
+              if (source && target) {
+                onConnect({
+                  source: sourceId,
+                  target: targetId,
+                  sourceHandle: 'output',
+                  targetHandle: 'input',
+                });
+                
+                toast({
+                  title: "Smart Connection Created",
+                  description: `Connected ${source.data.label} to ${target.data.label}`,
+                });
+              }
             }}
           />
         </ReactFlow>
