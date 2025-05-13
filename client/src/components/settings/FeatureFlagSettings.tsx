@@ -33,7 +33,7 @@ export function FeatureFlagSettings() {
   } = useQuery<FeatureFlag[]>({
     queryKey: ['/api/feature-flags'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/feature-flags');
+      const res = await fetch('/api/feature-flags');
       return await res.json();
     }
   });
@@ -41,7 +41,13 @@ export function FeatureFlagSettings() {
   // Mutation for updating a feature flag
   const updateFeatureFlagMutation = useMutation({
     mutationFn: async ({ flagName, isEnabled }: { flagName: string; isEnabled: boolean }) => {
-      const res = await apiRequest('PUT', `/api/feature-flags/${flagName}`, { isEnabled });
+      const res = await fetch(`/api/feature-flags/${flagName}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isEnabled }),
+      });
       return await res.json();
     },
     onSuccess: () => {

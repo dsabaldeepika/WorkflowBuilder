@@ -1,18 +1,26 @@
-import { FeatureFlagSettings } from '@/components/settings/FeatureFlagSettings';
+import React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { SettingsLayout } from '@/components/layouts/settings-layout';
+import { FeatureFlagSettings } from '@/components/settings/FeatureFlagSettings';
+import { Button } from '@/components/ui/button';
+import { InfoIcon } from 'lucide-react';
 
 export default function FeatureFlagsPage() {
   return (
     <SettingsLayout>
-      <div className="container mx-auto py-6 px-4 md:px-6">
+      <div className="space-y-6">
         <PageHeader
-          title="Platform Configuration"
-          description="Manage platform-wide features and configurations"
+          title="Feature Management"
+          description="Control and configure platform features across the application."
+          actions={
+            <Button variant="outline" size="sm" className="gap-1">
+              <InfoIcon className="h-4 w-4" />
+              <span>Documentation</span>
+            </Button>
+          }
         />
-        <div className="mt-8">
-          <FeatureFlagSettings />
-        </div>
+
+        <FeatureFlagSettings />
       </div>
     </SettingsLayout>
   );

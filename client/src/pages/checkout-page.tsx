@@ -120,7 +120,7 @@ export default function CheckoutPage() {
   const { data: stripeFeature, isLoading: featureLoading } = useQuery({
     queryKey: [featureFlagQuery],
     queryFn: async () => {
-      const res = await apiRequest('GET', featureFlagQuery);
+      const res = await fetch(featureFlagQuery);
       return await res.json();
     }
   });
