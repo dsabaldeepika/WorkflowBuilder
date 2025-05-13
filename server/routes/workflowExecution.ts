@@ -1,6 +1,7 @@
 import express from 'express';
 import { storage } from '../storage';
 import { ZodError } from 'zod';
+import { emailService } from '../services/emailService';
 
 const router = express.Router();
 
