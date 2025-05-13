@@ -184,3 +184,13 @@ export const FEATURES = {
   enableBillingSystem: false, // Disabled by default, needs Stripe API key to be enabled
   enableAPIConnections: true,
 }
+
+// Feature flags with consistent naming pattern - prefer using these over FEATURES
+export const FEATURE_FLAGS = {
+  enableAnimations: true,
+  enableTemplateSharing: true,
+  enableAIAssistance: false, // To be enabled later
+  enableBillingSystem: false, // Disabled by default, needs Stripe API key to be enabled
+  enableAPIConnections: true,
+  enableEmail: false, // Email functionality disabled by default
+}

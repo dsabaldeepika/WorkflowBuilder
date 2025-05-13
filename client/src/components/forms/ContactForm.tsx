@@ -47,14 +47,13 @@ export function ContactForm() {
       toast({
         title: "Message sent successfully",
         description: "Thank you for reaching out! We'll respond to your inquiry soon.",
-        variant: "default",
       });
     } catch (error) {
       console.error('Error submitting contact form:', error);
       toast({
         title: "Failed to send message",
         description: "An error occurred while sending your message. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);

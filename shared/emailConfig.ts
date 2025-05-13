@@ -13,6 +13,15 @@ export interface EmailConfig {
   // Master switch for all email functionality
   enabled: boolean;
   
+  // Email provider: 'sendgrid', etc.
+  provider: 'sendgrid' | 'none';
+  
+  // Provider-specific configurations
+  sendgrid: {
+    apiKey: string;
+    fromEmail: string;
+  };
+  
   // Sender configuration
   senderEmail: string;
   senderName: string;
@@ -49,6 +58,15 @@ export interface EmailConfig {
 export const emailConfig: EmailConfig = {
   // Master switch - set to false by default
   enabled: false,
+  
+  // Default provider
+  provider: 'none', // Use 'sendgrid' when API key is available
+  
+  // SendGrid configuration (disabled by default)
+  sendgrid: {
+    apiKey: process.env.SENDGRID_API_KEY || '',
+    fromEmail: 'notifications@pumpflux.com',
+  },
   
   // Default sender details - update these with your actual information
   senderEmail: 'notifications@pumpflux.com',

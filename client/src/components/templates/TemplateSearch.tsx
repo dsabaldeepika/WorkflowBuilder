@@ -35,7 +35,8 @@ import {
   PlusCircle,
   List,
   Calendar,
-  Info
+  Info,
+  Check
 } from "lucide-react";
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { TemplateIntegrationGuide } from './TemplateIntegrationGuide';
