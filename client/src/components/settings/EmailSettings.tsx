@@ -16,30 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Mail, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface EmailConfig {
-  enabled: boolean;
-  senderEmail: string;
-  senderName: string;
-  features: {
-    auth: {
-      enabled: boolean;
-      sendWelcomeEmail: boolean;
-      sendLoginNotification: boolean;
-    },
-    workflows: {
-      enabled: boolean;
-      notifyOnError: boolean;
-      notifyOnSuccess: boolean;
-      notifyOnScheduledRun: boolean;
-      errorThreshold: number;
-    },
-    notifications: {
-      enabled: boolean;
-      digestFrequency: 'never' | 'daily' | 'weekly' | 'monthly';
-      digestTime: string;
-    }
-  }
-}
+// Component-specific types
+type EmailSettingsFormData = EmailConfigType;
 
 export function EmailSettings() {
   const { toast } = useToast();
@@ -47,7 +25,7 @@ export function EmailSettings() {
   const [activeTab, setActiveTab] = useState('general');
   
   // Default form values for proper type initialization
-  const defaultValues: EmailConfig = {
+  const defaultValues: EmailSettingsFormData = {
     enabled: false,
     senderEmail: '',
     senderName: '',
@@ -83,31 +61,8 @@ export function EmailSettings() {
   });
   
   // Form setup
-  const form = useForm<EmailConfig>({
-    defaultValues: {
-      enabled: false,
-      senderEmail: '',
-      senderName: '',
-      features: {
-        auth: {
-          enabled: false,
-          sendWelcomeEmail: true,
-          sendLoginNotification: false,
-        },
-        workflows: {
-          enabled: false,
-          notifyOnError: true,
-          notifyOnSuccess: false,
-          notifyOnScheduledRun: false,
-          errorThreshold: 1,
-        },
-        notifications: {
-          enabled: false,
-          digestFrequency: 'never',
-          digestTime: '09:00',
-        }
-      }
-    }
+  const form = useForm<EmailSettingsFormData>({
+    defaultValues
   });
   
   // Populate form with current settings when loaded
@@ -124,7 +79,7 @@ export function EmailSettings() {
   
   // Mutation to update email settings
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<EmailConfig>) => {
+    mutationFn: async (data: Partial<EmailSettingsFormData>) => {
       const response = await apiRequest('PUT', API_ENDPOINTS.email.config, data);
       return response.json();
     },
@@ -195,7 +150,7 @@ export function EmailSettings() {
     }
   };
   
-  const onSubmit = (data: EmailConfig) => {
+  const onSubmit = (data: EmailSettingsFormData) => {
     updateMutation.mutate(data);
   };
   
