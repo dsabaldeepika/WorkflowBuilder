@@ -113,7 +113,6 @@ export const ROUTES = {
   checkout: '/checkout',
   accountBilling: '/account/billing',
   featureFlags: '/feature-flags',
-  performance: '/performance',
 }
 
 // Path to subscription plans in Stripe dashboard
