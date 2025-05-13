@@ -8,23 +8,12 @@ import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, CheckCircle2, CreditCard, X } from 'lucide-react';
+import { CheckCircle, CheckCircle2, CreditCard, X, AlertTriangle } from 'lucide-react';
 import { API_ENDPOINTS, ROUTES } from '@/../../shared/config';
+import { useQuery } from '@tanstack/react-query';
 
-// Make sure to call loadStripe outside of a component's render to avoid recreating the Stripe object
-// Try to load Stripe, but handle potential errors
-let stripePromise: Promise<any>;
-try {
-  if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-    console.warn('Missing Stripe public key');
-    stripePromise = Promise.resolve(null);
-  } else {
-    stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-  }
-} catch (error) {
-  console.error('Error loading Stripe:', error);
-  stripePromise = Promise.resolve(null);
-}
+// Initialize stripe promise as null first until we check if feature is enabled
+let stripePromise: Promise<any> | null = null;
 
 const CheckoutForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel: () => void }) => {
   const stripe = useStripe();
@@ -120,10 +109,44 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [stripeDisabled, setStripeDisabled] = useState(false);
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [location] = useLocation();
   const { toast } = useToast();
+  
+  // Check if Stripe feature is enabled
+  const featureFlagQuery = '/api/feature-flags/stripe_enabled/status';
+  const { data: stripeFeature, isLoading: featureLoading } = useQuery({
+    queryKey: [featureFlagQuery],
+    queryFn: async () => {
+      const res = await apiRequest('GET', featureFlagQuery);
+      return await res.json();
+    }
+  });
+
+  // Handle Stripe initialization based on feature flag
+  useEffect(() => {
+    if (!featureLoading && stripeFeature) {
+      // If Stripe is enabled and we have a public key, initialize it
+      if (stripeFeature.isEnabled && import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+        try {
+          stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+        } catch (err) {
+          console.error('Error loading Stripe:', err);
+          setStripeDisabled(true);
+        }
+      } else {
+        // Feature flag is disabled
+        setStripeDisabled(true);
+        console.warn('Stripe is disabled by feature flag');
+      }
+    } else if (!featureLoading && !stripeFeature) {
+      // If there's an error checking the feature flag, disable Stripe
+      setStripeDisabled(true);
+      console.warn('Error checking Stripe feature flag, disabling Stripe');
+    }
+  }, [featureLoading, stripeFeature]);
 
   // Get query parameters
   const searchParams = new URLSearchParams(window.location.search);
@@ -148,11 +171,23 @@ export default function CheckoutPage() {
   // Get the client secret
   useEffect(() => {
     if (!user || (!planId && !priceId)) return;
+    
+    // Skip payment intent creation if Stripe is disabled
+    if (stripeDisabled) {
+      setLoading(false);
+      return;
+    }
 
     const createPaymentIntent = async () => {
       try {
         setLoading(true);
         setError('');
+        
+        // Skip payment intent creation if stripe isn't initialized
+        if (!stripePromise) {
+          setError('Payment system is currently unavailable');
+          return;
+        }
         
         const response = await fetch(API_ENDPOINTS.subscriptions.createSubscription, {
           method: 'POST',
@@ -191,7 +226,7 @@ export default function CheckoutPage() {
     };
 
     createPaymentIntent();
-  }, [user, planId, priceId, billingPeriod, toast]);
+  }, [user, planId, priceId, billingPeriod, toast, stripeDisabled, stripePromise]);
 
   const handlePaymentSuccess = () => {
     setSuccess(true);
@@ -242,11 +277,45 @@ export default function CheckoutPage() {
         <p className="text-muted-foreground mt-1">Enter your payment details to finalize your subscription</p>
       </div>
 
-      {loading ? (
+      {/* Loading state */}
+      {loading && featureLoading ? (
         <div className="flex justify-center py-20">
           <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" />
         </div>
+      ) : stripeDisabled ? (
+        /* Feature flag disabled state */
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Payments Currently Unavailable
+            </CardTitle>
+            <CardDescription>Online payments are temporarily disabled</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p>Our payment system is currently undergoing maintenance. Please try again later or contact our support team for assistance.</p>
+              <div className="rounded-lg bg-amber-50 p-4 border border-amber-200">
+                <h3 className="font-medium text-amber-800 mb-2">Alternative Payment Options</h3>
+                <p className="text-amber-700 text-sm">
+                  If you would like to upgrade your account immediately, please contact our support team to arrange an alternative payment method.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <Button variant="outline" onClick={handleCancel} className="flex-1">
+                Return to Pricing
+              </Button>
+              <Button onClick={() => navigate('/contact')} className="flex-1">
+                Contact Support
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
       ) : error ? (
+        /* Error state */
         <Card>
           <CardHeader>
             <CardTitle>Error</CardTitle>
