@@ -494,4 +494,15 @@ export const templateRequestSchema = z.object({
 });
 
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
+
+// Template Request Form
+export const templateRequestFormSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  workflowType: z.string().min(1, { message: "Please select a workflow type" }),
+  description: z.string().min(10, { message: "Description must be at least 10 characters" }),
+  integrations: z.string().optional(),
+});
+
+export type TemplateRequestFormInput = z.infer<typeof templateRequestFormSchema>;
 export type TemplateRequestInput = z.infer<typeof templateRequestSchema>;

@@ -62,9 +62,9 @@ function Router() {
   // BYPASS: Direct access to components without authentication
   // This is a temporary solution until auth issues are resolved
   
-  // Automatic redirect to workflow page
+  // Home page route
   const HomeRoute = () => {
-    return <Dashboard />;
+    return <Home />;
   };
   
   return (
