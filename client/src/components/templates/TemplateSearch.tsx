@@ -38,6 +38,7 @@ import {
   Info
 } from "lucide-react";
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
+import { TemplateIntegrationGuide } from './TemplateIntegrationGuide';
 import { useToast } from '@/hooks/use-toast';
 
 // Import template preview images
@@ -533,18 +534,23 @@ export function TemplateSearch() {
                     </CardContent>
                     
                     <CardFooter className="pt-3 border-t border-gray-100">
-                      <div className="w-full flex flex-wrap justify-between items-center">
-                        <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
-                          {template.complexity || 'medium'} complexity
-                        </Badge>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleUseTemplate(template)}
-                          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
-                        >
-                          <Zap className="h-3.5 w-3.5 mr-2" />
-                          Use Template
-                        </Button>
+                      <div className="w-full">
+                        <div className="flex flex-wrap justify-between items-center mb-2">
+                          <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
+                            {template.complexity || 'medium'} complexity
+                          </Badge>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleUseTemplate(template)}
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
+                          >
+                            <Zap className="h-3.5 w-3.5 mr-2" />
+                            Use Template
+                          </Button>
+                        </div>
+                        <div className="flex justify-center w-full">
+                          <TemplateIntegrationGuide template={template} />
+                        </div>
                       </div>
                     </CardFooter>
                   </Card>
@@ -622,7 +628,8 @@ export function TemplateSearch() {
                           </Badge>
                         </div>
                         
-                        <div className="flex justify-end">
+                        <div className="flex flex-wrap justify-between items-center">
+                          <TemplateIntegrationGuide template={template} />
                           <Button 
                             onClick={() => handleUseTemplate(template)}
                             className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
