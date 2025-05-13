@@ -15,16 +15,12 @@ import {
   Zap, 
   Activity,
   RefreshCw,
-  CreditCard,
-  LineChart,
-  Gauge
+  CreditCard
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { WorkflowStateIndicator, WorkflowState } from '@/components/workflow/StateChangeAnimation';
 import WorkflowAnimationCard from '@/components/workflow/WorkflowAnimationCard';
-import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
-import { PrefetchLink } from '@/components/ui/prefetch-link';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -116,7 +112,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card className="col-span-1 hover:shadow-md transition-shadow">
             <CardContent className="p-6 flex flex-col items-center text-center">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -155,9 +151,7 @@ export default function Dashboard() {
               </Button>
             </CardContent>
           </Card>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          
           <Card className="col-span-1 hover:shadow-md transition-shadow">
             <CardContent className="p-6 flex flex-col items-center text-center">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -165,21 +159,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">Health Dashboard</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">Monitor workflow performance</p>
-              <Button className="w-full" variant="outline" asChild>
-                <PrefetchLink to="/health-dashboard">View Metrics</PrefetchLink>
-              </Button>
-            </CardContent>
-          </Card>
-          
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
-            <CardContent className="p-6 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Gauge className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-medium">Performance Tools</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Optimize workflow execution</p>
-              <Button className="w-full" variant="outline" asChild>
-                <PrefetchLink to="/performance">Optimize Now</PrefetchLink>
+              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/health-dashboard'}>
+                View Metrics
               </Button>
             </CardContent>
           </Card>
@@ -191,36 +172,13 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">State Animations</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">View workflow transitions</p>
-              <Button className="w-full" variant="outline" asChild>
-                <PrefetchLink to="/workflow-animations">View Animations</PrefetchLink>
+              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/workflow-animations'}>
+                View Animations
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Performance Optimization Feature Highlight */}
-        <Card className="mb-8 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-              <div className="mb-4 md:mb-0">
-                <h2 className="text-xl font-bold text-purple-800 flex items-center">
-                  <Gauge className="mr-2 h-5 w-5 text-purple-600" />
-                  New Feature: Performance Optimization Tools
-                </h2>
-                <p className="text-purple-600 mt-1">
-                  Scale your workflows to 5,000+ users with our new optimization tools, code splitting, and performance monitoring
-                </p>
-              </div>
-              <Button 
-                className="bg-purple-600 hover:bg-purple-700"
-                onClick={() => window.location.href = '/performance'}
-              >
-                Explore Performance Tools
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        
         {/* Health Monitoring Feature Highlight */}
         <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
           <CardContent className="p-6">
@@ -236,11 +194,9 @@ export default function Dashboard() {
               </div>
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
-                asChild
+                onClick={() => window.location.href = '/health-dashboard'}
               >
-                <PrefetchLink to="/health-dashboard">
-                  Explore Health Dashboard
-                </PrefetchLink>
+                Explore Health Dashboard
               </Button>
             </div>
           </CardContent>
@@ -315,9 +271,7 @@ export default function Dashboard() {
                     <p className="text-muted-foreground mb-4">
                       You haven't created any workflows yet. Start by creating a new workflow or using a template.
                     </p>
-                    <Button asChild>
-                      <PrefetchLink to="/workflow-builder">Create Workflow</PrefetchLink>
-                    </Button>
+                    <Button onClick={() => window.location.href = '/create'}>Create Workflow</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -332,12 +286,12 @@ export default function Dashboard() {
                 <p className="text-muted-foreground">View recent workflow executions and state changes.</p>
               </div>
               
-              <Button variant="outline" size="sm" asChild>
-                <PrefetchLink to="/workflow-animations">
+              <Link href="/workflow-animations">
+                <Button variant="outline" size="sm">
                   <Zap className="h-4 w-4 mr-2" />
                   View All Animations
-                </PrefetchLink>
-              </Button>
+                </Button>
+              </Link>
             </div>
             
             <div className="space-y-4">

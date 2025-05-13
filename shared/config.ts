@@ -112,8 +112,6 @@ export const ROUTES = {
   pricing: '/pricing',
   checkout: '/checkout',
   accountBilling: '/account/billing',
-  featureFlags: '/feature-flags',
-  performance: '/performance',
 }
 
 // Path to subscription plans in Stripe dashboard
@@ -151,11 +149,6 @@ export const API_ENDPOINTS = {
     delete: (id: number) => `/api/workflows/${id}`,
     execute: (id: number) => `/api/workflows/${id}/execute`,
     status: (id: number) => `/api/workflows/${id}/status`,
-  },
-  featureFlags: {
-    list: '/api/feature-flags',
-    status: (name: string) => `/api/feature-flags/${name}/status`,
-    update: (name: string) => `/api/feature-flags/${name}`,
   },
 }
 
