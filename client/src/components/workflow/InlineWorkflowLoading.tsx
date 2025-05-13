@@ -7,13 +7,15 @@ interface InlineWorkflowLoadingProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'success' | 'error' | 'processing';
   showIcon?: boolean;
+  className?: string;
 }
 
 export const InlineWorkflowLoading: React.FC<InlineWorkflowLoadingProps> = ({
   text = "Processing workflow...",
   size = 'md',
   variant = 'default',
-  showIcon = true
+  showIcon = true,
+  className = ''
 }) => {
   const sizeClasses = {
     sm: 'text-xs h-6',
@@ -41,7 +43,7 @@ export const InlineWorkflowLoading: React.FC<InlineWorkflowLoadingProps> = ({
   };
   
   return (
-    <div className={`flex items-center rounded-full bg-gray-100 px-3 ${sizeClasses[size]}`}>
+    <div className={`flex items-center rounded-full bg-gray-100 px-3 ${sizeClasses[size]} ${className}`}>
       {showIcon && (
         <div className="flex-shrink-0 mr-2">
           {variant === 'success' || variant === 'error' ? (

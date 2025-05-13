@@ -301,8 +301,22 @@ const WorkflowHealthDashboard: React.FC = () => {
       )}
       
       {isLoading && (
-        <div className="flex justify-center items-center p-20">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        <div className="flex flex-col justify-center items-center p-20 space-y-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 2,
+              ease: "linear",
+              repeat: Infinity
+            }}
+          >
+            <Workflow className="h-16 w-16 text-blue-500" />
+          </motion.div>
+          <InlineWorkflowLoading 
+            size="lg" 
+            text="Loading health metrics" 
+            variant="default" 
+          />
         </div>
       )}
 

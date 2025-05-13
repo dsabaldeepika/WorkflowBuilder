@@ -20,7 +20,8 @@ import {
   Hourglass,
   RefreshCcw,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Workflow
 } from 'lucide-react';
 import { NodeData } from '@/store/useWorkflowStore';
 import { WorkflowState } from '@/components/workflow/StateChangeAnimation';
