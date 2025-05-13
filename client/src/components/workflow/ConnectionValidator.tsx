@@ -20,6 +20,7 @@ export const ValidatedEdge = ({
   style = {},
   data,
   markerEnd,
+  selected,
 }: EdgeProps) => {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -29,14 +30,50 @@ export const ValidatedEdge = ({
     targetY,
     targetPosition,
   });
-
+  
+  const [connectionStatus, setConnectionStatus] = useState<{
+    isValid: boolean;
+    message?: string;
+  } | null>(null);
+  
   // Use different colors based on validation status or condition type
   const getEdgeColor = () => {
+    // First check if we have validation status from the database
+    if (connectionStatus !== null) {
+      return connectionStatus.isValid ? '#22c55e' : '#ef4444';
+    }
+    
+    // Fallback to edge data
     if (data?.invalid) return '#ef4444'; // Red for invalid connections
+    if (data?.isValid === false) return '#ef4444'; // Red for invalid connections
+    if (data?.isValid === true) return '#22c55e'; // Green for valid connections
     if (data?.condition === 'true') return '#22c55e'; // Green for true conditions
     if (data?.condition === 'false') return '#f97316'; // Orange for false conditions
+    
     return '#94a3b8'; // Default edge color
   };
+  
+  // Fetch connection status from API when the component mounts
+  useEffect(() => {
+    const fetchConnectionStatus = async () => {
+      if (!id) return;
+      
+      try {
+        const response = await fetch(`/api/workflow/connections/edge/${id}`);
+        if (response.status === 200) {
+          const data = await response.json();
+          setConnectionStatus({
+            isValid: data.isValid,
+            message: data.validationMessage
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to fetch connection status for edge ${id}:`, error);
+      }
+    };
+    
+    fetchConnectionStatus();
+  }, [id]);
 
   return (
     <>
@@ -44,14 +81,19 @@ export const ValidatedEdge = ({
         id={id}
         style={{
           ...style,
-          strokeWidth: 2,
+          strokeWidth: selected ? 3 : 2,
           stroke: getEdgeColor(),
+          transition: 'stroke 0.3s, stroke-width 0.3s', // Smooth transition for color changes
         }}
         className="react-flow__edge-path"
         d={edgePath}
         markerEnd={markerEnd}
       />
-      {data?.condition && (
+      
+      {/* Display validation message or condition */}
+      {((connectionStatus && !connectionStatus.isValid && connectionStatus.message) || 
+        data?.message || 
+        data?.condition) && (
         <text
           x={labelX}
           y={labelY}
@@ -63,9 +105,13 @@ export const ValidatedEdge = ({
             fontWeight: 'bold',
             pointerEvents: 'none',
             userSelect: 'none',
+            fill: connectionStatus && !connectionStatus.isValid ? '#ef4444' : 'currentColor',
           }}
         >
-          {data.condition.charAt(0).toUpperCase() + data.condition.slice(1)}
+          {connectionStatus && !connectionStatus.isValid && connectionStatus.message ? 
+            connectionStatus.message.substring(0, 15) + (connectionStatus.message.length > 15 ? '...' : '') : 
+            data?.message || 
+            (data?.condition && data.condition.charAt(0).toUpperCase() + data.condition.slice(1))}
         </text>
       )}
     </>
