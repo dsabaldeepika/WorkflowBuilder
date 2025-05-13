@@ -42,6 +42,10 @@ export type NodeData = {
   service?: string; // Service name for integrations
   event?: string; // Event type for triggers
   action?: string; // Action type for actions
+  // Connection status indicators for visual feedback
+  sourceConnectionStatus?: 'success' | 'error' | 'pending' | undefined;
+  targetConnectionStatus?: 'success' | 'error' | 'pending' | undefined;
+  connectionValidated?: boolean; // Flag to track if connections have been validated
   ports?: Array<{
     id: string;
     type: 'input' | 'output';
@@ -212,15 +216,75 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   onConnect: (connection) => {
     // Check if connection is valid before adding
     const isValid = get().validateConnection(connection);
-    if (!isValid) return;
     
     set((state) => {
+      const { nodes } = state;
+      const sourceNodeIndex = nodes.findIndex((n) => n.id === connection.source);
+      const targetNodeIndex = nodes.findIndex((n) => n.id === connection.target);
+      
+      // Create a copy of nodes to update connection status
+      const updatedNodes = [...nodes];
+      
+      if (sourceNodeIndex !== -1 && targetNodeIndex !== -1) {
+        // Update source node connection status
+        updatedNodes[sourceNodeIndex] = {
+          ...updatedNodes[sourceNodeIndex],
+          data: {
+            ...updatedNodes[sourceNodeIndex].data,
+            sourceConnectionStatus: isValid ? 'success' : 'error',
+            connectionValidated: true
+          }
+        };
+        
+        // Update target node connection status
+        updatedNodes[targetNodeIndex] = {
+          ...updatedNodes[targetNodeIndex],
+          data: {
+            ...updatedNodes[targetNodeIndex].data,
+            targetConnectionStatus: isValid ? 'success' : 'error',
+            connectionValidated: true
+          }
+        };
+      }
+      
+      if (!isValid) {
+        // Don't create the edge but update the visual indicators
+        return { 
+          nodes: updatedNodes,
+          connectionValidations: {
+            ...state.connectionValidations,
+            [`e${connection.source}-${connection.target}`]: { 
+              isValid: false,
+              message: 'Invalid connection type or incompatible nodes'
+            }
+          }
+        };
+      }
+      
       const newEdge = {
         ...connection,
         id: `e${connection.source}-${connection.target}`,
+        data: { validated: true, invalid: false }
       };
       
+      // Save the connection state to the database
+      try {
+        fetch('/api/workflow/connections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceNodeId: connection.source,
+            targetNodeId: connection.target,
+            edgeId: newEdge.id,
+            isValid: true
+          })
+        }).catch(err => console.error('Error saving connection:', err));
+      } catch (error) {
+        console.error('Failed to save connection to database:', error);
+      }
+      
       return {
+        nodes: updatedNodes,
         edges: addEdge(newEdge, state.edges),
         connectionValidations: {
           ...state.connectionValidations,

@@ -74,16 +74,28 @@ export default function WorkflowNode({
         </CardContent>
       </Card>
       
-      {/* Handles for connections */}
+      {/* Handles for connections with visual status indicators */}
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 rounded-full bg-slate-400 border-2 border-white"
+        className={`w-3 h-3 rounded-full border-2 transition-colors duration-300 ${
+          data.targetConnectionStatus === 'error' 
+            ? 'bg-red-500 border-red-300 animate-pulse' 
+            : data.targetConnectionStatus === 'success' 
+              ? 'bg-green-500 border-green-300' 
+              : 'bg-slate-400 border-white'
+        }`}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 rounded-full bg-slate-400 border-2 border-white"
+        className={`w-3 h-3 rounded-full border-2 transition-colors duration-300 ${
+          data.sourceConnectionStatus === 'error' 
+            ? 'bg-red-500 border-red-300 animate-pulse' 
+            : data.sourceConnectionStatus === 'success' 
+              ? 'bg-green-500 border-green-300' 
+              : 'bg-slate-400 border-white'
+        }`}
       />
     </div>
   );
