@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Activity, AlertCircle, CheckCircle, Clock, 
-  RefreshCw, Zap, BarChart3, PieChart, TrendingUp 
+  Activity, AlertCircle, CheckCircle, Clock, FilterX, Search,
+  RefreshCw, Zap, BarChart3, PieChart, TrendingUp, Users, Workflow 
 } from 'lucide-react';
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -23,81 +23,109 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-// Mock data for workflow health metrics
-const mockExecutionData = {
-  successful: 87,
-  failed: 12,
-  retried: 8,
-  totalRuns: 107,
-  averageExecutionTime: 1.8, // seconds
-  mostFrequentErrors: [
-    { message: "API Rate Limit Exceeded", count: 5 },
-    { message: "Connection Timeout", count: 3 },
-    { message: "Authentication Failed", count: 2 },
-    { message: "Invalid Data Format", count: 1 },
-    { message: "Resource Not Found", count: 1 },
-  ],
-  nodePerfData: [
-    { name: "Facebook Lead Trigger", avgTime: 0.3, errorRate: 1.2 },
-    { name: "Lead Data Transformer", avgTime: 0.2, errorRate: 0 },
-    { name: "HubSpot Contact Creator", avgTime: 1.2, errorRate: 7.5 },
-    { name: "Email Notification", avgTime: 0.5, errorRate: 2.8 },
-  ],
-  performanceHistory: [
-    { date: "May 5", executionTime: 1.9, errorRate: 12.5 },
-    { date: "May 6", executionTime: 2.0, errorRate: 15.0 },
-    { date: "May 7", executionTime: 1.7, errorRate: 8.0 },
-    { date: "May 8", executionTime: 1.5, errorRate: 5.0 },
-    { date: "May 9", executionTime: 1.8, errorRate: 10.0 },
-    { date: "May 10", executionTime: 1.6, errorRate: 7.5 },
-    { date: "May 11", executionTime: 1.8, errorRate: 11.0 },
-  ],
+// Health dashboard data interface
+interface HealthData {
+  successful: number;
+  failed: number;
+  retried: number;
+  totalRuns: number;
+  averageExecutionTime: number;
+  mostFrequentErrors: { message: string; count: number }[];
+  nodePerfData: { name: string; avgTime: number; errorRate: number }[];
+  performanceHistory: { date: string; executionTime: number; errorRate: number }[];
+  lastUpdate: string;
+  optimizationSuggestions?: { title: string; description: string }[];
+}
+
+// Default initial data structure
+const defaultData: HealthData = {
+  successful: 0,
+  failed: 0,
+  retried: 0,
+  totalRuns: 0,
+  averageExecutionTime: 0,
+  mostFrequentErrors: [],
+  nodePerfData: [],
+  performanceHistory: [],
   lastUpdate: new Date().toLocaleTimeString(),
 };
 
 const WorkflowHealthDashboard: React.FC = () => {
   const [timeRange, setTimeRange] = useState<string>("7d");
+  const [status, setStatus] = useState<string>("all");
+  const [userId, setUserId] = useState<string>("");
+  const [workflowId, setWorkflowId] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [data, setData] = useState(mockExecutionData);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [data, setData] = useState<HealthData>(defaultData);
+  const [error, setError] = useState<string | null>(null);
   
   // Fetch health monitoring data from API
   const fetchHealthData = async () => {
     try {
       setIsRefreshing(true);
-      const response = await fetch('/api/health-monitoring-data', {
+      setError(null);
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (timeRange) params.append('timeRange', timeRange);
+      if (status) params.append('status', status);
+      if (userId) params.append('userId', userId);
+      if (workflowId) params.append('workflowId', workflowId);
+      
+      const queryString = params.toString();
+      const url = `/api/health-monitoring-data${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       const healthData = await response.json();
+      
+      if (!healthData || !healthData.summary) {
+        throw new Error("Invalid data format received from server");
+      }
+      
+      // Map API response to our data structure
       setData({
-        ...mockExecutionData, // Fallback for any missing properties
-        ...healthData, // API data takes precedence
-        successful: healthData.summary.totalExecutions - healthData.summary.failedWorkflows,
-        failed: healthData.summary.failedWorkflows,
-        totalRuns: healthData.summary.totalExecutions,
-        averageExecutionTime: healthData.summary.averageExecutionTime,
-        retried: healthData.summary.totalExecutions * 0.08, // Estimate if not provided
+        successful: healthData.summary.successfulRuns || 0,
+        failed: healthData.summary.failedRuns || 0,
+        totalRuns: healthData.summary.totalRuns || 0,
+        averageExecutionTime: healthData.summary.averageExecutionTime || 0,
+        retried: healthData.summary.retriedRuns || 0,
         mostFrequentErrors: healthData.errorBreakdown 
           ? Object.entries(healthData.errorBreakdown).map(([message, count]) => ({ 
               message, 
               count: count as number 
             }))
-          : mockExecutionData.mostFrequentErrors,
-        nodePerfData: healthData.workflowPerformance 
-          ? healthData.workflowPerformance.map((item: any) => ({
-              name: item.name,
-              avgTime: item.avgTime,
-              errorRate: 100 - item.successRate
+          : [],
+        nodePerfData: healthData.nodePerformance 
+          ? healthData.nodePerformance.map((item: any) => ({
+              name: item.nodeName || item.name,
+              avgTime: item.averageExecutionTime || 0,
+              errorRate: 100 - (item.successRate || 0)
             }))
-          : mockExecutionData.nodePerfData,
-        lastUpdate: new Date().toLocaleTimeString()
+          : [],
+        performanceHistory: healthData.performanceHistory || [],
+        lastUpdate: new Date().toLocaleTimeString(),
+        optimizationSuggestions: healthData.optimizationSuggestions || []
       });
+      
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching health data:", error);
-      // Fallback to mock data
+      setError("Failed to load monitoring data. Please try again.");
+      
+      // Initialize with empty data if this is the first load
+      if (isLoading) {
+        setData(defaultData);
+        setIsLoading(false);
+      }
     } finally {
       setIsRefreshing(false);
     }
@@ -106,10 +134,19 @@ const WorkflowHealthDashboard: React.FC = () => {
   // Initial data fetch
   useEffect(() => {
     fetchHealthData();
-  }, [timeRange]);
+  }, [timeRange, status]);
   
+  // Refresh button handler
   const handleRefresh = () => {
     fetchHealthData();
+  };
+  
+  // Filter reset handler
+  const resetFilters = () => {
+    setTimeRange("7d");
+    setStatus("all");
+    setUserId("");
+    setWorkflowId("");
   };
 
   const getStatusColor = (successRate: number) => {
@@ -122,23 +159,9 @@ const WorkflowHealthDashboard: React.FC = () => {
   
   return (
     <div className="p-4 space-y-4 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Workflow Health Dashboard</h1>
         <div className="flex items-center gap-2">
-          <Select 
-            defaultValue={timeRange} 
-            onValueChange={(value) => setTimeRange(value)}
-          >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Select range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24 Hours</SelectItem>
-              <SelectItem value="7d">Last 7 Days</SelectItem>
-              <SelectItem value="30d">Last 30 Days</SelectItem>
-              <SelectItem value="90d">Last 90 Days</SelectItem>
-            </SelectContent>
-          </Select>
           <Button 
             variant="outline" 
             onClick={handleRefresh}
@@ -149,6 +172,121 @@ const WorkflowHealthDashboard: React.FC = () => {
           </Button>
         </div>
       </div>
+      
+      {/* Filters section */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-md">Filters</CardTitle>
+          <CardDescription>Refine dashboard data with these filters</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="timeRange">Time Range</Label>
+              <Select 
+                value={timeRange} 
+                onValueChange={(value) => setTimeRange(value)}
+              >
+                <SelectTrigger id="timeRange" className="w-full">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="24h">Last 24 Hours</SelectItem>
+                  <SelectItem value="7d">Last 7 Days</SelectItem>
+                  <SelectItem value="30d">Last 30 Days</SelectItem>
+                  <SelectItem value="90d">Last 90 Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={status} 
+                onValueChange={(value) => setStatus(value)}
+              >
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Executions</SelectItem>
+                  <SelectItem value="success">Successful Only</SelectItem>
+                  <SelectItem value="failed">Failed Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="userId">User ID (Optional)</Label>
+              <div className="flex">
+                <Input 
+                  id="userId" 
+                  value={userId} 
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="Filter by user ID" 
+                  className="w-full"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="ml-1"
+                  onClick={() => setUserId("")}
+                  disabled={!userId}
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="workflowId">Workflow ID (Optional)</Label>
+              <div className="flex">
+                <Input 
+                  id="workflowId" 
+                  value={workflowId} 
+                  onChange={(e) => setWorkflowId(e.target.value)}
+                  placeholder="Filter by workflow ID" 
+                  className="w-full"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="ml-1"
+                  onClick={() => setWorkflowId("")}
+                  disabled={!workflowId}
+                >
+                  <Workflow className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end mt-4">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={resetFilters}
+            >
+              <FilterX className="h-4 w-4" />
+              Reset Filters
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Status indicator */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-4 flex items-center">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          {error}
+        </div>
+      )}
+      
+      {isLoading && (
+        <div className="flex justify-center items-center p-20">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        </div>
+      )}
 
       {/* Status Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -314,40 +452,79 @@ const WorkflowHealthDashboard: React.FC = () => {
       </Tabs>
 
       {/* Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Zap className="h-5 w-5 text-blue-500 mr-2" />
-            Optimization Recommendations
-          </CardTitle>
-          <CardDescription>AI-generated suggestions to improve workflow performance</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
-              <div className="font-medium text-blue-700">Configure retry policies for "HubSpot Contact Creator"</div>
-              <div className="text-sm text-blue-600 mt-1">
-                This node has a high failure rate (7.5%). Adding exponential backoff retry logic could improve reliability.
-              </div>
+      {!isLoading && data.totalRuns > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Zap className="h-5 w-5 text-blue-500 mr-2" />
+              Optimization Recommendations
+            </CardTitle>
+            <CardDescription>Data-driven suggestions to improve workflow performance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.optimizationSuggestions && data.optimizationSuggestions.length > 0 ? (
+                data.optimizationSuggestions.map((suggestion, index) => (
+                  <div key={index} className="p-3 bg-blue-50 border border-blue-100 rounded-md">
+                    <div className="font-medium text-blue-700">{suggestion.title}</div>
+                    <div className="text-sm text-blue-600 mt-1">
+                      {suggestion.description}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  {data.nodePerfData.filter(node => node.errorRate > 5).length > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
+                      <div className="font-medium text-blue-700">Configure retry policies for high-error nodes</div>
+                      <div className="text-sm text-blue-600 mt-1">
+                        {data.nodePerfData.filter(node => node.errorRate > 5).map(node => node.name).join(', ')} 
+                        {data.nodePerfData.filter(node => node.errorRate > 5).length === 1 ? ' has' : ' have'} high failure rates. 
+                        Adding exponential backoff retry logic could improve reliability.
+                      </div>
+                    </div>
+                  )}
+                  
+                  {data.averageExecutionTime > 2 && (
+                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
+                      <div className="font-medium text-blue-700">Consider performance optimizations</div>
+                      <div className="text-sm text-blue-600 mt-1">
+                        Average execution time ({data.averageExecutionTime.toFixed(1)}s) is higher than recommended. 
+                        Consider parallel execution or optimizing the slowest nodes.
+                      </div>
+                    </div>
+                  )}
+                  
+                  {data.mostFrequentErrors.length > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
+                      <div className="font-medium text-blue-700">Address frequent errors</div>
+                      <div className="text-sm text-blue-600 mt-1">
+                        Most common error: "{data.mostFrequentErrors[0]?.message}" occurred {' '}
+                        {data.mostFrequentErrors[0]?.count} times. Consider implementing specific error handling.
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {data.optimizationSuggestions?.length === 0 && 
+                data.nodePerfData.filter(node => node.errorRate > 5).length === 0 && 
+                data.averageExecutionTime <= 2 && 
+                data.mostFrequentErrors.length === 0 && (
+                <div className="p-3 bg-green-50 border border-green-100 text-green-700 rounded-md">
+                  <div className="font-medium">Your workflows are running efficiently!</div>
+                  <div className="text-sm mt-1">
+                    No optimization recommendations at this time. Continue monitoring for future improvements.
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
-              <div className="font-medium text-blue-700">Add rate limiting for Facebook API calls</div>
-              <div className="text-sm text-blue-600 mt-1">
-                5 failures due to "API Rate Limit Exceeded" errors. Implementing per-minute request throttling is recommended.
-              </div>
-            </div>
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
-              <div className="font-medium text-blue-700">Increase timeout for external API calls</div>
-              <div className="text-sm text-blue-600 mt-1">
-                Several connection timeouts detected. Consider increasing the default timeout from 10s to 15s.
-              </div>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button className="w-full">Apply Recommended Optimizations</Button>
-        </CardFooter>
-      </Card>
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full">Apply Recommended Optimizations</Button>
+          </CardFooter>
+        </Card>
+      )}
     </div>
   );
 };
