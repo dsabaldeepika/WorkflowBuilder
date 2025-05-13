@@ -94,15 +94,17 @@ export default function PricingPage() {
     try {
       const priceId = billingPeriod === "yearly" ? plan.stripePriceIdYearly : plan.stripePriceIdMonthly;
       
-      const res = await apiRequest("POST", API_ENDPOINTS.subscriptions.createSubscription, {
-        body: {
-          planId: plan.id,
-          priceId,
-          billingPeriod
+      const data = await apiRequest(
+        API_ENDPOINTS.subscriptions.createSubscription, 
+        {
+          method: 'POST',
+          body: {
+            planId: plan.id,
+            priceId,
+            billingPeriod
+          }
         }
-      });
-      
-      const data = await res.json();
+      );
       
       if (data.url) {
         window.location.href = data.url;
@@ -155,6 +157,15 @@ export default function PricingPage() {
       currency: 'USD',
       minimumFractionDigits: amount % 1 === 0 ? 0 : 2
     }).format(amount);
+  };
+
+  // Handler for specialty package types that aren't in the database yet
+  const handleSpecialtyPackage = (packageName: string) => {
+    toast({
+      title: `${packageName} Package Selected`,
+      description: "This special pricing option will be available soon!",
+      variant: "default"
+    });
   };
 
   const userTier = subscription?.tier || SubscriptionTier.FREE;
