@@ -52,7 +52,11 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   
-  const [scheduledTime, setScheduledTime] = useState('');
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 5); // Default to 5 minutes from now
+    return now.toISOString().slice(0, 16);
+  });
   const [runOnce, setRunOnce] = useState(true);
   const [repeatInterval, setRepeatInterval] = useState('daily');
   
@@ -525,76 +529,6 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
               </>
             )}
           </TabsContent>
-          <TabsContent value="scheduling" className="py-4">
-            <div className="space-y-4">
-              <div className="flex flex-col space-y-2">
-                <h3 className="text-sm font-medium">Schedule Workflow</h3>
-                <p className="text-sm text-muted-foreground">
-                  Configure when this workflow should run automatically.
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Input 
-                    type="datetime-local" 
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                    className="max-w-xs"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">Repeat</Label>
-                  <div className="flex flex-col space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="once"
-                        name="repeat"
-                        checked={runOnce}
-                        onChange={() => setRunOnce(true)}
-                      />
-                      <label htmlFor="once" className="text-sm">Run once</label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="repeat"
-                        name="repeat"
-                        checked={!runOnce}
-                        onChange={() => setRunOnce(false)}
-                      />
-                      <label htmlFor="repeat" className="text-sm">Repeat</label>
-                    </div>
-
-                    {!runOnce && (
-                      <div className="pl-6 pt-2">
-                        <select
-                          value={repeatInterval}
-                          onChange={(e) => setRepeatInterval(e.target.value)}
-                          className="w-full max-w-xs rounded-md border border-input p-2"
-                        >
-                          <option value="hourly">Hourly</option>
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                          <option value="monthly">Monthly</option>
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="pt-4 flex justify-end">
-                  <Button type="button" onClick={() => alert('Schedule saved!')}>
-                    Save Schedule
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
           <TabsContent value="scheduling" className="py-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="scheduled-time">Scheduled Time</Label>

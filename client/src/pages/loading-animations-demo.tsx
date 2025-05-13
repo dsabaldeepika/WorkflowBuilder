@@ -1,117 +1,180 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WorkflowLoadingAnimation } from '@/components/workflow/WorkflowLoadingAnimation';
 import { InlineWorkflowLoading } from '@/components/workflow/InlineWorkflowLoading';
+import { motion } from 'framer-motion';
+import { RotateCw, Play, CheckCircle, AlertTriangle } from 'lucide-react';
 
-const LoadingAnimationsDemo = () => {
-  const [isFullscreenLoading, setIsFullscreenLoading] = useState(false);
-  const [loadingComplete, setLoadingComplete] = useState(false);
+export const LoadingAnimationsDemo = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isError, setIsError] = useState(false);
   
-  const startFullscreenLoader = () => {
-    setIsFullscreenLoading(true);
-    setLoadingComplete(false);
+  const startSimulation = () => {
+    setIsLoading(true);
+    setIsSuccess(false);
+    setIsError(false);
     
-    // Auto-complete after all stages
+    // Simulate success or error after delay
     setTimeout(() => {
-      setLoadingComplete(true);
-      setTimeout(() => setIsFullscreenLoading(false), 1500);
-    }, 8000);
+      setIsLoading(false);
+      if (Math.random() > 0.3) {
+        setIsSuccess(true);
+      } else {
+        setIsError(true);
+      }
+    }, 3000);
   };
   
   return (
-    <div className="container py-8 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Playful Workflow Loading Animations</h1>
+    <div className="container py-8 space-y-8">
+      <h1 className="text-3xl font-bold">Workflow Loading Animations</h1>
+      <p className="text-muted-foreground">
+        Interactive demonstration of loading animations used throughout the workflow system.
+      </p>
       
-      <Tabs defaultValue="fullscreen">
-        <TabsList className="mb-4">
-          <TabsTrigger value="fullscreen">Fullscreen Loading</TabsTrigger>
-          <TabsTrigger value="inline">Inline Loading</TabsTrigger>
+      <Tabs defaultValue="inline">
+        <TabsList>
+          <TabsTrigger value="inline">Inline Animations</TabsTrigger>
+          <TabsTrigger value="states">Processing States</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="fullscreen">
+        <TabsContent value="inline" className="space-y-6 py-4">
           <Card>
             <CardHeader>
-              <CardTitle>Fullscreen Workflow Loading Animation</CardTitle>
+              <CardTitle>Inline Loading Indicators</CardTitle>
               <CardDescription>
-                An engaging fullscreen loading animation with multiple stages showing processing status.
+                Compact loading animations for use within components or buttons
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p>
-                This animation is useful during lengthy processing operations or when initializing complex workflows.
-                It provides a clear visual indication of progress and helps reduce perceived wait time.
-              </p>
+            <CardContent className="space-y-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-col items-center p-4 border rounded-md space-y-2">
+                  <h3 className="font-medium">Default</h3>
+                  <InlineWorkflowLoading size="md" text="Loading" />
+                </div>
+                
+                <div className="flex flex-col items-center p-4 border rounded-md space-y-2">
+                  <h3 className="font-medium">Processing</h3>
+                  <InlineWorkflowLoading size="md" text="Processing" variant="processing" />
+                </div>
+                
+                <div className="flex flex-col items-center p-4 border rounded-md space-y-2">
+                  <h3 className="font-medium">Success</h3>
+                  <InlineWorkflowLoading size="md" text="Success" variant="success" />
+                </div>
+                
+                <div className="flex flex-col items-center p-4 border rounded-md space-y-2">
+                  <h3 className="font-medium">Error</h3>
+                  <InlineWorkflowLoading size="md" text="Error" variant="error" />
+                </div>
+              </div>
               
-              <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
-                <Button onClick={startFullscreenLoader} size="lg">
-                  Start Fullscreen Loader
-                </Button>
+              <div>
+                <h3 className="font-medium mb-3">Size Variations</h3>
+                <div className="flex flex-wrap gap-6">
+                  <InlineWorkflowLoading size="sm" text="Small" />
+                  <InlineWorkflowLoading size="md" text="Medium" />
+                  <InlineWorkflowLoading size="lg" text="Large" />
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-3">With/Without Text</h3>
+                <div className="flex flex-wrap gap-6">
+                  <InlineWorkflowLoading size="md" showIcon={true} />
+                  <InlineWorkflowLoading size="md" text="With Text" showIcon={true} />
+                </div>
               </div>
             </CardContent>
-            <CardFooter className="flex justify-between text-sm text-gray-500">
-              <div>Features animated particles, progress stages and orbiting elements</div>
-            </CardFooter>
           </Card>
         </TabsContent>
         
-        <TabsContent value="inline">
+        <TabsContent value="states" className="space-y-6 py-4">
           <Card>
             <CardHeader>
-              <CardTitle>Inline Workflow Loading Indicators</CardTitle>
+              <CardTitle>Workflow Processing States</CardTitle>
               <CardDescription>
-                Compact loading indicators for inline use within UI components.
+                Interactive animations showing different workflow execution states
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Size Variants</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <InlineWorkflowLoading size="sm" text="Small inline loader" />
-                    <InlineWorkflowLoading size="md" text="Medium inline loader" />
-                    <InlineWorkflowLoading size="lg" text="Large inline loader" />
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Status Variants</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <InlineWorkflowLoading variant="default" text="Processing workflow steps" />
-                    <InlineWorkflowLoading variant="processing" text="Connecting to external service" />
-                    <InlineWorkflowLoading variant="success" text="Workflow completed successfully" />
-                    <InlineWorkflowLoading variant="error" text="Workflow failed: Unable to connect to API" />
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Minimal Variants</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <InlineWorkflowLoading showIcon={false} text="Processing without icons" />
-                    <div className="flex justify-center p-4 border rounded-lg">
-                      <InlineWorkflowLoading size="sm" variant="default" />
+            <CardContent className="space-y-6">
+              <div className="flex justify-center mb-10">
+                <Button 
+                  onClick={startSimulation} 
+                  disabled={isLoading}
+                  size="lg"
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="relative flex h-3 w-3 mr-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-foreground"></span>
+                      </span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Run Simulation
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="p-8 border rounded-lg bg-slate-50">
+                <div className="max-w-xl mx-auto">
+                  {isLoading && (
+                    <div className="flex flex-col items-center p-8 text-center">
+                      <div className="h-16 w-16 mb-4 relative">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{
+                            duration: 2,
+                            ease: "linear",
+                            repeat: Infinity
+                          }}
+                        >
+                          <RotateCw className="h-16 w-16 text-blue-500" />
+                        </motion.div>
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">Processing Workflow</h3>
+                      <p className="text-muted-foreground">Please wait while we process your workflow...</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+                  
+                  {isSuccess && (
+                    <div className="flex flex-col items-center p-8 text-center">
+                      <div className="h-16 w-16 mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="h-10 w-10 text-green-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">Workflow Completed</h3>
+                      <p className="text-muted-foreground">Your workflow has been processed successfully!</p>
+                    </div>
+                  )}
+                  
+                  {isError && (
+                    <div className="flex flex-col items-center p-8 text-center">
+                      <div className="h-16 w-16 mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="h-10 w-10 text-red-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">Workflow Failed</h3>
+                      <p className="text-muted-foreground">There was an error processing your workflow. Please try again.</p>
+                    </div>
+                  )}
+                  
+                  {!isLoading && !isSuccess && !isError && (
+                    <div className="flex flex-col items-center p-8 text-center">
+                      <p className="text-lg">Click "Run Simulation" to see the workflow processing states</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-      
-      {/* Fullscreen loader */}
-      <WorkflowLoadingAnimation 
-        isLoading={isFullscreenLoading}
-        onComplete={() => setLoadingComplete(true)}
-        loadingText={loadingComplete ? "Workflow processing complete!" : "Processing your workflow"}
-      />
     </div>
   );
 };
