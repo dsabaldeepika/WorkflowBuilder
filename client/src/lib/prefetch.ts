@@ -1,126 +1,235 @@
-/**
- * Intelligent prefetching system for PumpFlux
- * 
- * This module provides functions for prefetching resources based on user behavior 
- * to improve perceived performance. It includes:
- * 
- * 1. Route-based prefetching
- * 2. Data prefetching for React Query
- * 3. Adaptive prefetching based on network conditions
- */
-
 import { queryClient } from './queryClient';
+import { memoizeWithTTL } from './memoize';
 
-// Map of routes to their associated API endpoints
-const ROUTE_DATA_MAP: Record<string, string[]> = {
-  '/templates': ['/api/workflow/templates'],
-  '/workflow-builder': ['/api/node-types', '/api/integrations'],
-  '/health-dashboard': ['/api/workflow/health/summary', '/api/workflow/executions/recent'],
-  '/workflow-templates': ['/api/workflow/templates/featured'],
-  '/performance': ['/api/performance/metrics'],
-  '/workflow-animations': []
-};
-
-// For now, we're not using actual dynamic imports since 
-// we don't know the actual paths to these components
-// Instead, we're just defining the routes for data prefetching
-const ROUTE_COMPONENT_MAP: Record<string, (() => Promise<any>) | null> = {
-  '/templates': null,
-  '/workflow-builder': null,
-  '/health-dashboard': null,
-  '/performance': null,
-  '/workflow-animations': null
-};
+// Tracking of which routes are being prefetched
+const prefetchingRoutes = new Set<string>();
 
 /**
- * Check if we should prefetch resources based on network conditions
- * Avoids prefetching on slow connections to preserve bandwidth
+ * Configuration for route-specific prefetching
  */
-function shouldPrefetch(): boolean {
-  // Access navigator.connection API if available (see types/global.d.ts)
-  if (navigator.connection) {
-    // Don't prefetch on slow connections or when save-data is enabled
-    if (
-      navigator.connection.saveData ||
-      navigator.connection.effectiveType === 'slow-2g' ||
-      navigator.connection.effectiveType === '2g'
-    ) {
-      return false;
-    }
-  }
-  return true;
+interface PrefetchConfig {
+  // API endpoints to prefetch for this route
+  apiEndpoints: string[];
+  
+  // Component code to prefetch (imported dynamically)
+  componentImports: (() => Promise<unknown>)[];
+  
+  // Priority (higher = more important)
+  priority: 'high' | 'medium' | 'low';
 }
 
 /**
- * Prefetch API data for route transitions to improve perceived performance
- * @param queryKeys Array of query keys to prefetch
+ * Route prefetch configuration map
+ * Add routes and their associated resources to prefetch
+ * This allows for fine-grained control over what gets prefetched for each route
  */
-export const prefetchRouteData = async (queryKeys: string[]): Promise<void> => {
-  if (!shouldPrefetch()) return;
-
-  // Prefetch each API endpoint in parallel
-  await Promise.allSettled(
-    queryKeys.map(key => {
-      return queryClient.prefetchQuery({
-        queryKey: [key],
-        staleTime: 30 * 1000 // 30 seconds
-      });
-    })
-  );
-};
-
-/**
- * Preload components and their data for specific routes
- * @param routes Array of routes to preload
- */
-export const preloadRoutes = async (routes: string[]): Promise<void> => {
-  if (!shouldPrefetch()) return;
-
-  // For each route, preload both component and data in parallel
-  await Promise.allSettled(
-    routes.flatMap(route => {
-      const promises = [];
-      
-      // Prefetch component if available
-      const componentLoader = ROUTE_COMPONENT_MAP[route];
-      if (componentLoader) {
-        promises.push(componentLoader());
-      }
-      
-      // Prefetch associated data
-      promises.push(prefetchRouteData(ROUTE_DATA_MAP[route] || []));
-      
-      return promises;
-    })
-  );
-};
-
-/**
- * Intelligent prefetching based on user navigation patterns
- * Call this function when a user hovers over navigation items
- * @param route The route being hovered
- * @returns A cleanup function to cancel prefetching if needed
- */
-export const prefetchOnHover = (route: string): (() => void) | undefined => {
-  if (!shouldPrefetch() || !route) return undefined;
-
-  // Get data endpoints for this route
-  const dataEndpoints = ROUTE_DATA_MAP[route] || [];
-
-  // Get component loader for this route
-  const componentLoader = ROUTE_COMPONENT_MAP[route];
+const routePrefetchConfig: Record<string, PrefetchConfig> = {
+  // Dashboard page
+  '/': {
+    apiEndpoints: [
+      '/api/user', 
+      '/api/workflows/recent',
+      '/api/feature-flags',
+    ],
+    componentImports: [
+      () => import('@/pages/dashboard-new'),
+      () => import('@/components/page-header'),
+      () => import('@/components/workflow/WorkflowAnimationCard'),
+    ],
+    priority: 'high',
+  },
   
-  // Start prefetching component if available
-  if (componentLoader) {
-    componentLoader();
+  // Performance optimization page
+  '/performance': {
+    apiEndpoints: [
+      '/api/performance-metrics',
+      '/api/feature-flags/performance',
+    ],
+    componentImports: [
+      () => import('@/pages/performance-optimization-page'),
+      () => import('@/components/performance/PerformanceMonitor'),
+    ],
+    priority: 'medium',
+  },
+  
+  // Health dashboard
+  '/health-dashboard': {
+    apiEndpoints: [
+      '/api/workflows/health',
+      '/api/workflows/metrics',
+      '/api/workflows/errors',
+    ],
+    componentImports: [
+      () => import('@/pages/health-dashboard-page'),
+      () => import('@/components/workflow/WorkflowHealthDashboard'),
+    ],
+    priority: 'medium',
+  },
+  
+  // Workflow animations demo
+  '/workflow-animations': {
+    apiEndpoints: [],
+    componentImports: [
+      () => import('@/components/workflow/StateChangeAnimation'),
+      () => import('@/components/workflow/WorkflowAnimationCard'),
+    ],
+    priority: 'low',
+  },
+  
+  // Template explorer
+  '/templates': {
+    apiEndpoints: [
+      '/api/workflow/templates',
+      '/api/workflow/templates/categories',
+    ],
+    componentImports: [
+      () => import('@/components/templates/WorkflowTemplates'),
+      () => import('@/components/templates/TemplateSearch'),
+    ],
+    priority: 'medium',
+  },
+  
+  // Pricing page
+  '/pricing': {
+    apiEndpoints: [
+      '/api/subscription/plans',
+    ],
+    componentImports: [
+      () => import('@/pages/pricing-page'),
+    ],
+    priority: 'low',
+  },
+  
+  // Workflow creator
+  '/create': {
+    apiEndpoints: [
+      '/api/node-types',
+      '/api/workflows',
+    ],
+    componentImports: [
+      () => import('@/components/workflow/WorkflowCanvas'),
+      () => import('@/components/workflow/WorkflowNode'),
+      () => import('@/components/workflow/ConnectionValidator'),
+    ],
+    priority: 'high',
+  },
+};
+
+/**
+ * Prefetch data for a specific API endpoint
+ * Uses TanStack Query's prefetchQuery functionality
+ * 
+ * @param endpoint - API endpoint to prefetch
+ * @returns Promise that resolves when prefetching is complete
+ */
+const prefetchApiData = async (endpoint: string): Promise<void> => {
+  try {
+    await queryClient.prefetchQuery({
+      queryKey: [endpoint],
+      staleTime: 30 * 1000, // 30 seconds
+    });
+    console.debug(`[Prefetch] Successfully prefetched API data for ${endpoint}`);
+  } catch (error) {
+    console.debug(`[Prefetch] Failed to prefetch API data for ${endpoint}`, error);
+  }
+};
+
+/**
+ * Prefetch a component by importing it dynamically
+ * This leverages code splitting and webpack's dynamic imports
+ * 
+ * @param importFn - Dynamic import function for the component
+ * @returns Promise that resolves when the import is complete
+ */
+const prefetchComponent = async (importFn: () => Promise<unknown>): Promise<void> => {
+  try {
+    await importFn();
+    console.debug('[Prefetch] Successfully prefetched component');
+  } catch (error) {
+    console.debug('[Prefetch] Failed to prefetch component', error);
+  }
+};
+
+/**
+ * Memoized function to get route configuration with TTL cache
+ * This prevents unnecessary work when the same route is requested multiple times
+ */
+const getRoutePrefetchConfig = memoizeWithTTL(
+  (route: string): PrefetchConfig | undefined => {
+    // Exact match
+    if (routePrefetchConfig[route]) {
+      return routePrefetchConfig[route];
+    }
+    
+    // Pattern matching for dynamic routes (basic implementation)
+    // This could be expanded to handle more complex route patterns
+    for (const [pattern, config] of Object.entries(routePrefetchConfig)) {
+      if (pattern.includes(':') && route.startsWith(pattern.split(':')[0])) {
+        return config;
+      }
+    }
+    
+    return undefined;
+  },
+  { ttl: 60 * 1000 } // Cache for 1 minute
+);
+
+/**
+ * Prefetch resources for a given route on hover
+ * This is the main function that will be called by the usePrefetchOnHover hook
+ * 
+ * @param route - Route to prefetch resources for
+ * @returns Cleanup function to cancel prefetching
+ */
+export function prefetchOnHover(route: string): () => void {
+  // Skip if already prefetching this route
+  if (prefetchingRoutes.has(route)) {
+    return () => {}; // No-op cleanup function
   }
   
-  // Start prefetching data
-  prefetchRouteData(dataEndpoints);
-
-  // Return a cleanup function that can abort prefetching if needed
+  // Mark route as being prefetched
+  prefetchingRoutes.add(route);
+  
+  // Get prefetch configuration for this route
+  const config = getRoutePrefetchConfig(route);
+  
+  if (!config) {
+    console.debug(`[Prefetch] No prefetch configuration for route: ${route}`);
+    prefetchingRoutes.delete(route);
+    return () => {};
+  }
+  
+  console.debug(`[Prefetch] Starting prefetch for route: ${route}`);
+  
+  // Track all pending prefetch operations
+  const pendingOperations: Promise<void>[] = [];
+  
+  // Prefetch API data
+  for (const endpoint of config.apiEndpoints) {
+    pendingOperations.push(prefetchApiData(endpoint));
+  }
+  
+  // Prefetch components
+  for (const importFn of config.componentImports) {
+    pendingOperations.push(prefetchComponent(importFn));
+  }
+  
+  // Create a promise that resolves when all prefetching is complete
+  const prefetchPromise = Promise.all(pendingOperations)
+    .then(() => {
+      console.debug(`[Prefetch] Completed prefetching for route: ${route}`);
+      prefetchingRoutes.delete(route);
+    })
+    .catch(() => {
+      console.debug(`[Prefetch] Error during prefetching for route: ${route}`);
+      prefetchingRoutes.delete(route);
+    });
+  
+  // Return a cleanup function that can be called to cancel prefetching
   return () => {
-    // Could implement abort logic here if needed
-    console.debug(`Prefetch canceled for ${route}`);
+    if (prefetchingRoutes.has(route)) {
+      console.debug(`[Prefetch] Canceled prefetching for route: ${route}`);
+      prefetchingRoutes.delete(route);
+    }
   };
-};
+}

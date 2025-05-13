@@ -124,8 +124,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">Create Workflow</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">Start building from scratch</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/create'}>
-                Create New
+              <Button className="w-full" variant="outline" asChild>
+                <PrefetchLink to="/create">Create New</PrefetchLink>
               </Button>
             </CardContent>
           </Card>
@@ -137,8 +137,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">Template Library</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">Browse ready-made templates</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/templates'}>
-                Browse Templates
+              <Button className="w-full" variant="outline" asChild>
+                <PrefetchLink to="/templates">Browse Templates</PrefetchLink>
               </Button>
             </CardContent>
           </Card>
@@ -150,8 +150,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">Subscription Plans</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">Explore premium features</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/pricing'}>
-                View Plans
+              <Button className="w-full" variant="outline" asChild>
+                <PrefetchLink to="/pricing">View Plans</PrefetchLink>
               </Button>
             </CardContent>
           </Card>
@@ -213,9 +213,11 @@ export default function Dashboard() {
               </div>
               <Button 
                 className="bg-purple-600 hover:bg-purple-700"
-                onClick={() => window.location.href = '/performance'}
+                asChild
               >
-                Explore Performance Tools
+                <PrefetchLink to="/performance">
+                  Explore Performance Tools
+                </PrefetchLink>
               </Button>
             </div>
           </CardContent>

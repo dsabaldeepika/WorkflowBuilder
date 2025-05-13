@@ -1,6 +1,7 @@
-import { ReactNode, useCallback } from 'react';
+import { forwardRef, ReactNode } from 'react';
 import { Link } from 'wouter';
-import { prefetchOnHover } from '../../lib/prefetch';
+import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
+import { cn } from '@/lib/utils';
 
 interface PrefetchLinkProps {
   to: string;
@@ -12,23 +13,37 @@ interface PrefetchLinkProps {
 /**
  * Enhanced Link component that prefetches resources when hovered
  */
-export function PrefetchLink({
-  children,
-  to,
-  ...rest
-}: PrefetchLinkProps) {
-  const handlePrefetch = useCallback(() => {
-    prefetchOnHover(to);
-  }, [to]);
-  
-  return (
-    <Link 
-      to={to} 
-      onMouseEnter={handlePrefetch}
-      onFocus={handlePrefetch}
-      {...rest} 
-    >
-      {children}
-    </Link>
-  );
-}
+export const PrefetchLink = forwardRef<HTMLAnchorElement, PrefetchLinkProps>(
+  ({ to, children, className, replace, ...props }, ref) => {
+    const {
+      handleMouseEnter,
+      handleMouseLeave,
+      isPrefetchingEnabled
+    } = usePrefetchOnHover(to);
+
+    return (
+      <Link
+        ref={ref}
+        to={to}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={() => {
+          // We can optionally add analytics tracking here
+          // e.g., trackEvent('navigation', { destination: to });
+        }}
+        className={cn(className)}
+        replace={replace}
+        {...props}
+      >
+        {children}
+        {process.env.NODE_ENV === 'development' && isPrefetchingEnabled && (
+          <span className="sr-only">
+            (prefetching enabled for this link)
+          </span>
+        )}
+      </Link>
+    );
+  }
+);
+
+PrefetchLink.displayName = 'PrefetchLink';
