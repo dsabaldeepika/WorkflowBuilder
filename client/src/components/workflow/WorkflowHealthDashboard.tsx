@@ -557,90 +557,189 @@ const WorkflowHealthDashboard: React.FC = () => {
         
         <TabsContent value="history" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Performance History</CardTitle>
-              <CardDescription>Execution time and error rate trends</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Performance History</CardTitle>
+                <CardDescription>Execution time and error rate trends</CardDescription>
+              </div>
+              <div className="flex space-x-2">
+                <Button variant={timeRange === "7d" ? "default" : "outline"} size="sm" className="h-8 text-xs"
+                  onClick={() => setTimeRange("7d")}>
+                  Last 7 days
+                </Button>
+                <Button variant={timeRange === "30d" ? "default" : "outline"} size="sm" className="h-8 text-xs"
+                  onClick={() => setTimeRange("30d")}>
+                  Last 30 days
+                </Button>
+                <Button variant={timeRange === "90d" ? "default" : "outline"} size="sm" className="h-8 text-xs"
+                  onClick={() => setTimeRange("90d")}>
+                  Last 90 days
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="h-96">
+            <CardContent className="pt-6">
               {data.performanceHistory.length > 0 ? (
-                <div className="h-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={data.performanceHistory.slice().reverse()}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="colorExecTime" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
-                        </linearGradient>
-                        <linearGradient id="colorErrorRate" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fontSize: 12 }} 
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        yAxisId="left" 
-                        orientation="left" 
-                        tick={{ fontSize: 12 }} 
-                        tickLine={false}
-                        tickFormatter={(value) => `${value}s`}
-                        label={{ value: 'Execution Time (s)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
-                      />
-                      <YAxis 
-                        yAxisId="right" 
-                        orientation="right" 
-                        tick={{ fontSize: 12 }} 
-                        tickLine={false}
-                        tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
-                        label={{ value: 'Error Rate (%)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } }}
-                      />
-                      <Tooltip
-                        formatter={(value, name) => {
-                          if (name === 'executionTime') return [`${value}s`, 'Execution Time'];
-                          if (name === 'errorRate') return [`${(Number(value) * 100).toFixed(1)}%`, 'Error Rate'];
-                          return [value, name];
-                        }}
-                        labelFormatter={(label) => `Date: ${label}`}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="executionTime"
-                        stroke="#3b82f6"
-                        fillOpacity={1}
-                        fill="url(#colorExecTime)"
-                        yAxisId="left"
-                        name="executionTime"
-                        activeDot={{ r: 6 }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="errorRate"
-                        stroke="#ef4444"
-                        fillOpacity={1}
-                        fill="url(#colorErrorRate)"
-                        yAxisId="right"
-                        name="errorRate"
-                        activeDot={{ r: 6 }}
-                      />
-                      <Legend 
-                        formatter={(value) => {
-                          if (value === 'executionTime') return 'Execution Time';
-                          if (value === 'errorRate') return 'Error Rate';
-                          return value;
-                        }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <div className="space-y-8">
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={data.performanceHistory.slice().reverse()}
+                        margin={{ top: 10, right: 30, left: 5, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorExecTime" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                          </linearGradient>
+                          <linearGradient id="colorErrorRate" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 12 }} 
+                          tickLine={false}
+                          tickFormatter={(value) => {
+                            try {
+                              const date = new Date(value);
+                              return `${date.getMonth()+1}/${date.getDate()}`;
+                            } catch (e) {
+                              return value;
+                            }
+                          }}
+                        />
+                        <YAxis 
+                          yAxisId="left" 
+                          orientation="left" 
+                          tick={{ fontSize: 12 }} 
+                          tickLine={false}
+                          tickFormatter={(value) => `${value}s`}
+                          label={{ 
+                            value: 'Execution Time (s)', 
+                            angle: -90, 
+                            position: 'insideLeft',
+                            style: { textAnchor: 'middle', fontSize: '12px', fill: '#3b82f6' }
+                          }}
+                        />
+                        <YAxis 
+                          yAxisId="right" 
+                          orientation="right" 
+                          tick={{ fontSize: 12 }} 
+                          tickLine={false}
+                          tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+                          label={{ 
+                            value: 'Error Rate (%)', 
+                            angle: 90, 
+                            position: 'insideRight',
+                            style: { textAnchor: 'middle', fontSize: '12px', fill: '#ef4444' }
+                          }}
+                        />
+                        <Tooltip
+                          formatter={(value, name) => {
+                            if (name === 'executionTime') return [`${value}s`, 'Execution Time'];
+                            if (name === 'errorRate') return [`${(Number(value) * 100).toFixed(1)}%`, 'Error Rate'];
+                            return [value, name];
+                          }}
+                          labelFormatter={(label) => {
+                            try {
+                              const date = new Date(label);
+                              return date.toLocaleDateString(undefined, {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              });
+                            } catch (e) {
+                              return `Date: ${label}`;
+                            }
+                          }}
+                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="executionTime"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorExecTime)"
+                          yAxisId="left"
+                          name="executionTime"
+                          activeDot={{ r: 6 }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="errorRate"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorErrorRate)"
+                          yAxisId="right"
+                          name="errorRate"
+                          activeDot={{ r: 6 }}
+                        />
+                        <Legend 
+                          formatter={(value) => {
+                            if (value === 'executionTime') return 'Execution Time';
+                            if (value === 'errorRate') return 'Error Rate';
+                            return value;
+                          }}
+                          verticalAlign="top" 
+                          height={36}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col space-y-1.5 p-6 rounded-lg bg-blue-50">
+                      <h3 className="text-sm font-medium text-blue-900">Avg. Execution Time</h3>
+                      <div className="text-2xl font-bold text-blue-700">
+                        {data.averageExecutionTime.toFixed(2)}s
+                      </div>
+                      <p className="text-xs text-blue-600">
+                        {data.averageExecutionTime < 1 
+                          ? "Excellent performance" 
+                          : data.averageExecutionTime < 3 
+                            ? "Good performance" 
+                            : "Needs optimization"}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col space-y-1.5 p-6 rounded-lg bg-red-50">
+                      <h3 className="text-sm font-medium text-red-900">Avg. Error Rate</h3>
+                      <div className="text-2xl font-bold text-red-700">
+                        {data.totalRuns > 0 ? (data.failed / data.totalRuns * 100).toFixed(1) : "0.0"}%
+                      </div>
+                      <p className="text-xs text-red-600">
+                        {data.failed === 0 
+                          ? "No errors detected" 
+                          : data.failed / data.totalRuns < 0.05 
+                            ? "Good reliability" 
+                            : "Reliability issues detected"}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col space-y-1.5 p-6 rounded-lg bg-green-50">
+                      <h3 className="text-sm font-medium text-green-900">Success Rate</h3>
+                      <div className="text-2xl font-bold text-green-700">
+                        {data.totalRuns > 0 ? ((data.successful / data.totalRuns) * 100).toFixed(1) : "0.0"}%
+                      </div>
+                      <p className="text-xs text-green-600">
+                        {data.totalRuns === 0 
+                          ? "No data available" 
+                          : data.successful / data.totalRuns > 0.95 
+                            ? "Excellent reliability" 
+                            : data.successful / data.totalRuns > 0.9 
+                              ? "Good reliability" 
+                              : "Needs improvement"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <div className="flex flex-col items-center justify-center h-80 text-muted-foreground">
                   <TrendingUp className="h-16 w-16 mb-4 opacity-20" />
                   <p className="text-lg">No historical data available</p>
                   <p className="text-sm">Performance data will appear here once workflows have been executed</p>
