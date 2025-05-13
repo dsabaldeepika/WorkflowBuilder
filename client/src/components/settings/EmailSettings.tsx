@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { API_ENDPOINTS } from '@shared/config';
+import type { EmailConfig as EmailConfigType } from '@shared/emailConfig';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -44,13 +46,39 @@ export function EmailSettings() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('general');
   
+  // Default form values for proper type initialization
+  const defaultValues: EmailConfig = {
+    enabled: false,
+    senderEmail: '',
+    senderName: '',
+    features: {
+      auth: {
+        enabled: false,
+        sendWelcomeEmail: false,
+        sendLoginNotification: false,
+      },
+      workflows: {
+        enabled: false,
+        notifyOnError: false,
+        notifyOnSuccess: false,
+        notifyOnScheduledRun: false,
+        errorThreshold: 1,
+      },
+      notifications: {
+        enabled: false,
+        digestFrequency: 'never',
+        digestTime: '09:00',
+      },
+    },
+  };
+  
   // Fetch current email settings
   const { 
     data: emailStatus, 
     isLoading: isLoadingStatus,
     error: statusError
   } = useQuery({
-    queryKey: ['/api/email/status'],
+    queryKey: [API_ENDPOINTS.email.status],
     retry: false
   });
   
@@ -97,7 +125,7 @@ export function EmailSettings() {
   // Mutation to update email settings
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<EmailConfig>) => {
-      const response = await apiRequest('PUT', '/api/email/config', data);
+      const response = await apiRequest('PUT', API_ENDPOINTS.email.config, data);
       return response.json();
     },
     onSuccess: (data) => {

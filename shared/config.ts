@@ -127,6 +127,15 @@ export const API_ENDPOINTS = {
     register: '/api/register',
     user: '/api/user',
   },
+  email: {
+    status: '/api/email/status',
+    config: '/api/email/config',
+    test: '/api/email/test',
+    templates: {
+      welcome: '/api/email/templates/welcome',
+      workflowError: '/api/email/templates/workflow-error',
+    }
+  },
   subscriptions: {
     plans: '/api/subscriptions/plans',
     current: '/api/subscriptions/current',
