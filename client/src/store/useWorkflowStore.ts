@@ -228,6 +228,14 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     // Check if connection is valid before adding
     const isValid = get().validateConnection(connection);
     
+    // Generate edge ID consistently
+    const edgeId = `e${connection.source}-${connection.target}`;
+    
+    // Set up validation message
+    const validationMessage = isValid 
+      ? 'Connection validated successfully' 
+      : 'Invalid connection type or incompatible nodes';
+      
     set((state) => {
       const { nodes } = state;
       const sourceNodeIndex = nodes.findIndex((n) => n.id === connection.source);
@@ -260,50 +268,43 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
       
       if (!isValid) {
         // Don't create the edge but update the visual indicators
-        return { 
+        const result = { 
           nodes: updatedNodes,
           connectionValidations: {
             ...state.connectionValidations,
-            [`e${connection.source}-${connection.target}`]: { 
-              isValid: false,
-              message: 'Invalid connection type or incompatible nodes'
-            }
+            [edgeId]: { isValid: false, message: validationMessage }
           }
         };
+        
+        // Call the centralized connection validation handler to persist to DB
+        setTimeout(() => {
+          get().setConnectionValidation(edgeId, false, validationMessage);
+        }, 0);
+        
+        return result;
       }
       
       const newEdge = {
         ...connection,
-        id: `e${connection.source}-${connection.target}`,
+        id: edgeId,
         data: { validated: true, invalid: false }
       };
       
-      // Save the connection state to the database
-      try {
-        fetch('/api/workflow/connections', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sourceNodeId: connection.source,
-            targetNodeId: connection.target,
-            edgeId: newEdge.id,
-            isValid: true,
-            workflowId: state.workflow?.id,
-            validationMessage: null
-          })
-        }).catch(err => console.error('Error saving connection:', err));
-      } catch (error) {
-        console.error('Failed to save connection to database:', error);
-      }
-      
-      return {
+      const result = {
         nodes: updatedNodes,
         edges: addEdge(newEdge, state.edges),
         connectionValidations: {
           ...state.connectionValidations,
-          [newEdge.id]: { isValid: true }
+          [newEdge.id]: { isValid: true, message: validationMessage }
         }
       };
+      
+      // Call the centralized connection validation handler to persist to DB
+      setTimeout(() => {
+        get().setConnectionValidation(edgeId, true, validationMessage);
+      }, 0);
+      
+      return result;
     });
   },
   
@@ -785,12 +786,95 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   },
   
   setConnectionValidation: (edgeId, isValid, message) => {
+    const state = get();
+    const { workflow, nodes, edges } = state;
+    
+    // Find the edge and connected nodes
+    const edge = edges.find(e => e.id === edgeId);
+    if (!edge) {
+      console.error('Edge not found:', edgeId);
+      return;
+    }
+    
+    // Update the store with validation results
     set((state) => ({
       connectionValidations: {
         ...state.connectionValidations,
         [edgeId]: { isValid, message }
       }
     }));
+    
+    // Update source and target node visual indicators
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+    
+    if (sourceNode) {
+      set((state) => ({
+        nodes: state.nodes.map(node => 
+          node.id === sourceNode.id 
+            ? { 
+                ...node, 
+                data: { 
+                  ...node.data, 
+                  sourceConnectionStatus: isValid ? 'success' : 'error',
+                  connectionValidated: true 
+                } 
+              } 
+            : node
+        )
+      }));
+    }
+    
+    if (targetNode) {
+      set((state) => ({
+        nodes: state.nodes.map(node => 
+          node.id === targetNode.id 
+            ? { 
+                ...node, 
+                data: { 
+                  ...node.data, 
+                  targetConnectionStatus: isValid ? 'success' : 'error',
+                  connectionValidated: true 
+                } 
+              } 
+            : node
+        )
+      }));
+    }
+    
+    // Persist validation to database if workflow has an ID
+    if (workflow?.id) {
+      // Create connection validation payload
+      const payload = {
+        workflowId: workflow.id,
+        edgeId,
+        sourceNodeId: edge.source,
+        targetNodeId: edge.target,
+        isValid,
+        validationMessage: message || ''
+      };
+      
+      // Post to API
+      fetch('/api/workflow/connections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to save connection validation');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Connection validation saved:', data);
+      })
+      .catch(error => {
+        console.error('Error saving connection validation:', error);
+      });
+    }
   },
   
   updateSchedule: (newSchedule) => {
