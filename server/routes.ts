@@ -99,6 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/execution', workflowExecutionRoutes);
   app.use('/api/workflow/connections', workflowConnectionsRoutes);
   app.use('/api/email', emailRoutes);
+  app.use('/api', contactRoutes); // Contact forms and template request
   // Temporarily disabled to fix Stripe.js loading issue
   // app.use('/api/subscriptions', subscriptionsRouter);
   

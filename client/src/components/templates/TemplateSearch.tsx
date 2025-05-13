@@ -41,6 +41,8 @@ import {
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { TemplateIntegrationGuide } from './TemplateIntegrationGuide';
 import { useToast } from '@/hooks/use-toast';
+import { ContactFormDialog } from '@/components/dialogs/ContactFormDialog';
+import { TemplateRequestDialog } from '@/components/dialogs/TemplateRequestDialog';
 
 // Import template preview images
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
@@ -735,15 +737,7 @@ export function TemplateSearch() {
                   </div>
                   <h4 className="font-bold mb-2">Contact Support</h4>
                   <p className="text-sm text-gray-600 mb-4">Need help finding the right template? Our support team is here to help.</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      window.open('mailto:support@pumpflux.com?subject=Template Support Request', '_blank');
-                    }}
-                  >
-                    Contact Us
-                  </Button>
+                  <ContactFormDialog buttonClassName="w-full" />
                 </CardContent>
               </Card>
               
@@ -754,15 +748,7 @@ export function TemplateSearch() {
                   </div>
                   <h4 className="font-bold mb-2">Request Template</h4>
                   <p className="text-sm text-gray-600 mb-4">Can't find what you need? Request a custom template for your workflow.</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      window.open('mailto:templates@pumpflux.com?subject=Custom Template Request&body=Please describe the workflow template you would like us to create:', '_blank');
-                    }}
-                  >
-                    Make Request
-                  </Button>
+                  <TemplateRequestDialog buttonClassName="w-full" />
                 </CardContent>
               </Card>
               
