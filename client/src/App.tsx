@@ -1,29 +1,34 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ROUTES } from "@shared/config";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
-import WorkflowBuilder from "@/pages/workflow-builder";
-import Login from "@/pages/login";
-import Dashboard from "@/pages/dashboard-new";
-import Callback from "@/pages/auth/callback";
-import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
-import WorkflowMonitoring from "@/pages/workflow-monitoring";
-import HealthDashboardPage from "@/pages/health-dashboard-page";
-import TemplatesPage from "@/pages/templates-page";
-import TemplateSetupPage from "@/pages/template-setup-page";
-import PricingPage from "@/pages/pricing-page";
-import AccountBillingPage from "@/pages/account-billing-page";
-import LoadingAnimationsDemo from "@/pages/loading-animations-demo";
-import EmailSettingsPage from "@/pages/email-settings-page";
-// Temporarily disabled to fix Stripe.js loading issue
-// import CheckoutPage from "@/pages/checkout-page";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import { Workflow } from "lucide-react";
+
+// Import the home page eagerly (critical for initial load)
+import Home from "@/pages/home";
+
+// Lazy load all other pages
+const NotFound = lazy(() => import("@/pages/not-found"));
+const WorkflowBuilder = lazy(() => import("@/pages/workflow-builder"));
+const Login = lazy(() => import("@/pages/login"));
+const Dashboard = lazy(() => import("@/pages/dashboard-new"));
+const Callback = lazy(() => import("@/pages/auth/callback"));
+const WorkflowAnimationsDemo = lazy(() => import("@/pages/workflow-animations-demo"));
+const WorkflowMonitoring = lazy(() => import("@/pages/workflow-monitoring"));
+const HealthDashboardPage = lazy(() => import("@/pages/health-dashboard-page"));
+const TemplatesPage = lazy(() => import("@/pages/templates-page"));
+const TemplateSetupPage = lazy(() => import("@/pages/template-setup-page"));
+const PricingPage = lazy(() => import("@/pages/pricing-page"));
+const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
+const LoadingAnimationsDemo = lazy(() => import("@/pages/loading-animations-demo"));
+const EmailSettingsPage = lazy(() => import("@/pages/email-settings-page"));
+// Temporarily disabled to fix Stripe.js loading issue
+// const CheckoutPage = lazy(() => import("@/pages/checkout-page"));
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
@@ -58,34 +63,102 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   return <Component {...rest} />;
 };
 
+// Loading fallback for lazy-loaded components
+const PageLoader = () => (
+  <div className="flex h-screen items-center justify-center">
+    <div className="flex flex-col items-center space-y-4">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{
+          duration: 2,
+          ease: "linear",
+          repeat: Infinity
+        }}
+      >
+        <Workflow className="h-12 w-12 text-blue-500" />
+      </motion.div>
+      <span className="text-lg text-gray-600">Loading...</span>
+    </div>
+  </div>
+);
+
 function Router() {
   // BYPASS: Direct access to components without authentication
   // This is a temporary solution until auth issues are resolved
   
-  // Home page route
-  const HomeRoute = () => {
-    return <Home />;
-  };
+  // Define a wrapper component that handles lazy loading
+  const LazyRouteComponent = ({ Component }: { Component: React.ComponentType<any> }) => (
+    <Suspense fallback={<PageLoader />}>
+      <Component />
+    </Suspense>
+  );
   
   return (
     <Switch>
-      <Route path={ROUTES.home} component={HomeRoute} />
-      <Route path="/login" component={Dashboard} /> {/* Bypass login */}
-      <Route path="/auth/callback" component={Dashboard} /> {/* Bypass callback */}
-      <Route path={ROUTES.dashboard} component={Dashboard} />
-      <Route path={ROUTES.createWorkflow} component={WorkflowBuilder} />
-      <Route path={ROUTES.workflowAnimations} component={WorkflowAnimationsDemo} />
-      <Route path="/monitoring" component={WorkflowMonitoring} />
-      <Route path="/health-dashboard" component={HealthDashboardPage} />
-      <Route path={ROUTES.templates} component={TemplatesPage} />
-      <Route path="/template-setup/:id" component={TemplateSetupPage} />
-      <Route path={ROUTES.pricing} component={PricingPage} />
-      <Route path={ROUTES.loadingAnimations} component={LoadingAnimationsDemo} />
+      <Route path={ROUTES.home}>
+        <Home />
+      </Route>
+      
+      <Route path="/login">
+        <LazyRouteComponent Component={Dashboard} />
+      </Route>
+      
+      <Route path="/auth/callback">
+        <LazyRouteComponent Component={Dashboard} />
+      </Route>
+      
+      <Route path={ROUTES.dashboard}>
+        <LazyRouteComponent Component={Dashboard} />
+      </Route>
+      
+      <Route path={ROUTES.createWorkflow}>
+        <LazyRouteComponent Component={WorkflowBuilder} />
+      </Route>
+      
+      <Route path={ROUTES.workflowAnimations}>
+        <LazyRouteComponent Component={WorkflowAnimationsDemo} />
+      </Route>
+      
+      <Route path="/monitoring">
+        <LazyRouteComponent Component={WorkflowMonitoring} />
+      </Route>
+      
+      <Route path="/health-dashboard">
+        <LazyRouteComponent Component={HealthDashboardPage} />
+      </Route>
+      
+      <Route path={ROUTES.templates}>
+        <LazyRouteComponent Component={TemplatesPage} />
+      </Route>
+      
+      <Route path="/template-setup/:id">
+        <LazyRouteComponent Component={TemplateSetupPage} />
+      </Route>
+      
+      <Route path={ROUTES.pricing}>
+        <LazyRouteComponent Component={PricingPage} />
+      </Route>
+      
+      <Route path={ROUTES.loadingAnimations}>
+        <LazyRouteComponent Component={LoadingAnimationsDemo} />
+      </Route>
+      
       {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
-      <Route path={ROUTES.checkout} component={PricingPage} />
-      <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
-      <Route path={ROUTES.emailSettings} component={EmailSettingsPage} />
-      <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
+      <Route path={ROUTES.checkout}>
+        <LazyRouteComponent Component={PricingPage} />
+      </Route>
+      
+      <Route path={ROUTES.accountBilling}>
+        <LazyRouteComponent Component={AccountBillingPage} />
+      </Route>
+      
+      <Route path={ROUTES.emailSettings}>
+        <LazyRouteComponent Component={EmailSettingsPage} />
+      </Route>
+      
+      <Route>
+        <LazyRouteComponent Component={Dashboard} />
+      </Route>
     </Switch>
   );
 }
