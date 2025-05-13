@@ -20,6 +20,7 @@ import {
   workflowNodeExecutions,
   subscriptionPlans,
   subscriptionHistory,
+  featureFlags,
   SubscriptionTier,
   type User, 
   type InsertUser, 
@@ -44,10 +45,18 @@ import {
   type SubscriptionPlan,
   type InsertSubscriptionPlan,
   type SubscriptionHistory,
-  type InsertSubscriptionHistory
+  type InsertSubscriptionHistory,
+  type FeatureFlag,
+  type InsertFeatureFlag
 } from "@shared/schema";
 
 export interface IStorage {
+  // Feature flags methods
+  getFeatureFlag(featureName: string): Promise<FeatureFlag | undefined>;
+  getFeatureFlags(): Promise<FeatureFlag[]>;
+  isFeatureEnabled(featureName: string): Promise<boolean>;
+  updateFeatureFlag(featureName: string, isEnabled: boolean): Promise<FeatureFlag | undefined>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
