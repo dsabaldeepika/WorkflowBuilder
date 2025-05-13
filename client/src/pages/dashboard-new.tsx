@@ -23,7 +23,8 @@ import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { WorkflowStateIndicator, WorkflowState } from '@/components/workflow/StateChangeAnimation';
 import WorkflowAnimationCard from '@/components/workflow/WorkflowAnimationCard';
-import { PrefetchLink, usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
+import { usePrefetchOnHover } from '@/hooks/usePrefetchOnHover';
+import { PrefetchLink } from '@/components/ui/prefetch-link';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
