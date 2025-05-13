@@ -22,7 +22,41 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Info, HelpCircle, DollarSign, TrendingUp, LightbulbIcon, FileText, Copy, CheckCircle2, ArrowRight, Lightbulb, Share2, Zap } from "lucide-react";
+import { 
+  Info, 
+  HelpCircle, 
+  DollarSign, 
+  TrendingUp, 
+  LightbulbIcon, 
+  FileText, 
+  Copy, 
+  CheckCircle2, 
+  ArrowRight, 
+  Lightbulb, 
+  Share2, 
+  Zap,
+  Sparkles as SparklesIcon,
+  BookText,
+  Rocket,
+  BarChart,
+  Settings,
+  Target,
+  Headphones as HeadphonesIcon,
+  Megaphone as MegaphoneIcon,
+  BarChart4 as BarChart4Icon,
+  Search as SearchIcon,
+  ShoppingCart as ShoppingCartIcon,
+  GraduationCap as GraduationCapIcon,
+  Users as UsersIcon,
+  ClipboardList as ClipboardListIcon,
+  LineChart as LineChartIcon,
+  CalendarDays as CalendarDaysIcon,
+  Tool as ToolIcon,
+  Cloud as CloudIcon,
+  Store as StoreIcon,
+  Globe as GlobeIcon,
+  Briefcase as BriefcaseIcon
+} from "lucide-react";
 import { WorkflowTemplate } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -796,48 +830,132 @@ function getGuideForTemplate(template: WorkflowTemplate): IntegrationGuide {
 }
 
 function MonetizationCard({ idea }: { idea: MonetizationIdea }) {
-  const difficultyColor = {
-    'Easy': 'bg-green-100 text-green-800 border-green-200',
-    'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'Hard': 'bg-red-100 text-red-800 border-red-200'
+  const difficultyConfig = {
+    'Easy': {
+      className: 'bg-green-100 text-green-800 border-green-200',
+      icon: <Target className="h-4 w-4 mr-1 text-green-600" />,
+      gradient: 'from-green-50 to-emerald-50 border-l-4 border-green-400'
+    },
+    'Medium': {
+      className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      icon: <Target className="h-4 w-4 mr-1 text-yellow-600" />,
+      gradient: 'from-yellow-50 to-amber-50 border-l-4 border-yellow-400'
+    },
+    'Hard': {
+      className: 'bg-red-100 text-red-800 border-red-200',
+      icon: <Target className="h-4 w-4 mr-1 text-red-600" />,
+      gradient: 'from-red-50 to-rose-50 border-l-4 border-red-400'
+    }
   }[idea.difficulty];
   
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow duration-200">
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-medium text-gray-900">{idea.title}</h3>
-        <Badge variant="outline" className={`${difficultyColor}`}>
-          {idea.difficulty}
+    <div className={`bg-gradient-to-r ${difficultyConfig.gradient} rounded-lg shadow-sm p-5 hover:shadow-md transition-all duration-200 group`}>
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="font-semibold text-gray-900 text-base group-hover:text-indigo-700 transition-colors">{idea.title}</h3>
+        <Badge variant="outline" className={`${difficultyConfig.className}`}>
+          {difficultyConfig.icon} {idea.difficulty}
         </Badge>
       </div>
-      <p className="text-gray-600 text-sm mb-3">{idea.description}</p>
-      <div className="flex items-center text-sm text-gray-500">
-        <DollarSign className="h-4 w-4 mr-1 text-green-600" />
-        <span>{idea.estimatedRevenue}</span>
+      <p className="text-gray-600 text-sm mb-4">{idea.description}</p>
+      <div className="bg-white bg-opacity-70 rounded-md p-3 flex items-center text-sm font-medium text-green-700">
+        <DollarSign className="h-5 w-5 mr-2 text-green-600" />
+        <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{idea.estimatedRevenue}</span>
       </div>
     </div>
   );
 }
 
 function UseCaseCard({ useCase }: { useCase: UseCase }) {
+  // Determine industry-specific icon and color
+  const industryConfig = {
+    'Customer Service': {
+      icon: <HeadphonesIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-blue-50 text-blue-800 border-blue-200'
+    },
+    'Marketing': {
+      icon: <MegaphoneIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-purple-50 text-purple-800 border-purple-200'
+    },
+    'Sales': {
+      icon: <BarChart4Icon className="h-4 w-4 mr-1" />,
+      color: 'bg-green-50 text-green-800 border-green-200'
+    },
+    'Research & Analysis': {
+      icon: <SearchIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-amber-50 text-amber-800 border-amber-200'
+    },
+    'E-commerce': {
+      icon: <ShoppingCartIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-pink-50 text-pink-800 border-pink-200'
+    },
+    'Education': {
+      icon: <GraduationCapIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-indigo-50 text-indigo-800 border-indigo-200'
+    },
+    'Team Management': {
+      icon: <UsersIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-cyan-50 text-cyan-800 border-cyan-200'
+    },
+    'Management': {
+      icon: <ClipboardListIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-slate-50 text-slate-800 border-slate-200'
+    },
+    'Sales Analysis': {
+      icon: <LineChartIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-emerald-50 text-emerald-800 border-emerald-200'
+    },
+    'Event Management': {
+      icon: <CalendarDaysIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-violet-50 text-violet-800 border-violet-200'
+    },
+    'Service Businesses': {
+      icon: <ToolIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-orange-50 text-orange-800 border-orange-200'
+    },
+    'SaaS & Subscription Services': {
+      icon: <CloudIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-blue-50 text-blue-800 border-blue-200'
+    },
+    'Retail & Services': {
+      icon: <StoreIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-amber-50 text-amber-800 border-amber-200'
+    },
+    'All': {
+      icon: <GlobeIcon className="h-4 w-4 mr-1" />,
+      color: 'bg-gray-50 text-gray-800 border-gray-200'
+    }
+  }[useCase.industry] || {
+    icon: <BriefcaseIcon className="h-4 w-4 mr-1" />,
+    color: 'bg-blue-50 text-blue-800 border-blue-200'
+  };
+  
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow duration-200">
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-medium text-gray-900">{useCase.title}</h3>
-        <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all duration-200">
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="font-semibold text-gray-900 text-base">{useCase.title}</h3>
+        <Badge variant="outline" className={`${industryConfig.color} flex items-center`}>
+          {industryConfig.icon}
           {useCase.industry}
         </Badge>
       </div>
-      <p className="text-gray-600 text-sm mb-3">{useCase.description}</p>
-      <div className="flex items-center text-sm text-green-600">
-        <TrendingUp className="h-4 w-4 mr-1" />
-        <span className="font-medium">{useCase.impact}</span>
+      <p className="text-gray-600 text-sm mb-4">{useCase.description}</p>
+      <div className="bg-green-50 rounded-md p-3 flex items-center text-sm">
+        <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
+        <span className="font-medium text-green-700">{useCase.impact}</span>
       </div>
     </div>
   );
 }
 
-export function TemplateIntegrationGuide({ template }: { template: WorkflowTemplate }) {
+export function TemplateIntegrationGuide({ 
+  template, 
+  variant = 'default',
+  className = ''
+}: { 
+  template: WorkflowTemplate; 
+  variant?: 'default' | 'blue' | 'gradient'; 
+  className?: string;
+}) {
   const guide = getGuideForTemplate(template);
   const [activeTab, setActiveTab] = useState('setup');
   const { toast } = useToast();
@@ -850,13 +968,46 @@ export function TemplateIntegrationGuide({ template }: { template: WorkflowTempl
     });
   };
   
+  // Different button styles based on variant
+  const buttonContent = () => {
+    switch(variant) {
+      case 'blue':
+        return (
+          <div className={`flex items-center text-white hover:text-blue-200 transition-colors ${className}`}>
+            <FileText className="h-4 w-4 mr-2" />
+            View Integration Guide
+          </div>
+        );
+      case 'gradient':
+        return (
+          <Button 
+            size="sm" 
+            className={`bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200 ${className}`}
+          >
+            <SparklesIcon className="h-4 w-4 mr-2" />
+            View Integration Guide
+          </Button>
+        );
+      default:
+        return (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={`mt-2 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 group ${className}`}
+          >
+            <FileText className="h-4 w-4 mr-2 text-indigo-600 group-hover:text-indigo-700" />
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-medium">
+              View Integration Guide
+            </span>
+          </Button>
+        );
+    }
+  };
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="mt-2">
-          <FileText className="h-4 w-4 mr-2" />
-          View Integration Guide
-        </Button>
+        {buttonContent()}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -882,11 +1033,26 @@ export function TemplateIntegrationGuide({ template }: { template: WorkflowTempl
         
         <Tabs defaultValue="setup" value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="grid grid-cols-5 mb-6">
-            <TabsTrigger value="setup">Setup Guide</TabsTrigger>
-            <TabsTrigger value="usecases">Use Cases</TabsTrigger>
-            <TabsTrigger value="monetize">Monetization</TabsTrigger>
-            <TabsTrigger value="troubleshoot">Troubleshooting</TabsTrigger>
-            <TabsTrigger value="resources">Resources</TabsTrigger>
+            <TabsTrigger value="setup" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span>Setup Guide</span>
+            </TabsTrigger>
+            <TabsTrigger value="usecases" className="flex items-center gap-2">
+              <Rocket className="h-4 w-4" />
+              <span>Use Cases</span>
+            </TabsTrigger>
+            <TabsTrigger value="monetize" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span>Monetization</span>
+            </TabsTrigger>
+            <TabsTrigger value="troubleshoot" className="flex items-center gap-2">
+              <HelpCircle className="h-4 w-4" />
+              <span>Troubleshooting</span>
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex items-center gap-2">
+              <BookText className="h-4 w-4" />
+              <span>Resources</span>
+            </TabsTrigger>
           </TabsList>
           
           {/* Setup Guide Tab */}
