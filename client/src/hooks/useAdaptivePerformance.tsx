@@ -1,242 +1,137 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getDevicePerformance, detectBrowserCapabilities } from '@/lib/utils';
+import { useState, useEffect } from 'react';
 
-interface PerformanceSettings {
-  /**
-   * Visual quality level (lower for better performance)
-   */
-  qualityLevel: 'high' | 'medium' | 'low';
+/**
+ * Device capability levels for adaptive rendering
+ */
+export type DeviceCapabilityLevel = 'low' | 'medium' | 'high';
+
+/**
+ * Result of the useAdaptivePerformance hook
+ */
+export interface AdaptivePerformanceResult {
+  // Overall capability level of the device
+  deviceCapabilityLevel: DeviceCapabilityLevel;
   
-  /**
-   * Enable complex animations and effects
-   */
+  // Whether animations should be enabled
   enableAnimations: boolean;
   
-  /**
-   * Use virtualization for long lists
-   */
+  // Whether high-quality visuals should be enabled
+  enableHighQualityVisuals: boolean;
+  
+  // Whether virtualization should be used for long lists
   useVirtualization: boolean;
   
-  /**
-   * Maximum items to render at once
-   */
-  maxItemsToRender: number;
+  // Maximum nodes to render without virtualization
+  maxNodesWithoutVirtualization: number;
   
-  /**
-   * Use WebGL or Canvas for rendering complex visuals
-   */
-  useWebGL: boolean;
+  // Whether to prefetch resources
+  enablePrefetching: boolean;
   
-  /**
-   * Use web workers for heavy operations
-   */
-  useWebWorkers: boolean;
+  // Network connection type if available
+  connectionType?: 'slow-2g' | '2g' | '3g' | '4g';
   
-  /**
-   * Enable image lazy loading
-   */
-  lazyLoadImages: boolean;
-  
-  /**
-   * Debounce time for expensive operations
-   */
-  debounceTime: number;
-  
-  /**
-   * Use intersection observer for visibility-based optimizations
-   */
-  useIntersectionObserver: boolean;
+  // Whether data saving mode is active
+  dataSavingActive: boolean;
 }
 
 /**
- * Default performance settings based on device capability
- */
-function getDefaultSettings(performanceProfile: 'high' | 'medium' | 'low', capabilities: any): PerformanceSettings {
-  const defaults: Record<string, PerformanceSettings> = {
-    high: {
-      qualityLevel: 'high',
-      enableAnimations: true,
-      useVirtualization: true,
-      maxItemsToRender: 100,
-      useWebGL: true,
-      useWebWorkers: true,
-      lazyLoadImages: true,
-      debounceTime: 100,
-      useIntersectionObserver: true,
-    },
-    medium: {
-      qualityLevel: 'medium',
-      enableAnimations: true,
-      useVirtualization: true,
-      maxItemsToRender: 50,
-      useWebGL: capabilities.webgl,
-      useWebWorkers: true,
-      lazyLoadImages: true,
-      debounceTime: 150,
-      useIntersectionObserver: true,
-    },
-    low: {
-      qualityLevel: 'low',
-      enableAnimations: false,
-      useVirtualization: true,
-      maxItemsToRender: 20,
-      useWebGL: false,
-      useWebWorkers: false,
-      lazyLoadImages: true,
-      debounceTime: 200,
-      useIntersectionObserver: capabilities.intersectionObserver,
-    }
-  };
-  
-  return defaults[performanceProfile];
-}
-
-/**
- * Hook for adaptive performance optimizations
- * Automatically adjusts rendering and animation quality based on device capability
+ * Hook that detects device capabilities and network conditions
+ * to provide adaptive performance settings
  * 
- * @returns Performance settings object
+ * @returns Performance settings to optimize the user experience
  */
-export function useAdaptivePerformance(): PerformanceSettings {
-  // Detect device performance profile
-  const [performanceProfile, setPerformanceProfile] = useState<'high' | 'medium' | 'low'>('medium');
-  
-  // Detect browser capabilities
-  const [capabilities, setCapabilities] = useState<any>({
-    webgl: false,
-    webgl2: false,
-    webWorkers: false,
-    sharedWorkers: false,
-    serviceWorkers: false,
-    webp: false,
-    intersectionObserver: false,
-    resizeObserver: false,
-    mutationObserver: false,
-    performanceObserver: false,
-  });
-  
-  // Settings derived from performance profile and capabilities
-  const [settings, setSettings] = useState<PerformanceSettings>(
-    getDefaultSettings('medium', capabilities)
-  );
-  
-  // Measure device performance and set profile
+export function useAdaptivePerformance(): AdaptivePerformanceResult {
+  const [deviceCapabilityLevel, setDeviceCapabilityLevel] = useState<DeviceCapabilityLevel>('medium');
+  const [connectionData, setConnectionData] = useState<{
+    type?: 'slow-2g' | '2g' | '3g' | '4g';
+    saveData: boolean;
+  }>({ saveData: false });
+
   useEffect(() => {
-    // Get initial performance estimate
-    const profile = getDevicePerformance();
-    setPerformanceProfile(profile);
-    
-    // Detect browser capabilities
-    const detectedCapabilities = detectBrowserCapabilities();
-    setCapabilities(detectedCapabilities);
-    
-    // Set initial settings
-    setSettings(getDefaultSettings(profile, detectedCapabilities));
-    
-    // Dynamically test performance if needed for more accurate assessment
-    const testPerformance = async () => {
-      // Only run this test on medium profiles to determine if they should be upgraded or downgraded
-      if (profile !== 'medium') return;
+    // Check hardware capabilities
+    const checkHardwareCapabilities = () => {
+      const memory = (navigator as any).deviceMemory;
+      const cores = navigator.hardwareConcurrency || 2;
       
-      const startTime = performance.now();
-      
-      // Performance test: rendering many DOM nodes
-      const testElement = document.createElement('div');
-      testElement.style.position = 'absolute';
-      testElement.style.left = '-9999px';
-      testElement.style.visibility = 'hidden';
-      document.body.appendChild(testElement);
-      
-      for (let i = 0; i < 1000; i++) {
-        const el = document.createElement('div');
-        el.textContent = `Test ${i}`;
-        testElement.appendChild(el);
-      }
-      
-      // Force layout calculation
-      testElement.getBoundingClientRect();
-      
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      
-      // Clean up
-      document.body.removeChild(testElement);
-      
-      // Adjust profile based on test results
-      if (duration < 50) {
-        setPerformanceProfile('high');
-        setSettings(getDefaultSettings('high', detectedCapabilities));
-      } else if (duration > 200) {
-        setPerformanceProfile('low');
-        setSettings(getDefaultSettings('low', detectedCapabilities));
-      }
-    };
-    
-    // Run the performance test after a delay
-    const timerId = setTimeout(testPerformance, 2000);
-    
-    return () => clearTimeout(timerId);
-  }, []);
-  
-  // Method to update individual settings
-  const updateSetting = useCallback((key: keyof PerformanceSettings, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  }, []);
-  
-  // Monitor runtime performance and adjust settings if needed
-  useEffect(() => {
-    let frameDrops = 0;
-    let lastTimestamp = 0;
-    let consecutiveSlowFrames = 0;
-    
-    // Set up frame monitoring to detect performance issues
-    const checkFrameRate = (timestamp: number) => {
-      if (lastTimestamp === 0) {
-        lastTimestamp = timestamp;
-        requestAnimationFrame(checkFrameRate);
-        return;
-      }
-      
-      const delta = timestamp - lastTimestamp;
-      lastTimestamp = timestamp;
-      
-      // Normal frame time is ~16.7ms (60fps)
-      // If we're seeing frames taking longer than 50ms, that's a problem
-      if (delta > 50) {
-        consecutiveSlowFrames++;
-        frameDrops++;
-        
-        // If we have multiple consecutive slow frames, take action
-        if (consecutiveSlowFrames >= 5) {
-          // Reduce settings if we're dropping frames
-          if (settings.qualityLevel === 'high') {
-            updateSetting('qualityLevel', 'medium');
-            updateSetting('maxItemsToRender', 50);
-          } else if (settings.qualityLevel === 'medium') {
-            updateSetting('qualityLevel', 'low');
-            updateSetting('enableAnimations', false);
-            updateSetting('maxItemsToRender', 20);
-          }
-          
-          consecutiveSlowFrames = 0;
-        }
+      // Determine device capability based on hardware
+      if ((memory && memory <= 2) || cores <= 2) {
+        return 'low';
+      } else if ((memory && memory <= 4) || cores <= 4) {
+        return 'medium';
       } else {
-        consecutiveSlowFrames = 0;
+        return 'high';
       }
+    };
+
+    // Check network capabilities
+    const checkNetworkCapabilities = () => {
+      if (navigator.connection) {
+        const connection = navigator.connection;
+        return {
+          type: connection.effectiveType as 'slow-2g' | '2g' | '3g' | '4g',
+          saveData: connection.saveData
+        };
+      }
+      return { saveData: false };
+    };
+
+    // Set initial detection results
+    setDeviceCapabilityLevel(checkHardwareCapabilities());
+    setConnectionData(checkNetworkCapabilities());
+
+    // Listen for connection changes if the API is available
+    if (navigator.connection) {
+      const handleConnectionChange = () => {
+        setConnectionData(checkNetworkCapabilities());
+      };
       
-      requestAnimationFrame(checkFrameRate);
-    };
-    
-    // Start monitoring frame rate
-    const frameId = requestAnimationFrame(checkFrameRate);
-    
-    return () => {
-      cancelAnimationFrame(frameId);
-    };
-  }, [settings.qualityLevel, updateSetting]);
-  
-  return settings;
+      // Different browsers implement the connection API differently
+      // Some use addEventListener, some use the onchange property
+      if (typeof navigator.connection.addEventListener === 'function') {
+        navigator.connection.addEventListener('change', handleConnectionChange);
+        
+        return () => {
+          if (navigator.connection && typeof navigator.connection.removeEventListener === 'function') {
+            navigator.connection.removeEventListener('change', handleConnectionChange);
+          }
+        };
+      } else {
+        // Fallback to onchange property
+        // Using a more type-safe approach
+        const conn = navigator.connection as any;
+        if (conn) {
+          conn.onchange = handleConnectionChange;
+        }
+        
+        return () => {
+          if (navigator.connection) {
+            // Use type assertion for compatibility
+            const conn = navigator.connection as any;
+            if (conn) {
+              conn.onchange = null;
+            }
+          }
+        };
+      }
+    }
+  }, []);
+
+  // Derive performance settings from device capability and network
+  return {
+    deviceCapabilityLevel,
+    enableAnimations: deviceCapabilityLevel !== 'low',
+    enableHighQualityVisuals: deviceCapabilityLevel === 'high',
+    useVirtualization: deviceCapabilityLevel === 'low' || deviceCapabilityLevel === 'medium',
+    maxNodesWithoutVirtualization: 
+      deviceCapabilityLevel === 'low' ? 50 : 
+      deviceCapabilityLevel === 'medium' ? 200 : 
+      500,
+    enablePrefetching: 
+      deviceCapabilityLevel !== 'low' && 
+      connectionData.type !== 'slow-2g' && 
+      connectionData.type !== '2g' &&
+      !connectionData.saveData,
+    connectionType: connectionData.type,
+    dataSavingActive: connectionData.saveData
+  };
 }
