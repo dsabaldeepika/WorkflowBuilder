@@ -2,10 +2,54 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./migrations";
+import rateLimit from 'express-rate-limit';
+import compression from 'compression';
+import { cpus } from 'os';
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Apply compression middleware to reduce bandwidth usage
+app.use(compression({
+  // Only compress responses larger than 1KB
+  threshold: 1024,
+  // Skip compressing images, as they're already compressed
+  filter: (req: Request, res: Response) => {
+    const contentType = res.getHeader('Content-Type') as string;
+    return !contentType?.includes('image/');
+  },
+}));
+
+// Configure standard middleware with optimized settings
+app.use(express.json({ limit: '2mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: false, limit: '2mb' }));
+
+// API Rate limiting for scaled usage (5000+ users)
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 60, // 60 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+  // Skip rate limiting in development
+  skip: () => process.env.NODE_ENV === 'development',
+});
+
+// Apply stricter rate limiting for auth endpoints to prevent abuse
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minute window
+  max: 20, // 20 login attempts per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later.' },
+  // Skip rate limiting in development
+  skip: () => process.env.NODE_ENV === 'development',
+});
+
+// Apply rate limiters to specific routes
+app.use('/api/login', authLimiter);
+app.use('/api/register', authLimiter);
+app.use('/api/auth', authLimiter); 
+app.use('/api/', apiLimiter);
 
 // Add security headers
 app.use((req, res, next) => {
