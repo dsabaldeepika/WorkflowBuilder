@@ -98,6 +98,9 @@ const WorkflowTitlePanel = React.memo(({ schedule, onScheduleClick }: {
   );
 });
 
+// Create memoized version of WorkflowSuggestions to prevent unnecessary re-renders
+const MemoizedWorkflowSuggestions = React.memo(WorkflowSuggestions);
+
 interface WorkflowCanvasContentProps {
   readOnly?: boolean;
 }
