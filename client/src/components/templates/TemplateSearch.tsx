@@ -217,33 +217,66 @@ export function TemplateSearch() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50">
-      {/* Hero header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-        <div className="container mx-auto py-16 px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">
-              Discover Workflow Templates
+      {/* Enhanced Hero header with animation and visuals */}
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-white opacity-5 rounded-full"></div>
+          <div className="absolute top-10 right-10 w-64 h-64 bg-white opacity-5 rounded-full"></div>
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-white opacity-5 rounded-full"></div>
+          <div className="absolute -bottom-20 right-1/3 w-72 h-72 bg-white opacity-5 rounded-full"></div>
+        </div>
+        
+        <div className="container mx-auto py-20 px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-block mb-4 px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
+              <span className="text-sm font-medium text-blue-100 flex items-center">
+                <Sparkles className="h-4 w-4 mr-2" /> Automate your workflow in minutes
+              </span>
+            </div>
+            
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-purple-100 leading-tight">
+              Discover Powerful<br />Workflow Templates
             </h1>
-            <p className="text-xl text-blue-100 mb-8">
-              Browse our collection of pre-built workflow templates to automate your processes and save time
+            
+            <p className="text-xl md:text-2xl text-blue-100 mb-10 max-w-3xl mx-auto">
+              Browse our collection of pre-built workflow templates to automate your processes and save valuable time
             </p>
             
-            <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-indigo-200" />
-              <Input
-                placeholder="Search for templates..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 py-6 text-lg bg-white/10 border-white/20 text-white placeholder:text-indigo-200 rounded-lg focus:border-white focus:ring-white/30"
-              />
-              <Button 
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white text-indigo-700 hover:bg-white/90"
-                size="sm"
-                onClick={() => setFiltersVisible(!filtersVisible)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
+            <div className="relative max-w-2xl mx-auto mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-xl blur opacity-20"></div>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-indigo-200" />
+                <Input
+                  placeholder="Search for templates..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 py-6 text-lg bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-indigo-200 rounded-xl focus:border-white focus:ring-white/30 shadow-lg"
+                />
+                <Button 
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white text-indigo-700 hover:bg-white/90 rounded-lg shadow-md"
+                  size="sm"
+                  onClick={() => setFiltersVisible(!filtersVisible)}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filters
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full flex items-center">
+                <Check className="h-3.5 w-3.5 mr-1.5 text-green-300" /> Easy setup
+              </span>
+              <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full flex items-center">
+                <Check className="h-3.5 w-3.5 mr-1.5 text-green-300" /> No-code required
+              </span>
+              <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full flex items-center">
+                <Check className="h-3.5 w-3.5 mr-1.5 text-green-300" /> Ready to use
+              </span>
+              <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full flex items-center">
+                <Check className="h-3.5 w-3.5 mr-1.5 text-green-300" /> Fully customizable
+              </span>
             </div>
           </div>
         </div>

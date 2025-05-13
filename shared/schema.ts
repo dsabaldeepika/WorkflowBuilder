@@ -476,3 +476,22 @@ export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 // Subscription history type
 export type InsertSubscriptionHistory = z.infer<typeof insertSubscriptionHistorySchema>;
 export type SubscriptionHistory = typeof subscriptionHistory.$inferSelect;
+
+// Contact us and Template Request forms schemas
+export const contactFormSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Valid email is required'),
+  subject: z.string().min(1, 'Subject is required'),
+  message: z.string().min(10, 'Message must be at least 10 characters')
+});
+
+export const templateRequestSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Valid email is required'),
+  templateName: z.string().min(1, 'Template name is required'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  useCase: z.string().min(5, 'Use case is required')
+});
+
+export type ContactFormInput = z.infer<typeof contactFormSchema>;
+export type TemplateRequestInput = z.infer<typeof templateRequestSchema>;
