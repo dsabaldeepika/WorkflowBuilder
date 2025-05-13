@@ -32,6 +32,16 @@ export type NodeData = {
   app?: App;
   inputs?: Record<string, any>;
   outputs?: Record<string, any>;
+  // Specific field schemas for connection validation
+  inputFields?: Array<{
+    name: string;
+    type: string;
+    required?: boolean;
+  }>;
+  outputFields?: Array<{
+    name: string;
+    type: string;
+  }>;
   icon?: string;
   description?: string;
   configuration?: Record<string, any>;
@@ -72,6 +82,7 @@ interface WorkflowStoreState {
     message?: string;
   }>;
   customTemplates: NodeTemplate[];
+  workflow?: Workflow; // Current workflow metadata
   
   // Actions
   addNode: (node: Node<NodeData>) => void;
@@ -276,7 +287,9 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
             sourceNodeId: connection.source,
             targetNodeId: connection.target,
             edgeId: newEdge.id,
-            isValid: true
+            isValid: true,
+            workflowId: state.workflow?.id,
+            validationMessage: null
           })
         }).catch(err => console.error('Error saving connection:', err));
       } catch (error) {
