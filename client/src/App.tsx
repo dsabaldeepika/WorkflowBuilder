@@ -17,6 +17,7 @@ import TemplatesPage from "@/pages/templates-page";
 import TemplateSetupPage from "@/pages/template-setup-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
+import LoadingAnimationsDemo from "@/pages/loading-animations-demo";
 // Temporarily disabled to fix Stripe.js loading issue
 // import CheckoutPage from "@/pages/checkout-page";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,6 +61,7 @@ function Router() {
       <Route path={ROUTES.templates} component={TemplatesPage} />
       <Route path="/template-setup/:id" component={TemplateSetupPage} />
       <Route path={ROUTES.pricing} component={PricingPage} />
+      <Route path={ROUTES.loadingAnimations} component={LoadingAnimationsDemo} />
       {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
       <Route path={ROUTES.checkout} component={PricingPage} />
       <Route path={ROUTES.accountBilling} component={AccountBillingPage} />

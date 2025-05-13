@@ -109,6 +109,7 @@ export const ROUTES = {
   templates: '/templates',
   connections: '/connections',
   workflowAnimations: '/workflow-animations',
+  loadingAnimations: '/loading-animations',
   pricing: '/pricing',
   checkout: '/checkout',
   accountBilling: '/account/billing',
