@@ -19,11 +19,13 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { WorkflowTemplate } from "@shared/schema";
-import { Loader2, Search, Eye } from "lucide-react";
+import { Loader2, Search, Eye, Workflow } from "lucide-react";
 import { Link } from 'wouter';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
+import { InlineWorkflowLoading } from '@/components/workflow/InlineWorkflowLoading';
 
 // Categories to filter templates
 const CATEGORIES = [
@@ -152,8 +154,23 @@ export default function WorkflowTemplates() {
       {/* Loading state */}
       {isLoading && (
         <div className="flex justify-center items-center h-32">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading templates...</span>
+          <div className="flex flex-col items-center space-y-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{
+                duration: 2,
+                ease: "linear",
+                repeat: Infinity
+              }}
+            >
+              <Workflow className="h-12 w-12 text-blue-500" />
+            </motion.div>
+            <InlineWorkflowLoading 
+              size="lg" 
+              text="Loading templates" 
+              variant="default" 
+            />
+          </div>
         </div>
       )}
       

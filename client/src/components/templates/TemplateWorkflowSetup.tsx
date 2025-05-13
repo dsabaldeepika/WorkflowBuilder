@@ -82,9 +82,13 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   // Fetch template details
   const { data: template, isLoading: isTemplateLoading, error } = useQuery<WorkflowTemplate>({
     queryKey: ['/api/workflow/templates', templateId],
-    queryFn: () => {
+    queryFn: async () => {
       if (!templateId) return null;
-      return fetch(`/api/workflow/templates/${templateId}`).then(res => res.json());
+      const res = await fetch(`/api/workflow/templates/${templateId}`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch template: ${res.statusText}`);
+      }
+      return res.json();
     },
     enabled: !!templateId
   });

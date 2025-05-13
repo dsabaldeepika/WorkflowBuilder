@@ -21,13 +21,31 @@ import LoadingAnimationsDemo from "@/pages/loading-animations-demo";
 // Temporarily disabled to fix Stripe.js loading issue
 // import CheckoutPage from "@/pages/checkout-page";
 import { useAuth } from "@/hooks/useAuth";
+import { motion } from "framer-motion";
+import { Workflow } from "lucide-react";
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated, isLoading, login } = useAuth();
   
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 2,
+              ease: "linear",
+              repeat: Infinity
+            }}
+          >
+            <Workflow className="h-12 w-12 text-blue-500" />
+          </motion.div>
+          <span className="text-lg text-gray-600">Loading your workspace...</span>
+        </div>
+      </div>
+    );
   }
   
   if (!isAuthenticated) {
