@@ -254,7 +254,7 @@ const ConnectionSuggestions: React.FC<ConnectionSuggestionsProps> = ({
   };
 
   return (
-    <div className="connection-suggestions pointer-events-none">
+    <div className="connection-suggestions">
       <AnimatePresence>
         {suggestions.map((suggestion, index) => {
           const sourceNode = nodes.find(node => node.id === suggestion.sourceId);
@@ -264,29 +264,26 @@ const ConnectionSuggestions: React.FC<ConnectionSuggestionsProps> = ({
           
           return (
             <React.Fragment key={`${suggestion.sourceId}-${suggestion.targetId}`}>
-              {/* Use an SVG element to contain the animated path */}
-              <svg 
-                className="absolute top-0 left-0 w-full h-full overflow-visible pointer-events-none" 
-                style={{ position: 'absolute', zIndex: 10 }}
-              >
-                <motion.path
-                  d={suggestion.path}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  variants={pathVariants}
-                  style={{
-                    stroke: getPathColor(suggestion.compatibility),
-                    strokeWidth: 2,
-                    fill: 'none',
-                    strokeDasharray: '5,5',
-                    strokeLinecap: 'round',
-                  }}
-                />
-              </svg>
+              {/* Animated path */}
+              <motion.path
+                d={suggestion.path}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={pathVariants}
+                style={{
+                  stroke: getPathColor(suggestion.compatibility),
+                  strokeWidth: 2,
+                  fill: 'none',
+                  strokeDasharray: 5,
+                  strokeLinecap: 'round',
+                  pointerEvents: 'none',
+                  zIndex: 1000,
+                }}
+              />
               
               {/* Animated button at midpoint of the path */}
-              <motion.div
+              <motion.foreignObject
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ 
                   opacity: 1, 
@@ -300,20 +297,19 @@ const ConnectionSuggestions: React.FC<ConnectionSuggestionsProps> = ({
                   }
                 }}
                 exit={{ opacity: 0, scale: 0 }}
-                className="pointer-events-auto"
                 style={{
-                  position: 'absolute',
-                  width: 150,
+                  width: 100,
+                  height: 100,
+                  overflow: 'visible',
                   // Position this at the midpoint of the curve
                   transform: 'translate(-50%, -50%)',
                   // This is a rough approximation - in a full implementation you'd
                   // calculate the actual midpoint of the bezier curve
-                  left: (sourceNode.position.x + targetNode.position.x) / 2 + (sourceNode.width || 150) / 4,
-                  top: (sourceNode.position.y + targetNode.position.y) / 2,
-                  zIndex: 1000,
+                  x: (sourceNode.position.x + targetNode.position.x) / 2 + (sourceNode.width || 150) / 4,
+                  y: (sourceNode.position.y + targetNode.position.y) / 2
                 }}
               >
-                <div className="flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center justify-center h-full">
                   <Button
                     size="sm"
                     variant="outline"
@@ -327,7 +323,7 @@ const ConnectionSuggestions: React.FC<ConnectionSuggestionsProps> = ({
                     {suggestion.suggestion}
                   </div>
                 </div>
-              </motion.div>
+              </motion.foreignObject>
               
               {/* Pulse effect on source node */}
               <motion.div
@@ -340,8 +336,6 @@ const ConnectionSuggestions: React.FC<ConnectionSuggestionsProps> = ({
                   borderRadius: '0.375rem',
                   pointerEvents: 'none',
                   zIndex: -1,
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)'
                 }}
                 variants={pulseVariants}
                 animate="pulse"
@@ -358,8 +352,6 @@ const ConnectionSuggestions: React.FC<ConnectionSuggestionsProps> = ({
                   borderRadius: '0.375rem',
                   pointerEvents: 'none',
                   zIndex: -1,
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)'
                 }}
                 variants={pulseVariants}
                 animate="pulse"
