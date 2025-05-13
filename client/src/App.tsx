@@ -18,6 +18,7 @@ import TemplateSetupPage from "@/pages/template-setup-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
 import LoadingAnimationsDemo from "@/pages/loading-animations-demo";
+import EmailSettingsPage from "@/pages/email-settings-page";
 // Temporarily disabled to fix Stripe.js loading issue
 // import CheckoutPage from "@/pages/checkout-page";
 import { useAuth } from "@/hooks/useAuth";
@@ -83,6 +84,7 @@ function Router() {
       {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
       <Route path={ROUTES.checkout} component={PricingPage} />
       <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
+      <Route path={ROUTES.emailSettings} component={EmailSettingsPage} />
       <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
   );
