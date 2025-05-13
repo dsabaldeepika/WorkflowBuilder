@@ -51,7 +51,7 @@ import {
   ClipboardList as ClipboardListIcon,
   LineChart as LineChartIcon,
   CalendarDays as CalendarDaysIcon,
-  Tool as ToolIcon,
+  Wrench as ToolIcon,
   Cloud as CloudIcon,
   Store as StoreIcon,
   Globe as GlobeIcon,

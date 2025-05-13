@@ -549,7 +549,7 @@ export function TemplateSearch() {
                           </Button>
                         </div>
                         <div className="flex justify-center w-full">
-                          <TemplateIntegrationGuide template={template} />
+                          <TemplateIntegrationGuide template={template} variant="gradient" className="w-full" />
                         </div>
                       </div>
                     </CardFooter>
@@ -628,8 +628,8 @@ export function TemplateSearch() {
                           </Badge>
                         </div>
                         
-                        <div className="flex flex-wrap justify-between items-center">
-                          <TemplateIntegrationGuide template={template} />
+                        <div className="flex flex-wrap justify-between items-center gap-2">
+                          <TemplateIntegrationGuide template={template} variant="gradient" className="flex-1 min-w-[200px]" />
                           <Button 
                             onClick={() => handleUseTemplate(template)}
                             className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"

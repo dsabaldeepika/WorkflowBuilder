@@ -11,7 +11,18 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkflowStore } from '@/store/useWorkflowStore';
-import { ArrowLeft, Check, Cog, ExternalLink, Info, Save, Workflow } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Check, 
+  Cog, 
+  ExternalLink, 
+  Info, 
+  Save, 
+  Workflow, 
+  MessageCircle, 
+  LifeBuoy,
+  HelpCircle 
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 // Import template preview images
@@ -19,6 +30,7 @@ import defaultTemplatePreview from "@/assets/templates/workflow-template-placeho
 import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
 import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
 import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets.svg";
+import { TemplateIntegrationGuide } from './TemplateIntegrationGuide';
 
 interface TemplateWorkflowSetupProps {
   templateId?: string | null;
@@ -557,13 +569,17 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                         Confused about where to find your credentials or how to configure this workflow?
                       </p>
                       <div className="space-y-3">
+                        <TemplateIntegrationGuide 
+                          template={template} 
+                          variant="blue" 
+                        />
                         <a href="#" className="flex items-center text-white hover:text-blue-200 transition-colors">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          View Integration Guide
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Join Community Discord
                         </a>
                         <a href="#" className="flex items-center text-white hover:text-blue-200 transition-colors">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Get API Keys for {template.name}
+                          <LifeBuoy className="h-4 w-4 mr-2" />
+                          Contact Support
                         </a>
                       </div>
                     </div>
