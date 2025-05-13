@@ -104,7 +104,6 @@ export function EmailSettings() {
       toast({
         title: 'Email settings updated',
         description: 'Your email notification settings have been updated successfully.',
-        variant: 'default',
       });
       
       // If there's a warning about missing API key, show it
@@ -112,7 +111,6 @@ export function EmailSettings() {
         toast({
           title: 'SendGrid API Key Missing',
           description: data.warning,
-          variant: 'warning',
         });
       }
       
@@ -139,7 +137,6 @@ export function EmailSettings() {
         toast({
           title: 'Test email sent',
           description: 'Check your inbox for the test email.',
-          variant: 'default',
         });
       } else {
         toast({
@@ -166,7 +163,6 @@ export function EmailSettings() {
       toast({
         title: 'Email required',
         description: 'Please enter a valid email address to send the test to.',
-        variant: 'warning',
       });
     }
   };
