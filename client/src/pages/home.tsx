@@ -279,6 +279,11 @@ export default function Home() {
                     </Button>
                   }
                 />
+                <Link href="/pricing">
+                  <Button variant="link" size="sm">
+                    Pricing
+                  </Button>
+                </Link>
               </div>
             </div>
             

@@ -57,17 +57,17 @@ router.post('/demo-request', async (req, res) => {
       
       // Send notification email to admin
       await sendEmail({
-        to: emailConfig.adminEmail,
-        from: emailConfig.fromEmail,
+        to: emailConfig.senderEmail, // Use sender email as admin destination
         subject: `New Demo Request from ${name} at ${companyName}`,
+        text: `New demo request received from ${name} at ${companyName} for ${preferredDate} at ${preferredTime}`,
         html: htmlContent
       });
       
       // Send confirmation email to user
       await sendEmail({
         to: email,
-        from: emailConfig.fromEmail,
         subject: 'Your PumpFlux Demo Request Confirmation',
+        text: `Thank you for your interest in PumpFlux! We've received your demo request for ${preferredDate} at ${preferredTime} ET.`,
         html: `
           <h2>Thank you for your interest in PumpFlux!</h2>
           <p>We've received your demo request for ${preferredDate} at ${preferredTime} ET.</p>
@@ -80,14 +80,23 @@ router.post('/demo-request', async (req, res) => {
     
     // Return success response
     res.status(200).json({ success: true });
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error;
     console.error('Error processing demo request:', error);
     
     // Return appropriate error response
-    if (error.name === 'ZodError') {
-      res.status(400).json({ success: false, error: 'Invalid form data', details: error.errors });
+    if (error.name === 'ZodError' && 'errors' in error) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Invalid form data', 
+        details: (error as any).errors 
+      });
     } else {
-      res.status(500).json({ success: false, error: 'Server error processing request' });
+      res.status(500).json({ 
+        success: false, 
+        error: 'Server error processing request',
+        message: error.message || 'Unknown error'  
+      });
     }
   }
 });
