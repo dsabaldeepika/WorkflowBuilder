@@ -18,6 +18,20 @@ interface MemoizeOptions {
 }
 
 /**
+ * Options for memoizeWithTTL
+ */
+interface MemoizeWithTTLOptions {
+  /**
+   * Time-to-live in milliseconds
+   */
+  ttl: number;
+  /**
+   * Maximum number of cache entries
+   */
+  maxSize?: number;
+}
+
+/**
  * Cache for memoized functions
  */
 const memoCache = new Map<string, Map<string, CacheEntry<any>>>();
@@ -100,3 +114,21 @@ export function cleanupMemoCache(): void {
 
 // Clean up expired cache entries every 5 minutes
 setInterval(cleanupMemoCache, 5 * 60 * 1000);
+
+/**
+ * A simpler memoization function with just TTL options
+ * This is a convenience wrapper around the more complex memoize function
+ * 
+ * @param fn Function to memoize
+ * @param options TTL and optional max size
+ * @returns Memoized function
+ */
+export function memoizeWithTTL<T, Args extends any[]>(
+  fn: (...args: Args) => T | Promise<T>,
+  options: MemoizeWithTTLOptions
+): (...args: Args) => T | Promise<T> {
+  return memoize(fn, {
+    ttl: options.ttl,
+    maxSize: options.maxSize || 100
+  });
+}
