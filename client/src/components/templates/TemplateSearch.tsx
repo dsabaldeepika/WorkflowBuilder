@@ -373,6 +373,132 @@ export function TemplateSearch() {
         template={previewTemplate}
         onUseTemplate={handleUseTemplate}
       />
+      
+      {/* Contact Form Modal */}
+      <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contact Support</DialogTitle>
+            <DialogDescription>
+              Need help finding the right template? Our support team is here to help.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input 
+                id="name" 
+                placeholder="Your name" 
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="Your email address" 
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea 
+                id="message" 
+                placeholder="How can we help you?" 
+                rows={4}
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setContactModalOpen(false)}>Cancel</Button>
+            <Button 
+              type="submit"
+              onClick={() => {
+                // In a real app, this would send the data to your backend
+                toast({
+                  title: "Message sent",
+                  description: "Thank you for contacting us. We'll get back to you shortly.",
+                });
+                setContactModalOpen(false);
+                setContactName('');
+                setContactEmail('');
+                setContactMessage('');
+              }}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send Message
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Template Request Modal */}
+      <Dialog open={templateRequestModalOpen} onOpenChange={setTemplateRequestModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Custom Template</DialogTitle>
+            <DialogDescription>
+              Can't find what you need? Request a custom template for your workflow.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="requestName">Name</Label>
+              <Input 
+                id="requestName" 
+                placeholder="Your name" 
+                value={templateRequestName}
+                onChange={(e) => setTemplateRequestName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="requestEmail">Email</Label>
+              <Input 
+                id="requestEmail" 
+                type="email" 
+                placeholder="Your email address" 
+                value={templateRequestEmail}
+                onChange={(e) => setTemplateRequestEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="requestDescription">Template Description</Label>
+              <Textarea 
+                id="requestDescription" 
+                placeholder="Please describe the workflow template you would like us to create" 
+                rows={5}
+                value={templateRequestDescription}
+                onChange={(e) => setTemplateRequestDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateRequestModalOpen(false)}>Cancel</Button>
+            <Button 
+              type="submit"
+              onClick={() => {
+                // In a real app, this would send the data to your backend
+                toast({
+                  title: "Request submitted",
+                  description: "Thank you for your request. Our team will review it and get back to you.",
+                });
+                setTemplateRequestModalOpen(false);
+                setTemplateRequestName('');
+                setTemplateRequestEmail('');
+                setTemplateRequestDescription('');
+              }}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
