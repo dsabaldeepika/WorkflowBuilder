@@ -286,6 +286,9 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
   const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
     console.log('Creating node:', nodeType, category);
     // Create a node at a fixed position in the viewport
+    
+    // Add performance optimization debug logging
+    performance.mark('node-creation-start');
     const centerX = 250;
     const centerY = 150;
     
@@ -370,7 +373,44 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
       title: 'Node Added',
       description: `A new ${nodeData.label} node has been added to the workflow.`,
     });
+    
+    // Complete performance measurement for node creation
+    performance.mark('node-creation-end');
+    performance.measure('node-creation', 'node-creation-start', 'node-creation-end');
+    
+    // Log performance data for analysis
+    const nodeMeasure = performance.getEntriesByName('node-creation')[0];
+    if (nodeMeasure && nodeMeasure.duration > 50) {
+      console.log(`⚠️ Performance warning: Node creation took ${nodeMeasure.duration.toFixed(2)}ms`);
+    }
   }, [reactFlowInstance, setNodes, setSelectedNode, toast]);
+  
+  // Optimized handler for adding nodes from suggestions
+  const handleAddNodeFromSuggestion = useCallback((nodeType: string) => {
+    setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
+    setShowNodePicker(true);
+  }, [setNodePickerCategory, setShowNodePicker]);
+
+  // Optimized handler for connecting nodes from suggestions
+  const handleConnectNodesFromSuggestion = useCallback((sourceId: string, targetId: string) => {
+    // Find the source and target nodes
+    const source = nodes.find(node => node.id === sourceId);
+    const target = nodes.find(node => node.id === targetId);
+    
+    if (source && target) {
+      onConnect({
+        source: sourceId,
+        target: targetId,
+        sourceHandle: 'output',
+        targetHandle: 'input'
+      });
+      
+      toast({
+        title: "Nodes Connected",
+        description: `Connected ${source.data.label} to ${target.data.label}`,
+      });
+    }
+  }, [nodes, onConnect, toast]);
   
   // Handle creating an AI agent
   const handleCreateAgent = useCallback((agentData: any) => {
@@ -541,32 +581,11 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
           
           {/* Workflow Suggestions - hide in readOnly mode */}
           {!readOnly && (
-            <WorkflowSuggestions 
+            <MemoizedWorkflowSuggestions 
               nodes={nodes}
               edges={edges}
-              onAddNode={(nodeType: string) => {
-                setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
-                setShowNodePicker(true);
-              }}
-              onConnect={(sourceId: string, targetId: string) => {
-                // Find the source and target nodes
-                const source = nodes.find(node => node.id === sourceId);
-                const target = nodes.find(node => node.id === targetId);
-                
-                if (source && target) {
-                  onConnect({
-                    source: sourceId,
-                    target: targetId,
-                    sourceHandle: 'output',
-                    targetHandle: 'input'
-                  });
-                  
-                  toast({
-                    title: "Nodes Connected",
-                    description: `Connected ${source.data.label} to ${target.data.label}`,
-                  });
-                }
-              }}
+              onAddNode={handleAddNodeFromSuggestion}
+              onConnect={handleConnectNodesFromSuggestion}
               onDismiss={(suggestionId: string) => {
                 // Optionally track dismissed suggestions in localStorage
                 const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
