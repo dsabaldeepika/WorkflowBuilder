@@ -181,6 +181,6 @@ export const FEATURES = {
   enableAnimations: true,
   enableTemplateSharing: true,
   enableAIAssistance: false, // To be enabled later
-  enableBillingSystem: true,
+  enableBillingSystem: false, // Disabled by default, needs Stripe API key to be enabled
   enableAPIConnections: true,
 }
