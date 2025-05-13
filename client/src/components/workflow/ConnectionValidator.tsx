@@ -158,6 +158,56 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({
         };
       });
       
+      // Update node connection status indicators based on validation results
+      const updatedNodes = [...nodes];
+      newValidations.forEach(validation => {
+        const sourceNodeIndex = updatedNodes.findIndex(n => n.id === validation.source);
+        const targetNodeIndex = updatedNodes.findIndex(n => n.id === validation.target);
+        
+        if (sourceNodeIndex !== -1) {
+          updatedNodes[sourceNodeIndex] = {
+            ...updatedNodes[sourceNodeIndex],
+            data: {
+              ...updatedNodes[sourceNodeIndex].data,
+              sourceConnectionStatus: validation.isValid ? 'success' : 'error',
+              connectionValidated: true
+            }
+          };
+        }
+        
+        if (targetNodeIndex !== -1) {
+          updatedNodes[targetNodeIndex] = {
+            ...updatedNodes[targetNodeIndex],
+            data: {
+              ...updatedNodes[targetNodeIndex].data,
+              targetConnectionStatus: validation.isValid ? 'success' : 'error',
+              connectionValidated: true
+            }
+          };
+        }
+      });
+      
+      // Save connection validation results to database
+      newValidations.forEach(validation => {
+        try {
+          const edgeId = `e${validation.source}-${validation.target}`;
+          
+          fetch('/api/workflow/connections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sourceNodeId: validation.source,
+              targetNodeId: validation.target,
+              edgeId: edgeId,
+              isValid: validation.isValid,
+              validationMessage: validation.message || null
+            })
+          }).catch(err => console.error('Error saving connection validation:', err));
+        } catch (error) {
+          console.error('Failed to save connection validation:', error);
+        }
+      });
+      
       setValidations(newValidations);
       setIsValidating(false);
       setValidationComplete(true);
