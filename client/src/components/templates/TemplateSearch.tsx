@@ -71,6 +71,16 @@ export function TemplateSearch() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  
+  // Contact form states
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [templateRequestModalOpen, setTemplateRequestModalOpen] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [templateRequestName, setTemplateRequestName] = useState('');
+  const [templateRequestEmail, setTemplateRequestEmail] = useState('');
+  const [templateRequestDescription, setTemplateRequestDescription] = useState('');
 
   // Build the query string based on filters
   const buildQueryString = () => {
