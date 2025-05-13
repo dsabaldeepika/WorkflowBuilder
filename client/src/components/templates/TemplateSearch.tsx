@@ -17,12 +17,22 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { WorkflowTemplate } from "@shared/schema";
-import { Loader2, Clock, FileBadge, Tag, Search, Eye, Star } from "lucide-react";
+import { Loader2, Clock, FileBadge, Tag, Search, Eye, Star, Send, Mail, MessageSquare } from "lucide-react";
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
