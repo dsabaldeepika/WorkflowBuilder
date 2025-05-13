@@ -52,6 +52,10 @@ export default function WorkflowNode({
         : "Input connection has validation errors";
     }
     
+    if (status === 'pending') {
+      return "Connection validation in progress...";
+    }
+    
     return type === 'source' ? "Output connection" : "Input connection";
   };
   

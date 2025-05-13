@@ -74,7 +74,7 @@ router.get('/', async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id([0-9]+)', async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -91,6 +91,50 @@ router.get('/:id', async (req, res) => {
     console.error('Error fetching connection:', error);
     return res.status(500).json({ 
       message: 'Failed to fetch connection',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/workflow/connections/{workflowId}:
+ *   get:
+ *     summary: Get all connections for a workflow by ID
+ *     description: Retrieves all connection validations for a specific workflow
+ *     tags: [Connections]
+ *     parameters:
+ *       - in: path
+ *         name: workflowId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Workflow ID to get connections for
+ *     responses:
+ *       200:
+ *         description: List of connection validations
+ *       404:
+ *         description: No connections found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:workflowId', async (req, res) => {
+  try {
+    const { workflowId } = req.params;
+    
+    const connections = await db.select()
+      .from(workflowConnections)
+      .where(eq(workflowConnections.workflowId, Number(workflowId)));
+      
+    if (!connections.length) {
+      return res.status(200).json([]); // Return empty array instead of 404
+    }
+    
+    return res.status(200).json(connections);
+  } catch (error) {
+    console.error('Error fetching workflow connections:', error);
+    return res.status(500).json({ 
+      message: 'Failed to fetch workflow connections',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

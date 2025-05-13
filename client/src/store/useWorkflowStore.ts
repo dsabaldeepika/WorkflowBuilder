@@ -6,10 +6,10 @@ import {
   Workflow, 
   WorkflowTemplate, 
   NodeType, 
-  NodeTemplate 
+  NodeTemplate,
+  ScheduleOptions
 } from '@/types/workflow';
 import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
-import type { ScheduleOptions, ScheduleFrequency } from '@/components/workflow/ScheduleOptions';
 
 // Load custom node templates from localStorage
 const loadCustomTemplates = (): NodeTemplate[] => {
@@ -450,12 +450,86 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   },
   
   loadWorkflow: (workflow) => {
-    set({
-      nodes: workflow.nodes,
-      edges: workflow.edges,
-      selectedNodeId: null,
-      selectedEdgeId: null,
-    });
+    try {
+      // Ensure workflow.nodes and workflow.edges are properly parsed if they're strings
+      const nodes = typeof workflow.nodes === 'string' 
+        ? JSON.parse(workflow.nodes) 
+        : workflow.nodes;
+        
+      const edges = typeof workflow.edges === 'string' 
+        ? JSON.parse(workflow.edges) 
+        : workflow.edges;
+      
+      // Set initial workflow state
+      set({
+        nodes,
+        edges,
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        workflow, // Store the workflow reference for connection validations
+        schedule: workflow.schedule 
+          ? (typeof workflow.schedule === 'string' ? JSON.parse(workflow.schedule) : workflow.schedule)
+          : { enabled: false, frequency: 'once', runCount: 0 },
+      });
+      
+      // Load connection validations for this workflow if it has an ID
+      if (workflow.id) {
+        fetch(`/api/workflow/connections/${workflow.id}`)
+          .then(response => response.json())
+          .then(connections => {
+            if (!connections || !connections.length) return;
+            
+            // Create connection validation mapping
+            const validations: Record<string, { isValid: boolean, message?: string }> = {};
+            const updatedNodes = [...nodes];
+            
+            // Process each connection and update node states
+            connections.forEach((connection: any) => {
+              validations[connection.edgeId] = {
+                isValid: connection.isValid,
+                message: connection.validationMessage
+              };
+              
+              // Update source node connection status
+              const sourceNodeIndex = updatedNodes.findIndex(n => n.id === connection.sourceNodeId);
+              if (sourceNodeIndex >= 0) {
+                updatedNodes[sourceNodeIndex] = {
+                  ...updatedNodes[sourceNodeIndex],
+                  data: {
+                    ...updatedNodes[sourceNodeIndex].data,
+                    sourceConnectionStatus: connection.isValid ? 'success' : 'error',
+                    connectionValidated: true
+                  }
+                };
+              }
+              
+              // Update target node connection status
+              const targetNodeIndex = updatedNodes.findIndex(n => n.id === connection.targetNodeId);
+              if (targetNodeIndex >= 0) {
+                updatedNodes[targetNodeIndex] = {
+                  ...updatedNodes[targetNodeIndex],
+                  data: {
+                    ...updatedNodes[targetNodeIndex].data,
+                    targetConnectionStatus: connection.isValid ? 'success' : 'error',
+                    connectionValidated: true
+                  }
+                };
+              }
+            });
+            
+            // Update the store with connection validations and updated nodes
+            set({
+              nodes: updatedNodes,
+              connectionValidations: validations
+            });
+          })
+          .catch(error => {
+            console.error('Error loading connection validations:', error);
+          });
+      }
+    } catch (error) {
+      console.error('Error loading workflow:', error);
+    }
   },
   
   exportWorkflow: () => {
