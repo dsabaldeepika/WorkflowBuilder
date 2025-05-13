@@ -12,6 +12,7 @@ import workflowExecutionRoutes from "./routes/workflowExecution";
 import workflowConnectionsRoutes from "./routes/workflowConnections";
 import emailRoutes from "./routes/emailRoutes";
 import contactRoutes from "./routes/contactRoutes";
+import demoRequestRoutes from "./routes/demoRequestRoutes";
 // Temporarily disabled to fix Stripe.js loading issue
 // import { subscriptionsRouter } from "./routes/subscriptions";
 // import { setupAuth, isAuthenticated } from "./replitAuth"; 
@@ -100,6 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/workflow/connections', workflowConnectionsRoutes);
   app.use('/api/email', emailRoutes);
   app.use('/api', contactRoutes); // Contact forms and template request
+  app.use('/api', demoRequestRoutes); // Demo scheduling requests
   // Temporarily disabled to fix Stripe.js loading issue
   // app.use('/api/subscriptions', subscriptionsRouter);
   

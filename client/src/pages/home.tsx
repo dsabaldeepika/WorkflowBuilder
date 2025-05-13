@@ -18,6 +18,7 @@ import { GradientBackground } from "@/components/ui/gradient-background";
 import { Badge } from "@/components/ui/badge";
 import { ContactFormDialog } from "@/components/dialogs/ContactFormDialog";
 import { TemplateRequestDialog } from "@/components/dialogs/TemplateRequestDialog";
+import { DemoRequestDialog } from "@/components/dialogs/DemoRequestDialog";
 
 export default function Home() {
   return (
@@ -205,7 +206,7 @@ export default function Home() {
                           Explore Templates <Zap className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <ContactFormDialog 
+                      <DemoRequestDialog 
                         buttonClassName="h-11 px-4 py-2 rounded-md text-sm font-medium w-full sm:w-auto"
                         trigger={
                           <Button size="lg" variant="outline" className="gap-2">
