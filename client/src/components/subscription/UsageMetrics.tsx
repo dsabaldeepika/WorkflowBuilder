@@ -209,13 +209,15 @@ function UsageCard({
                     ? 'bg-amber-100' 
                     : 'bg-primary/20'
               }
-              indicatorClassName={
-                variant === 'destructive' 
-                  ? 'bg-destructive' 
+              // Apply custom styles for the indicator based on variant
+              // The Progress component doesn't directly support indicatorClassName
+              style={{
+                '--progress-indicator-color': variant === 'destructive' 
+                  ? 'var(--destructive)' 
                   : variant === 'warning' 
-                    ? 'bg-amber-500'
-                    : ''
-              }
+                    ? '#f59e0b' // amber-500
+                    : 'var(--primary)'
+              } as React.CSSProperties}
             />
           )}
           <div className="flex justify-between text-sm">

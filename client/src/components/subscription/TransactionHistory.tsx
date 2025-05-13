@@ -1,58 +1,77 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import { SubscriptionTier } from '@shared/config';
-import { Skeleton } from '@/components/ui/skeleton';
+import { API_ENDPOINTS } from '@shared/config';
+import { Loader2, AlertCircle, ExternalLink, Receipt, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
-// Define transaction type
-interface Transaction {
+type Transaction = {
   id: number;
   date: string;
   planName: string;
-  planTier: SubscriptionTier;
+  planTier: string;
   period: 'monthly' | 'yearly';
   amount: number;
   status: 'success' | 'pending' | 'failed';
-  invoiceUrl?: string;
+  type: 'subscription' | 'renewal' | 'upgrade' | 'downgrade' | 'refund' | 'cancellation';
   fromPlan?: string;
   toPlan?: string;
-  type: 'subscription' | 'upgrade' | 'downgrade' | 'cancellation' | 'renewal';
-}
+  invoiceUrl?: string;
+};
 
 export default function TransactionHistory() {
-  // Fetch transaction history
-  const { data: transactions, isLoading } = useQuery({
-    queryKey: ['/api/subscriptions/transactions'],
+  const { data: transactions, isLoading, error } = useQuery<Transaction[]>({
+    queryKey: [API_ENDPOINTS.subscriptions.transactions],
     queryFn: async () => {
-      try {
-        const response = await apiRequest('/api/subscriptions/transactions');
-        return response;
-      } catch (error) {
-        console.error('Error fetching transaction history:', error);
-        return [];
-      }
+      return await apiRequest(API_ENDPOINTS.subscriptions.transactions);
     }
   });
 
-  // Function to format currency
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          We were unable to load your transaction history. Please try again later.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // If no transaction history available
+  if (!transactions || transactions.length === 0) {
+    return (
+      <Card className="bg-muted/30">
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center text-center p-6">
+            <Receipt className="h-12 w-12 text-muted-foreground opacity-50 mb-4" />
+            <h3 className="text-lg font-medium">No Transaction History</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-md">
+              Your billing and subscription history will appear here once you've made a purchase or subscribed to a paid plan.
+            </p>
+            <Button variant="outline" className="mt-4" asChild>
+              <a href="/pricing">View Pricing Plans</a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -61,126 +80,118 @@ export default function TransactionHistory() {
     }).format(amount);
   };
 
-  // Function to format date
+  // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    }).format(date);
+    });
   };
 
-  // Get status badge color
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'success':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Successful</Badge>;
-      case 'pending':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>;
-      case 'failed':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Failed</Badge>;
+  // Get transaction badge variant
+  const getTransactionBadgeVariant = (type: Transaction['type']): "default" | "outline" | "destructive" | "secondary" | "success" | null | undefined => {
+    switch (type) {
+      case 'subscription':
+      case 'renewal':
+        return 'default';
+      case 'upgrade':
+        return 'success';
+      case 'downgrade':
+        // No 'warning' variant in our badge component, use outline instead
+        return 'outline';
+      case 'refund':
+      case 'cancellation':
+        return 'destructive';
       default:
-        return <Badge>{status}</Badge>;
+        return 'secondary';
     }
   };
 
-  // Get transaction type badge
-  const getTypeBadge = (type: string) => {
+  // Get human-readable transaction type
+  const getTransactionTypeLabel = (type: Transaction['type']) => {
     switch (type) {
       case 'subscription':
-        return <Badge variant="outline">New Subscription</Badge>;
-      case 'upgrade':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upgrade</Badge>;
-      case 'downgrade':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Downgrade</Badge>;
-      case 'cancellation':
-        return <Badge className="bg-slate-100 text-slate-800 border-slate-200">Cancellation</Badge>;
+        return 'New Subscription';
       case 'renewal':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Renewal</Badge>;
+        return 'Subscription Renewal';
+      case 'upgrade':
+        return 'Plan Upgrade';
+      case 'downgrade':
+        return 'Plan Downgrade';
+      case 'refund':
+        return 'Refund';
+      case 'cancellation':
+        return 'Cancellation';
       default:
-        return <Badge variant="outline">{type}</Badge>;
+        // Safe handling of type
+        const typeString = String(type);
+        return typeString.charAt(0).toUpperCase() + typeString.slice(1);
+    }
+  };
+
+  // Get transaction icon
+  const getTransactionIcon = (type: Transaction['type']) => {
+    switch (type) {
+      case 'upgrade':
+        return <ArrowUpRight className="h-4 w-4" />;
+      case 'downgrade':
+        return <ArrowDownRight className="h-4 w-4" />;
+      default:
+        return <Calendar className="h-4 w-4" />;
     }
   };
 
   return (
-    <Card className="w-full shadow-md">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-xl flex items-center">
-          <DollarSign className="mr-2 h-5 w-5 text-primary" />
-          Transaction History
-        </CardTitle>
+        <CardTitle>Transaction History</CardTitle>
         <CardDescription>
-          View all your subscription changes and payments
+          View your billing and subscription history
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ) : transactions?.length > 0 ? (
-          <Table>
-            <TableCaption>Your transaction history</TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((transaction: Transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center">
-                      <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                      {formatDate(transaction.date)}
+      <CardContent className="p-0">
+        <div className="divide-y">
+          {transactions.map((transaction, index) => (
+            <div key={transaction.id} className="p-4 hover:bg-muted/20 transition-colors">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={getTransactionBadgeVariant(transaction.type)}>
+                    {getTransactionIcon(transaction.type)}
+                    <span className="ml-1">{getTransactionTypeLabel(transaction.type)}</span>
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">{formatDate(transaction.date)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-medium">{formatCurrency(transaction.amount)}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {transaction.period === 'yearly' ? 'Annual billing' : 'Monthly billing'}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="font-medium">{transaction.planName}</h4>
+                  {(transaction.type === 'upgrade' || transaction.type === 'downgrade') && (
+                    <div className="text-xs text-muted-foreground flex items-center mt-1">
+                      <span>From {transaction.fromPlan} to {transaction.toPlan}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{transaction.planName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {transaction.period.charAt(0).toUpperCase() + transaction.period.slice(1)}
-                    </div>
-                  </TableCell>
-                  <TableCell>{getTypeBadge(transaction.type)}</TableCell>
-                  <TableCell>{formatCurrency(transaction.amount)}</TableCell>
-                  <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                  <TableCell>
-                    {transaction.type === 'upgrade' || transaction.type === 'downgrade' ? (
-                      <div className="text-xs">
-                        {transaction.fromPlan} → {transaction.toPlan}
-                      </div>
-                    ) : transaction.invoiceUrl ? (
-                      <a 
-                        href={transaction.invoiceUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        View Invoice
-                      </a>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="text-center py-8 flex flex-col items-center">
-            <Clock className="mb-2 h-12 w-12 text-muted" />
-            <h3 className="text-lg font-medium">No transactions yet</h3>
-            <p className="text-muted-foreground">
-              Your transaction history will appear here once you make changes to your subscription.
-            </p>
-          </div>
-        )}
+                  )}
+                </div>
+                
+                {transaction.invoiceUrl && (
+                  <Button variant="ghost" size="sm" className="h-7 px-2" asChild>
+                    <a href={transaction.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                      <span className="text-xs">View Invoice</span>
+                      <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

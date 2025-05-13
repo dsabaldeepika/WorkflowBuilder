@@ -195,7 +195,7 @@ export const FEATURE_FLAGS = {
   enableAnimations: true,
   enableTemplateSharing: true,
   enableAIAssistance: false, // To be enabled later
-  enableBillingSystem: false, // Disabled by default, needs Stripe API key to be enabled
+  enableBillingSystem: true, // Enabled for the authentication flow with pricing integration
   enableAPIConnections: true,
   enableEmail: false, // Email functionality disabled by default
 }
