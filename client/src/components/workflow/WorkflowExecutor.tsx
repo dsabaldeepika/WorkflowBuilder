@@ -8,11 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { motion } from 'framer-motion';
 import { 
   Play, 
   StopCircle, 
   PauseCircle, 
   RotateCcw, 
+  RotateCw,
   SkipForward,
   ClipboardList,
   Hourglass,
@@ -24,7 +26,6 @@ import { NodeData } from '@/store/useWorkflowStore';
 import { WorkflowState } from '@/components/workflow/StateChangeAnimation';
 import { WorkflowExecution, ExecutionLog } from '@/types/workflow';
 import { v4 as uuidv4 } from 'uuid';
-import { WorkflowLoadingAnimation } from './WorkflowLoadingAnimation';
 import { InlineWorkflowLoading } from './InlineWorkflowLoading';
 
 interface WorkflowExecutorProps {
@@ -494,14 +495,104 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
                 ) : (
                   <div className="flex items-center justify-center border rounded-md p-8">
                     <div className="flex flex-col items-center text-center text-muted-foreground">
-                      <ClipboardList className="h-12 w-12 mb-2 opacity-50" />
-                      <p>No execution logs yet</p>
-                      <p className="text-sm">Run the workflow to see execution logs</p>
+                      {executionState === 'running' ? (
+                        <>
+                          <div className="h-12 w-12 mb-4 relative">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{
+                                duration: 2,
+                                ease: "linear",
+                                repeat: Infinity
+                              }}
+                            >
+                              <RotateCw className="h-12 w-12 text-blue-500" />
+                            </motion.div>
+                          </div>
+                          <p>Workflow is running...</p>
+                          <p className="text-sm">Logs will appear as nodes are executed</p>
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardList className="h-12 w-12 mb-2 opacity-50" />
+                          <p>No execution logs yet</p>
+                          <p className="text-sm">Run the workflow to see execution logs</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
               </>
             )}
+          </TabsContent>
+          <TabsContent value="scheduling" className="py-4">
+            <div className="space-y-4">
+              <div className="flex flex-col space-y-2">
+                <h3 className="text-sm font-medium">Schedule Workflow</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure when this workflow should run automatically.
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Input 
+                    type="datetime-local" 
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">Repeat</Label>
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="once"
+                        name="repeat"
+                        checked={runOnce}
+                        onChange={() => setRunOnce(true)}
+                      />
+                      <label htmlFor="once" className="text-sm">Run once</label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="repeat"
+                        name="repeat"
+                        checked={!runOnce}
+                        onChange={() => setRunOnce(false)}
+                      />
+                      <label htmlFor="repeat" className="text-sm">Repeat</label>
+                    </div>
+
+                    {!runOnce && (
+                      <div className="pl-6 pt-2">
+                        <select
+                          value={repeatInterval}
+                          onChange={(e) => setRepeatInterval(e.target.value)}
+                          className="w-full max-w-xs rounded-md border border-input p-2"
+                        >
+                          <option value="hourly">Hourly</option>
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="pt-4 flex justify-end">
+                  <Button type="button" onClick={() => alert('Schedule saved!')}>
+                    Save Schedule
+                  </Button>
+                </div>
+              </div>
+            </div>
           </TabsContent>
           
           <TabsContent value="scheduling" className="py-4 space-y-4">
