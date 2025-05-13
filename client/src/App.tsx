@@ -26,6 +26,7 @@ const TemplatesPage = lazy(() => import("@/pages/templates-page"));
 const TemplateSetupPage = lazy(() => import("@/pages/template-setup-page"));
 const PricingPage = lazy(() => import("@/pages/pricing-page"));
 const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
+const AccountUsagePage = lazy(() => import("@/pages/account-usage-page"));
 const LoadingAnimationsDemo = lazy(() => import("@/pages/loading-animations-demo"));
 const EmailSettingsPage = lazy(() => import("@/pages/email-settings-page"));
 // Temporarily disabled to fix Stripe.js loading issue
@@ -155,6 +156,14 @@ function Router() {
       
       <Route path={ROUTES.accountBilling}>
         <LazyRouteComponent Component={AccountBillingPage} />
+      </Route>
+      
+      <Route path={ROUTES.subscriptionUsage}>
+        <LazyRouteComponent Component={AccountUsagePage} />
+      </Route>
+      
+      <Route path={ROUTES.transactionHistory}>
+        <LazyRouteComponent Component={AccountUsagePage} />
       </Route>
       
       <Route path={ROUTES.emailSettings}>

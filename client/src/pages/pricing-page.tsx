@@ -68,14 +68,14 @@ export default function PricingPage() {
   });
 
   const startCheckout = async (plan: SubscriptionPlan) => {
-    // If user is not logged in, redirect to login
+    // If user is not logged in, redirect to signup with the plan selection
     if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to subscribe to a plan",
-        variant: "default"
-      });
-      navigate(ROUTES.auth);
+      // Store selected plan in session storage for the signup page
+      sessionStorage.setItem('selectedPlanId', plan.id.toString());
+      sessionStorage.setItem('selectedBillingPeriod', billingPeriod);
+      
+      // Navigate to signup page
+      navigate(ROUTES.signup);
       return;
     }
 
@@ -98,10 +98,13 @@ export default function PricingPage() {
         API_ENDPOINTS.subscriptions.createSubscription, 
         {
           method: 'POST',
-          body: {
+          body: JSON.stringify({
             planId: plan.id,
             priceId,
             billingPeriod
+          }),
+          headers: {
+            'Content-Type': 'application/json'
           }
         }
       );

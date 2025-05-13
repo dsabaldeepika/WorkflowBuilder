@@ -13,8 +13,7 @@ import workflowConnectionsRoutes from "./routes/workflowConnections";
 import emailRoutes from "./routes/emailRoutes";
 import contactRoutes from "./routes/contactRoutes";
 import demoRequestRoutes from "./routes/demoRequestRoutes";
-// Temporarily disabled to fix Stripe.js loading issue
-// import { subscriptionsRouter } from "./routes/subscriptions";
+import subscriptionRoutes from "./routes/subscriptionRoutes";
 // import { setupAuth, isAuthenticated } from "./replitAuth"; 
 // Authentication bypass instead of Replit Auth
 import { pool } from "./db";
@@ -102,8 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/email', emailRoutes);
   app.use('/api', contactRoutes); // Contact forms and template request
   app.use('/api', demoRequestRoutes); // Demo scheduling requests
-  // Temporarily disabled to fix Stripe.js loading issue
-  // app.use('/api/subscriptions', subscriptionsRouter);
+  app.use('/api/subscriptions', subscriptionRoutes); // Subscription and billing management
   
   // API Routes
 

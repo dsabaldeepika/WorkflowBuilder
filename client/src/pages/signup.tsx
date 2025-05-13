@@ -42,6 +42,28 @@ export default function Signup() {
     }
   });
   
+  // Check for pre-selected plan from pricing page
+  React.useEffect(() => {
+    if (plans && !plansLoading) {
+      const storedPlanId = sessionStorage.getItem('selectedPlanId');
+      const storedBillingPeriod = sessionStorage.getItem('selectedBillingPeriod') as "monthly" | "yearly" | null;
+      
+      if (storedPlanId) {
+        const planId = parseInt(storedPlanId, 10);
+        const foundPlan = plans.find((plan: any) => plan.id === planId);
+        
+        if (foundPlan) {
+          setSelectedPlan(foundPlan);
+          setCurrentStep('signup');
+        }
+        
+        if (storedBillingPeriod) {
+          setBillingPeriod(storedBillingPeriod);
+        }
+      }
+    }
+  }, [plans, plansLoading]);
+  
   // Redirect to dashboard if already authenticated
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -51,6 +73,12 @@ export default function Signup() {
   
   // Handle Replit Auth login
   const handleLogin = () => {
+    // Store selected plan info to persist through auth flow
+    if (selectedPlan) {
+      sessionStorage.setItem('selectedPlanId', selectedPlan.id.toString());
+      sessionStorage.setItem('selectedBillingPeriod', billingPeriod);
+    }
+    
     login();
   };
 
@@ -74,6 +102,9 @@ export default function Signup() {
   // Handle plan selection
   const handlePlanSelect = (plan: any) => {
     setSelectedPlan(plan);
+    // Store in session storage for persistence
+    sessionStorage.setItem('selectedPlanId', plan.id.toString());
+    sessionStorage.setItem('selectedBillingPeriod', billingPeriod);
     setCurrentStep('signup');
   };
 
