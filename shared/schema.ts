@@ -44,6 +44,16 @@ export enum SubscriptionTier {
   ENTERPRISE = 'enterprise'
 }
 
+// Feature flags table to control functionality across the app
+export const featureFlags = pgTable("feature_flags", {
+  id: serial("id").primaryKey(),
+  featureName: varchar("feature_name", { length: 100 }).notNull().unique(),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Subscription plans table
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: serial("id").primaryKey(),
@@ -259,9 +269,6 @@ export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 
-export type InsertWorkflowConnection = z.infer<typeof insertWorkflowConnectionSchema>;
-export type WorkflowConnection = typeof workflowConnections.$inferSelect;
-
 // Workflow templates table
 export const workflowTemplates = pgTable("workflow_templates", {
   id: serial("id").primaryKey(),
@@ -363,31 +370,6 @@ export const workflowNodeExecutions = pgTable("workflow_node_executions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Workflow connections table for storing node connections
-export const workflowConnections = pgTable("workflow_connections", {
-  id: serial("id").primaryKey(),
-  workflowId: integer("workflow_id").references(() => workflows.id, { onDelete: 'cascade' }),
-  sourceNodeId: text("source_node_id").notNull(),
-  targetNodeId: text("target_node_id").notNull(),
-  edgeId: text("edge_id").notNull().unique(),
-  isValid: boolean("is_valid").notNull().default(true),
-  validationMessage: text("validation_message"),
-  data: jsonb("data").default({}),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Schema for inserting workflow connections
-export const insertWorkflowConnectionSchema = createInsertSchema(workflowConnections).pick({
-  workflowId: true,
-  sourceNodeId: true,
-  targetNodeId: true,
-  edgeId: true,
-  isValid: true,
-  validationMessage: true,
-  data: true,
-});
-
 // Schemas for inserting data
 export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates).pick({
   name: true,
@@ -476,3 +458,13 @@ export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 // Subscription history type
 export type InsertSubscriptionHistory = z.infer<typeof insertSubscriptionHistorySchema>;
 export type SubscriptionHistory = typeof subscriptionHistory.$inferSelect;
+
+// Feature flag schema and type
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).pick({
+  featureName: true,
+  isEnabled: true,
+  description: true,
+});
+
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+export type FeatureFlag = typeof featureFlags.$inferSelect;

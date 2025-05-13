@@ -6,10 +6,10 @@ import {
   Workflow, 
   WorkflowTemplate, 
   NodeType, 
-  NodeTemplate,
-  ScheduleOptions
+  NodeTemplate 
 } from '@/types/workflow';
 import { WorkflowState as NodeState } from '@/components/workflow/StateChangeAnimation';
+import type { ScheduleOptions, ScheduleFrequency } from '@/components/workflow/ScheduleOptions';
 
 // Load custom node templates from localStorage
 const loadCustomTemplates = (): NodeTemplate[] => {
@@ -32,30 +32,12 @@ export type NodeData = {
   app?: App;
   inputs?: Record<string, any>;
   outputs?: Record<string, any>;
-  // Specific field schemas for connection validation
-  inputFields?: Array<{
-    name: string;
-    type: string;
-    required?: boolean;
-  }>;
-  outputFields?: Array<{
-    name: string;
-    type: string;
-  }>;
   icon?: string;
   description?: string;
   configuration?: Record<string, any>;
-  config?: Record<string, any>; // Additional config field for templates
   state?: NodeState;
   optimized?: boolean;
   module?: any; // Support for module property used in some components
-  service?: string; // Service name for integrations
-  event?: string; // Event type for triggers
-  action?: string; // Action type for actions
-  // Connection status indicators for visual feedback
-  sourceConnectionStatus?: 'success' | 'error' | 'pending' | undefined;
-  targetConnectionStatus?: 'success' | 'error' | 'pending' | undefined;
-  connectionValidated?: boolean; // Flag to track if connections have been validated
   ports?: Array<{
     id: string;
     type: 'input' | 'output';
@@ -82,7 +64,6 @@ interface WorkflowStoreState {
     message?: string;
   }>;
   customTemplates: NodeTemplate[];
-  workflow?: Workflow; // Current workflow metadata
   
   // Actions
   addNode: (node: Node<NodeData>) => void;
@@ -94,7 +75,7 @@ interface WorkflowStoreState {
   setNodes: (nodes: Node<NodeData>[]) => void;
   setEdges: (edges: Edge[]) => void;
   clearWorkflow: () => void;
-  saveWorkflow: (workflowParams?: { name?: string; description?: string; nodes?: any[]; edges?: any[] }) => Promise<any>;
+  saveWorkflow: () => void;
   loadWorkflow: (workflow: Workflow) => void;
   exportWorkflow: () => Workflow;
   setSelectedNode: (id: string | null) => void;
@@ -113,7 +94,6 @@ interface WorkflowStoreState {
   // AI & template features
   generateWorkflowFromDescription: (description: string) => void;
   applyWorkflowTemplate: (template: WorkflowTemplate) => void;
-  loadWorkflowFromTemplate: (nodes: any[], edges: any[]) => void;
   createAgent: (agentConfig: any) => void;
   
   // Node state management
@@ -227,84 +207,21 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   onConnect: (connection) => {
     // Check if connection is valid before adding
     const isValid = get().validateConnection(connection);
+    if (!isValid) return;
     
-    // Generate edge ID consistently
-    const edgeId = `e${connection.source}-${connection.target}`;
-    
-    // Set up validation message
-    const validationMessage = isValid 
-      ? 'Connection validated successfully' 
-      : 'Invalid connection type or incompatible nodes';
-      
     set((state) => {
-      const { nodes } = state;
-      const sourceNodeIndex = nodes.findIndex((n) => n.id === connection.source);
-      const targetNodeIndex = nodes.findIndex((n) => n.id === connection.target);
-      
-      // Create a copy of nodes to update connection status
-      const updatedNodes = [...nodes];
-      
-      if (sourceNodeIndex !== -1 && targetNodeIndex !== -1) {
-        // Update source node connection status
-        updatedNodes[sourceNodeIndex] = {
-          ...updatedNodes[sourceNodeIndex],
-          data: {
-            ...updatedNodes[sourceNodeIndex].data,
-            sourceConnectionStatus: isValid ? 'success' : 'error',
-            connectionValidated: true
-          }
-        };
-        
-        // Update target node connection status
-        updatedNodes[targetNodeIndex] = {
-          ...updatedNodes[targetNodeIndex],
-          data: {
-            ...updatedNodes[targetNodeIndex].data,
-            targetConnectionStatus: isValid ? 'success' : 'error',
-            connectionValidated: true
-          }
-        };
-      }
-      
-      if (!isValid) {
-        // Don't create the edge but update the visual indicators
-        const result = { 
-          nodes: updatedNodes,
-          connectionValidations: {
-            ...state.connectionValidations,
-            [edgeId]: { isValid: false, message: validationMessage }
-          }
-        };
-        
-        // Call the centralized connection validation handler to persist to DB
-        setTimeout(() => {
-          get().setConnectionValidation(edgeId, false, validationMessage);
-        }, 0);
-        
-        return result;
-      }
-      
       const newEdge = {
         ...connection,
-        id: edgeId,
-        data: { validated: true, invalid: false }
+        id: `e${connection.source}-${connection.target}`,
       };
       
-      const result = {
-        nodes: updatedNodes,
+      return {
         edges: addEdge(newEdge, state.edges),
         connectionValidations: {
           ...state.connectionValidations,
-          [newEdge.id]: { isValid: true, message: validationMessage }
+          [newEdge.id]: { isValid: true }
         }
       };
-      
-      // Call the centralized connection validation handler to persist to DB
-      setTimeout(() => {
-        get().setConnectionValidation(edgeId, true, validationMessage);
-      }, 0);
-      
-      return result;
     });
   },
   
@@ -327,25 +244,15 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
-  saveWorkflow: (workflowParams?: { name?: string; description?: string; nodes?: any[]; edges?: any[] }) => {
+  saveWorkflow: () => {
     // Return a promise that the components can await and handle UI feedback
     return new Promise(async (resolve, reject) => {
       try {
-        const storeState = get();
+        const { nodes, edges } = get();
         
-        // Use provided params or fall back to store state
-        const nodesToSave = workflowParams?.nodes || storeState.nodes;
-        const edgesToSave = workflowParams?.edges || storeState.edges;
-        
-        // Collect workflow metadata - either from params or prompt user
-        let name, description;
-        if (workflowParams?.name && workflowParams?.description) {
-          name = workflowParams.name;
-          description = workflowParams.description;
-        } else {
-          name = prompt("Enter workflow name:", "New Workflow") || "New Workflow";
-          description = prompt("Enter workflow description:", "Created workflow") || "Created workflow";
-        }
+        // Collect workflow metadata
+        const name = prompt("Enter workflow name:", "New Workflow") || "New Workflow";
+        const description = prompt("Enter workflow description:", "Created workflow") || "Created workflow";
         
         // Get the currently authenticated user's ID
         // This approach works with the existing Replit Auth implementation
@@ -367,8 +274,8 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
           name,
           description,
           // Pass nodes and edges as separate properties as expected by the API
-          nodes: nodesToSave,
-          edges: edgesToSave,
+          nodes: nodes,
+          edges: edges,
           createdByUserId: userId,
           isPublished: false // Set default state as unpublished
         };
@@ -451,86 +358,12 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   },
   
   loadWorkflow: (workflow) => {
-    try {
-      // Ensure workflow.nodes and workflow.edges are properly parsed if they're strings
-      const nodes = typeof workflow.nodes === 'string' 
-        ? JSON.parse(workflow.nodes) 
-        : workflow.nodes;
-        
-      const edges = typeof workflow.edges === 'string' 
-        ? JSON.parse(workflow.edges) 
-        : workflow.edges;
-      
-      // Set initial workflow state
-      set({
-        nodes,
-        edges,
-        selectedNodeId: null,
-        selectedEdgeId: null,
-        workflow, // Store the workflow reference for connection validations
-        schedule: workflow.schedule 
-          ? (typeof workflow.schedule === 'string' ? JSON.parse(workflow.schedule) : workflow.schedule)
-          : { enabled: false, frequency: 'once', runCount: 0 },
-      });
-      
-      // Load connection validations for this workflow if it has an ID
-      if (workflow.id) {
-        fetch(`/api/workflow/connections/${workflow.id}`)
-          .then(response => response.json())
-          .then(connections => {
-            if (!connections || !connections.length) return;
-            
-            // Create connection validation mapping
-            const validations: Record<string, { isValid: boolean, message?: string }> = {};
-            const updatedNodes = [...nodes];
-            
-            // Process each connection and update node states
-            connections.forEach((connection: any) => {
-              validations[connection.edgeId] = {
-                isValid: connection.isValid,
-                message: connection.validationMessage
-              };
-              
-              // Update source node connection status
-              const sourceNodeIndex = updatedNodes.findIndex(n => n.id === connection.sourceNodeId);
-              if (sourceNodeIndex >= 0) {
-                updatedNodes[sourceNodeIndex] = {
-                  ...updatedNodes[sourceNodeIndex],
-                  data: {
-                    ...updatedNodes[sourceNodeIndex].data,
-                    sourceConnectionStatus: connection.isValid ? 'success' : 'error',
-                    connectionValidated: true
-                  }
-                };
-              }
-              
-              // Update target node connection status
-              const targetNodeIndex = updatedNodes.findIndex(n => n.id === connection.targetNodeId);
-              if (targetNodeIndex >= 0) {
-                updatedNodes[targetNodeIndex] = {
-                  ...updatedNodes[targetNodeIndex],
-                  data: {
-                    ...updatedNodes[targetNodeIndex].data,
-                    targetConnectionStatus: connection.isValid ? 'success' : 'error',
-                    connectionValidated: true
-                  }
-                };
-              }
-            });
-            
-            // Update the store with connection validations and updated nodes
-            set({
-              nodes: updatedNodes,
-              connectionValidations: validations
-            });
-          })
-          .catch(error => {
-            console.error('Error loading connection validations:', error);
-          });
-      }
-    } catch (error) {
-      console.error('Error loading workflow:', error);
-    }
+    set({
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+    });
   },
   
   exportWorkflow: () => {
@@ -657,48 +490,6 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
     });
   },
   
-  loadWorkflowFromTemplate: (nodes, edges) => {
-    // Parse the nodes and edges if they're strings, otherwise use as-is
-    const parsedNodes = typeof nodes === 'string' ? JSON.parse(nodes) : nodes;
-    const parsedEdges = typeof edges === 'string' ? JSON.parse(edges) : edges;
-    
-    // Convert to ReactFlow node format if needed
-    const formattedNodes = parsedNodes.map((node: any) => {
-      // Make sure each node has the required ReactFlow properties
-      return {
-        ...node,
-        id: node.id,
-        type: node.type || 'default',
-        position: node.position || { x: 0, y: 0 },
-        data: {
-          ...node.data,
-          // Add any missing required properties for our node data
-          label: node.data?.label || node.id,
-          state: node.data?.state || 'default'
-        }
-      };
-    });
-    
-    // Convert to ReactFlow edge format if needed
-    const formattedEdges = parsedEdges.map((edge: any) => {
-      // Make sure each edge has the required ReactFlow properties
-      return {
-        ...edge,
-        id: edge.id || `${edge.source}-${edge.target}`,
-        source: edge.source,
-        target: edge.target,
-        // Add any other edge properties needed
-        type: edge.type || 'default'
-      };
-    });
-    
-    // Set the nodes and edges in the store
-    set({
-      nodes: formattedNodes,
-      edges: formattedEdges
-    });
-  },
-  
   createAgent: (agentConfig) => {
     // Create a new agent from configuration
     console.log('Creating agent with config:', agentConfig);
@@ -786,95 +577,12 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   },
   
   setConnectionValidation: (edgeId, isValid, message) => {
-    const state = get();
-    const { workflow, nodes, edges } = state;
-    
-    // Find the edge and connected nodes
-    const edge = edges.find(e => e.id === edgeId);
-    if (!edge) {
-      console.error('Edge not found:', edgeId);
-      return;
-    }
-    
-    // Update the store with validation results
     set((state) => ({
       connectionValidations: {
         ...state.connectionValidations,
         [edgeId]: { isValid, message }
       }
     }));
-    
-    // Update source and target node visual indicators
-    const sourceNode = nodes.find(n => n.id === edge.source);
-    const targetNode = nodes.find(n => n.id === edge.target);
-    
-    if (sourceNode) {
-      set((state) => ({
-        nodes: state.nodes.map(node => 
-          node.id === sourceNode.id 
-            ? { 
-                ...node, 
-                data: { 
-                  ...node.data, 
-                  sourceConnectionStatus: isValid ? 'success' : 'error',
-                  connectionValidated: true 
-                } 
-              } 
-            : node
-        )
-      }));
-    }
-    
-    if (targetNode) {
-      set((state) => ({
-        nodes: state.nodes.map(node => 
-          node.id === targetNode.id 
-            ? { 
-                ...node, 
-                data: { 
-                  ...node.data, 
-                  targetConnectionStatus: isValid ? 'success' : 'error',
-                  connectionValidated: true 
-                } 
-              } 
-            : node
-        )
-      }));
-    }
-    
-    // Persist validation to database if workflow has an ID
-    if (workflow?.id) {
-      // Create connection validation payload
-      const payload = {
-        workflowId: workflow.id,
-        edgeId,
-        sourceNodeId: edge.source,
-        targetNodeId: edge.target,
-        isValid,
-        validationMessage: message || ''
-      };
-      
-      // Post to API
-      fetch('/api/workflow/connections', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to save connection validation');
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Connection validation saved:', data);
-      })
-      .catch(error => {
-        console.error('Error saving connection validation:', error);
-      });
-    }
   },
   
   updateSchedule: (newSchedule) => {

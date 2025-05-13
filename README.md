@@ -1,107 +1,140 @@
-# PumpFlux - Workflow Automation Platform
+# PumpFlux - State Animation Documentation
 
-PumpFlux is a powerful drag-and-drop workflow builder that enables users to create, monitor, and optimize complex integrations and automation flows with an intuitive, node-based interface. It's similar to popular automation tools like n8n, Make.com, Microsoft Power Automate, and Tray.io.
+PumpFlux uses advanced animations to provide visual feedback on workflow state changes. This document explains the animation systems and how to use them effectively in the application.
 
-![PumpFlux](client/src/assets/templates/workflow-template-placeholder.svg)
+## Table of Contents
+- [StateChangeAnimation System](#statechangeanimation-system)
+- [WorkflowAnimationCard Component](#workflowanimationcard-component)
+- [Animation States](#animation-states)
+- [Usage Examples](#usage-examples)
+- [Custom Animation Integration](#custom-animation-integration)
 
-## Features
+## StateChangeAnimation System
 
-- Interactive workflow canvas with drag-and-drop interface
-- Predefined templates for common workflow scenarios
-- Comprehensive health monitoring for all workflows
-- Integration with major services (Facebook, HubSpot, Slack, etc.)
-- User authentication and subscription management
-- Workflow execution tracking and performance optimization
+The `StateChangeAnimation` system provides a suite of components for visualizing workflow state transitions throughout the application. The system is built with Framer Motion and React to provide smooth, physics-based animations that convey status changes in an intuitive way.
 
-## Prerequisites
+### Core Components
 
-- Node.js 18.x or later
-- PostgreSQL database
-- Stripe account (for subscription functionality)
+- **WorkflowStateProvider**: Context provider that manages workflow state and history
+- **StateChangeAnimation**: Animates transitions between workflow states with configurable styles
+- **WorkflowStateIndicator**: Visual indicator for a specific workflow state
+- **WorkflowStateTransition**: Shows current state with reference to previous state
+- **WorkflowStateHistory**: Displays a history log of state transitions
+- **WorkflowStateProgressBar**: Progress bar with state-specific visual feedback
+- **WorkflowStateBadge**: Badge component showing state with appropriate styling
 
-## Environment Setup
+### State Types
 
-Create a `.env` file in the project root with the following variables:
-
+```typescript
+export type WorkflowState = 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'paused' | 'retrying' | 'waiting';
 ```
-DATABASE_URL=postgresql://username:password@localhost:5432/pumpflux
-SESSION_SECRET=your_session_secret
-STRIPE_SECRET_KEY=your_stripe_secret_key
-VITE_STRIPE_PUBLIC_KEY=your_stripe_publishable_key
+
+Each state has specific visual properties (colors, icons, animations) defined in the `stateConfig` object.
+
+## WorkflowAnimationCard Component
+
+The `WorkflowAnimationCard` component provides a card interface for displaying workflows with animated state indicators. This component is useful for dashboard views and workflow listings.
+
+### Features
+
+- Displays workflow state with animated transitions
+- Shows workflow metadata (last run, next run, type)
+- Optional controls for changing workflow state (for demo or testing)
+- Hover effects for improved interactivity
+
+## Animation States
+
+PumpFlux uses a consistent visual language for workflow states:
+
+| State | Color | Icon | Animation | Description |
+|-------|-------|------|-----------|-------------|
+| idle | Slate | Clock | Static | Workflow is waiting to start |
+| starting | Blue | PlayCircle | Pulse | Workflow is initializing |
+| running | Blue | Loader2 | Spin | Workflow is actively running |
+| completed | Green | CheckCircle | Glow | Workflow completed successfully |
+| failed | Red | XCircle | Shake | Workflow encountered an error |
+| paused | Amber | PauseCircle | Flash | Workflow execution is paused |
+| retrying | Purple | RefreshCcw | Spin | Attempting to run again after failure |
+| waiting | Slate | Clock | Static | Waiting for input or configuration |
+
+## Usage Examples
+
+### Basic State Indicator
+
+```jsx
+import { StateChangeAnimation } from './components/workflow/StateChangeAnimation';
+
+<StateChangeAnimation state="running" />
 ```
 
-## Running the Project
+### State with Progress Bar
 
-### Option 1: Running on Replit
+```jsx
+import { WorkflowStateProgressBar } from './components/workflow/StateChangeAnimation';
 
-1. Fork the project on Replit
-2. Wait for dependencies to install
-3. Click the "Run" button to start the server
-4. The application will be available at the URL provided by Replit
+<WorkflowStateProgressBar state="running" progress={65} />
+```
 
-### Option 2: Running Locally
+### Full State Management
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/pumpflux.git
-   cd pumpflux
-   ```
+```jsx
+import { 
+  WorkflowStateProvider, 
+  useWorkflowState, 
+  WorkflowStateTransition 
+} from './components/workflow/StateChangeAnimation';
 
-2. Install dependencies:
-   ```
-   npm install
-   ```
+function WorkflowStatusPanel() {
+  const { setState } = useWorkflowState();
+  
+  return (
+    <div>
+      <WorkflowStateTransition />
+      <button onClick={() => setState('running')}>Start Workflow</button>
+      <button onClick={() => setState('completed')}>Complete</button>
+    </div>
+  );
+}
 
-3. Set up the database:
-   ```
-   npm run db:push
-   ```
+// Wrap with provider
+<WorkflowStateProvider initialState="idle">
+  <WorkflowStatusPanel />
+</WorkflowStateProvider>
+```
 
-4. Seed the database with initial templates and plans (optional):
-   ```
-   npm run seed:templates
-   npm run seed:plans
-   ```
+## Custom Animation Integration
 
-5. Start the development server:
-   ```
-   npm run dev
-   ```
+The animation system is designed to be flexible and can be integrated into custom components:
 
-6. Visit `http://localhost:5000` in your browser
+1. Use the `useWorkflowState` hook to access state management functions
+2. Implement state transitions with appropriate timing
+3. Apply the provided animation components to visualize state
 
-## Project Structure
+### Example: Creating custom workflow node with state visualization
 
-- `/client` - Frontend React application
-  - `/src/components` - UI components
-  - `/src/pages` - Application pages
-  - `/src/store` - State management
-  - `/src/hooks` - Custom React hooks
-  - `/src/assets` - Static assets
+```jsx
+import { WorkflowStateProvider, WorkflowStateIndicator } from './components/workflow/StateChangeAnimation';
 
-- `/server` - Backend Express server
-  - `/routes` - API routes
-  - `/db` - Database connection
-  - `/migrations` - Database migrations
+function CustomWorkflowNode({ initialState = 'idle' }) {
+  const [nodeState, setNodeState] = useState(initialState);
+  
+  return (
+    <WorkflowStateProvider initialState={initialState}>
+      <div className="custom-node">
+        <div className="node-header">
+          <h3>Custom Node</h3>
+          <WorkflowStateIndicator state={nodeState} />
+        </div>
+        <div className="node-actions">
+          <button onClick={() => setNodeState('running')}>Run</button>
+          <button onClick={() => setNodeState('paused')}>Pause</button>
+        </div>
+      </div>
+    </WorkflowStateProvider>
+  );
+}
+```
 
-- `/shared` - Shared code and types
-  - `/schema.ts` - Database schema definitions
-
-## Development Workflow
-
-1. **Start the server**: The workflow named 'Start application' runs `npm run dev` which starts both the frontend and backend servers
-2. **Create workflows**: Navigate to the workflow builder to create new automation flows
-3. **Use templates**: Browse and use predefined templates from the Templates page
-4. **Monitor workflows**: Track performance and errors in the Monitoring dashboard
-
-## API Documentation
-
-API documentation is available at `/api/docs` when the server is running.
-
-## Authentication
-
-The application uses Replit authentication by default, but also supports local username/password authentication.
-
-## License
-
-[MIT License](LICENSE)
+For detailed implementation references, see the source code in:
+- `client/src/components/workflow/StateChangeAnimation.tsx`
+- `client/src/components/workflow/WorkflowAnimationCard.tsx`

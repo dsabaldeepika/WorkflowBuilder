@@ -26,7 +26,7 @@ import OnboardingGuide from './OnboardingGuide';
 import TriggerScheduleDialog, { ScheduleOptions } from './TriggerScheduleDialog';
 import { WorkflowNodePicker } from './WorkflowNodePicker';
 import { AgentBuilder } from '../agent/AgentBuilder';
-import { WorkflowSuggestions } from './WorkflowSuggestions';
+import WorkflowSuggestions from './WorkflowSuggestions';
 import { Clock, Plus, Sparkles } from 'lucide-react';
 
 // Define custom node types outside of component to avoid recreation on each render
@@ -45,24 +45,15 @@ const customEdgeTypes = {
   default: ValidatedEdge,
 };
 
-// Add readOnly prop to support template preview mode
-interface WorkflowCanvasProps {
-  readOnly?: boolean;
-}
-
-export function WorkflowCanvas({ readOnly = false }: WorkflowCanvasProps) {
+export function WorkflowCanvas() {
   return (
     <ReactFlowProvider>
-      <WorkflowCanvasContent readOnly={readOnly} />
+      <WorkflowCanvasContent />
     </ReactFlowProvider>
   );
 }
 
-interface WorkflowCanvasContentProps {
-  readOnly?: boolean;
-}
-
-function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps) {
+function WorkflowCanvasContent() {
   // State for onboarding and guided tour
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
@@ -382,13 +373,13 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={readOnly ? undefined : onNodesChange}
-          onEdgesChange={readOnly ? undefined : onEdgesChange}
-          onConnect={readOnly ? undefined : onConnect}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
           nodeTypes={customNodeTypes}
           edgeTypes={customEdgeTypes}
-          onNodeClick={readOnly ? undefined : onNodeClick}
-          onEdgeClick={readOnly ? undefined : onEdgeClick}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
           connectionLineType={ConnectionLineType.SmoothStep}
           fitView
           minZoom={0.2}
@@ -397,13 +388,6 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
           snapToGrid
           snapGrid={[20, 20]}
           className="workflow-canvas"
-          nodesDraggable={!readOnly}
-          nodesConnectable={!readOnly}
-          elementsSelectable={!readOnly}
-          zoomOnScroll={true}
-          panOnScroll={true}
-          zoomOnPinch={true}
-          panOnDrag={true}
         >
           <Background />
           <Controls />
@@ -437,31 +421,29 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
             </div>
           </Panel>
           
-          {/* Add workflow controls - hide in readOnly mode */}
-          {!readOnly && (
-            <WorkflowControls 
-              onNodeStateChange={handleNodeStateChange}
-              onSave={async () => {
-                try {
-                  await saveWorkflow();
-                  // Toast message is now handled in the saveWorkflow function
-                } catch (error) {
-                  console.error('Error saving workflow', error);
-                  // Error handling is also done in the saveWorkflow function
-                }
-              }}
-              onExport={handleExport}
-              onImport={handleImport}
-              schedule={schedule}
-              onScheduleChange={updateSchedule}
-              subscriptionTier="PROFESSIONAL"
-              maxRunsPerMonth={1000}
-              currentRunCount={42}
-            />
-          )}
+          {/* Add workflow controls */}
+          <WorkflowControls 
+            onNodeStateChange={handleNodeStateChange}
+            onSave={async () => {
+              try {
+                await saveWorkflow();
+                // Toast message is now handled in the saveWorkflow function
+              } catch (error) {
+                console.error('Error saving workflow', error);
+                // Error handling is also done in the saveWorkflow function
+              }
+            }}
+            onExport={handleExport}
+            onImport={handleImport}
+            schedule={schedule}
+            onScheduleChange={updateSchedule}
+            subscriptionTier="PROFESSIONAL"
+            maxRunsPerMonth={1000}
+            currentRunCount={42}
+          />
           
-          {/* Onboarding guide - hide in readOnly mode */}
-          {!readOnly && showGuide && onboardingSteps.length > 0 && (
+          {/* Onboarding guide */}
+          {showGuide && onboardingSteps.length > 0 && (
             <OnboardingGuide
               steps={onboardingSteps}
               currentStepIndex={currentStepIndex}
@@ -470,41 +452,39 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
             />
           )}
           
-          {/* Workflow Suggestions - hide in readOnly mode */}
-          {!readOnly && (
-            <WorkflowSuggestions 
-              nodes={nodes}
-              edges={edges}
-              onAddNode={(nodeType: string) => {
-                setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
-                setShowNodePicker(true);
-              }}
-              onConnect={(sourceId: string, targetId: string) => {
-                // Find the source and target nodes
-                const source = nodes.find(node => node.id === sourceId);
-                const target = nodes.find(node => node.id === targetId);
+          {/* Workflow Suggestions */}
+          <WorkflowSuggestions 
+            nodes={nodes}
+            edges={edges}
+            onAddNode={(nodeType) => {
+              setNodePickerCategory(nodeType.includes('trigger') ? 'trigger' : 'action' as NodeCategory);
+              setShowNodePicker(true);
+            }}
+            onConnect={(sourceId, targetId) => {
+              // Find the source and target nodes
+              const source = nodes.find(node => node.id === sourceId);
+              const target = nodes.find(node => node.id === targetId);
+              
+              if (source && target) {
+                onConnect({
+                  source: sourceId,
+                  target: targetId,
+                  sourceHandle: 'output',
+                  targetHandle: 'input',
+                });
                 
-                if (source && target) {
-                  onConnect({
-                    source: sourceId,
-                    target: targetId,
-                    sourceHandle: 'output',
-                    targetHandle: 'input'
-                  });
-                  
-                  toast({
-                    title: "Nodes Connected",
-                    description: `Connected ${source.data.label} to ${target.data.label}`,
-                  });
-                }
-              }}
-              onDismiss={(suggestionId: string) => {
-                // Optionally track dismissed suggestions in localStorage
-                const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
-                localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
-              }}
-            />
-          )}
+                toast({
+                  title: "Nodes Connected",
+                  description: `Connected ${source.data.label} to ${target.data.label}`,
+                });
+              }
+            }}
+            onDismiss={(suggestionId) => {
+              // Optionally track dismissed suggestions in localStorage
+              const dismissedSuggestions = JSON.parse(localStorage.getItem('pumpflux_dismissedSuggestions') || '[]');
+              localStorage.setItem('pumpflux_dismissedSuggestions', JSON.stringify([...dismissedSuggestions, suggestionId]));
+            }}
+          />
         </ReactFlow>
       )}
       

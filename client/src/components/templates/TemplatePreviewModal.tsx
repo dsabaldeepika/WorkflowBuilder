@@ -11,13 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkflowTemplate } from "@shared/schema";
-import { Clock, Tag, FileCode, DraftingCompass, LayoutDashboard, Image, Info } from "lucide-react";
-
-// Import template preview images
-import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
-import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
-import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
-import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets.svg";
+import { Clock, Tag, FileCode, DraftingCompass, LayoutDashboard } from "lucide-react";
 
 interface TemplatePreviewModalProps {
   isOpen: boolean;
@@ -46,33 +40,6 @@ export function TemplatePreviewModal({
       case 'complex': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
-  
-  // Get the preview image based on template name or ID
-  const getTemplatePreviewImage = (template: WorkflowTemplate) => {
-    // Match template with preview image based on ID or name
-    
-    // Special case matching for template ID 13 (Pipedrive to Google Sheets)
-    if (template.id === 13 || 
-        (template.name && (
-          template.name.toLowerCase().includes('pipedrive') || 
-          (template.name.toLowerCase().includes('google') && template.name.toLowerCase().includes('sheet'))
-        ))
-    ) {
-      return pipedriveToGoogleSheetsPreview;
-    }
-    
-    // Match by keywords in template name
-    const templateName = template.name.toLowerCase();
-    
-    if (templateName.includes('facebook') && (templateName.includes('hubspot') || templateName.includes('lead'))) {
-      return facebookToHubspotPreview;
-    } else if (templateName.includes('customer') && templateName.includes('follow')) {
-      return customerFollowUpPreview;
-    }
-    
-    // Default placeholder for any other templates
-    return defaultTemplatePreview;
   };
   
   const formatNodeTypeCount = (nodes: any[]) => {
@@ -139,39 +106,21 @@ export function TemplatePreviewModal({
           )}
           
           {/* Tabs for different views */}
-          <Tabs defaultValue="preview" className="w-full">
+          <Tabs defaultValue="structure" className="w-full">
             <TabsList className="mb-4 grid w-full grid-cols-3">
-              <TabsTrigger value="preview">
-                <Image className="h-4 w-4 mr-2" />
-                Workflow Preview
-              </TabsTrigger>
               <TabsTrigger value="structure">
                 <LayoutDashboard className="h-4 w-4 mr-2" />
-                Components
+                Workflow Structure
+              </TabsTrigger>
+              <TabsTrigger value="code">
+                <FileCode className="h-4 w-4 mr-2" />
+                Node Configuration
               </TabsTrigger>
               <TabsTrigger value="documentation">
-                <Info className="h-4 w-4 mr-2" />
+                <FileCode className="h-4 w-4 mr-2" />
                 Documentation
               </TabsTrigger>
             </TabsList>
-            
-            {/* Preview Tab */}
-            <TabsContent value="preview" className="space-y-4">
-              <h3 className="text-lg font-medium">Workflow Visualization</h3>
-              
-              <div className="flex justify-center p-4 bg-gray-50 rounded-lg border">
-                <img 
-                  src={getTemplatePreviewImage(template)} 
-                  alt={`${template.name} workflow preview`}
-                  className="max-w-full object-contain rounded"
-                  style={{ maxHeight: '320px' }}
-                />
-              </div>
-              
-              <div className="text-sm text-muted-foreground text-center mt-2">
-                This visual representation shows how data flows through the workflow.
-              </div>
-            </TabsContent>
             
             {/* Structure Tab */}
             <TabsContent value="structure" className="space-y-4">
@@ -308,11 +257,8 @@ export function TemplatePreviewModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
-            onClick={() => onUseTemplate(template)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-          >
-            Configure & Use Template
+          <Button onClick={() => onUseTemplate(template)}>
+            Use This Template
           </Button>
         </DialogFooter>
       </DialogContent>

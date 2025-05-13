@@ -1,7 +1,6 @@
 import express from 'express';
 import { storage } from '../storage';
 import { ZodError } from 'zod';
-import { emailService } from '../services/emailService';
 
 const router = express.Router();
 
@@ -64,59 +63,6 @@ router.post('/runs/:runId/complete', async (req, res) => {
     
     if (!run) {
       return res.status(404).json({ message: 'Workflow run not found' });
-    }
-    
-    // Handle email notifications if a workflow has completed or failed
-    try {
-      // Get additional data needed for email notification
-      const workflow = await storage.getWorkflow(run.workflowId);
-      if (workflow) {
-        // Get logs for the execution
-        const logs = await storage.getNodeExecutionsForRun(runId);
-        
-        // Get the workflow creator user
-        const user = await storage.getUserById(workflow.createdByUserId);
-        
-        if (user) {
-          // Calculate duration in ms
-          const duration = endTime.getTime() - new Date(run.startTime).getTime();
-          
-          // Add duration and logs to the execution for the email
-          const executionWithDetails = {
-            ...run,
-            duration,
-            logs: logs || []
-          };
-          
-          if (status === 'failed') {
-            // Send workflow error email
-            await emailService.sendWorkflowErrorEmail({
-              user,
-              workflow: {
-                id: workflow.id,
-                name: workflow.name
-              },
-              execution: executionWithDetails,
-              error: errorMessage || 'Unknown error',
-              logs: logs || []
-            });
-          } else if (status === 'completed') {
-            // Send workflow success email
-            await emailService.sendWorkflowSuccessEmail({
-              user,
-              workflow: {
-                id: workflow.id,
-                name: workflow.name
-              },
-              execution: executionWithDetails,
-              logs: logs || []
-            });
-          }
-        }
-      }
-    } catch (emailError) {
-      // Log email sending errors but don't fail the request
-      console.error('Failed to send workflow notification email:', emailError);
     }
     
     res.json(run);
@@ -244,62 +190,6 @@ router.post('/nodes/:nodeExecutionId/retry', async (req, res) => {
   } catch (error) {
     console.error('Error retrying node execution:', error);
     res.status(500).json({ message: 'Failed to retry node execution' });
-  }
-});
-
-// Schedule a workflow run
-router.post('/runs/:workflowId/schedule', async (req, res) => {
-  try {
-    const workflowId = parseInt(req.params.workflowId);
-    const { scheduledTime, scheduleType, scheduleConfig } = req.body;
-    
-    // Parse scheduled time
-    const scheduledDate = new Date(scheduledTime);
-    
-    // Get workflow details for notification
-    const workflow = await storage.getWorkflow(workflowId);
-    
-    if (!workflow) {
-      return res.status(404).json({ message: 'Workflow not found' });
-    }
-    
-    // Store the schedule information in the workflow
-    await storage.updateWorkflow(workflowId, {
-      schedule: {
-        type: scheduleType,
-        nextRunTime: scheduledDate,
-        config: scheduleConfig || {}
-      }
-    });
-    
-    // Return the updated workflow with schedule
-    const updatedWorkflow = await storage.getWorkflow(workflowId);
-    
-    // Try to send email notification if we have user information
-    try {
-      if (workflow.createdByUserId) {
-        const user = await storage.getUserById(workflow.createdByUserId);
-        
-        if (user) {
-          await emailService.sendScheduledRunEmail({
-            user,
-            workflow: {
-              id: workflow.id,
-              name: workflow.name
-            },
-            scheduledTime: scheduledDate
-          });
-        }
-      }
-    } catch (emailError) {
-      console.error('Failed to send scheduled run email:', emailError);
-      // Continue execution even if email fails
-    }
-    
-    res.status(200).json(updatedWorkflow);
-  } catch (error) {
-    console.error('Error scheduling workflow run:', error);
-    res.status(500).json({ message: 'Failed to schedule workflow run' });
   }
 });
 

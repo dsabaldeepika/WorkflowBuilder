@@ -9,10 +9,7 @@ import workflowMonitoringRoutes from "./routes/workflowMonitoring";
 import workflowTemplatesRoutes from "./routes/workflowTemplates";
 import appIntegrationsRoutes from "./routes/appIntegrations";
 import workflowExecutionRoutes from "./routes/workflowExecution";
-import workflowConnectionsRoutes from "./routes/workflowConnections";
-import emailRoutes from "./routes/emailRoutes";
-// Temporarily disabled to fix Stripe.js loading issue
-// import { subscriptionsRouter } from "./routes/subscriptions";
+import { subscriptionsRouter } from "./routes/subscriptions";
 // import { setupAuth, isAuthenticated } from "./replitAuth"; 
 // Authentication bypass instead of Replit Auth
 import { pool } from "./db";
@@ -96,10 +93,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/workflow', workflowTemplatesRoutes);
   app.use('/api/app', appIntegrationsRoutes);
   app.use('/api/execution', workflowExecutionRoutes);
-  app.use('/api/workflow/connections', workflowConnectionsRoutes);
-  app.use('/api/email', emailRoutes);
-  // Temporarily disabled to fix Stripe.js loading issue
-  // app.use('/api/subscriptions', subscriptionsRouter);
+  app.use('/api/subscriptions', subscriptionsRouter);
+  
+  // Feature Flags API Endpoints
+  /**
+   * @swagger
+   * /api/feature-flags:
+   *   get:
+   *     summary: Get all feature flags
+   *     description: Retrieves all feature flags with their current status
+   *     tags: [System]
+   *     responses:
+   *       200:
+   *         description: List of all feature flags
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   featureName:
+   *                     type: string
+   *                   isEnabled:
+   *                     type: boolean
+   *                   description:
+   *                     type: string
+   */
+  app.get('/api/feature-flags', bypassAuth, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      res.json(flags);
+    } catch (error) {
+      console.error('Error fetching feature flags:', error);
+      res.status(500).json({ error: 'Failed to fetch feature flags' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/feature-flags/{featureName}:
+   *   get:
+   *     summary: Get a feature flag by name
+   *     description: Retrieves a specific feature flag by its name
+   *     tags: [System]
+   *     parameters:
+   *       - in: path
+   *         name: featureName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Name of the feature flag to retrieve
+   *     responses:
+   *       200:
+   *         description: Feature flag details
+   *       404:
+   *         description: Feature flag not found
+   */
+  app.get('/api/feature-flags/:featureName', bypassAuth, async (req, res) => {
+    try {
+      const { featureName } = req.params;
+      const flag = await storage.getFeatureFlag(featureName);
+      
+      if (!flag) {
+        return res.status(404).json({ error: 'Feature flag not found' });
+      }
+      
+      res.json(flag);
+    } catch (error) {
+      console.error(`Error fetching feature flag ${req.params.featureName}:`, error);
+      res.status(500).json({ error: 'Failed to fetch feature flag' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/feature-flags/{featureName}/status:
+   *   get:
+   *     summary: Check if a feature is enabled
+   *     description: Returns true if the specified feature is enabled, false otherwise
+   *     tags: [System]
+   *     parameters:
+   *       - in: path
+   *         name: featureName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Name of the feature to check
+   *     responses:
+   *       200:
+   *         description: Feature status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 isEnabled:
+   *                   type: boolean
+   */
+  app.get('/api/feature-flags/:featureName/status', async (req, res) => {
+    try {
+      const { featureName } = req.params;
+      const isEnabled = await storage.isFeatureEnabled(featureName);
+      res.json({ isEnabled });
+    } catch (error) {
+      console.error(`Error checking feature status ${req.params.featureName}:`, error);
+      res.status(500).json({ error: 'Failed to check feature status' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/feature-flags/{featureName}:
+   *   put:
+   *     summary: Update a feature flag
+   *     description: Updates the enabled status of a feature flag
+   *     tags: [System]
+   *     parameters:
+   *       - in: path
+   *         name: featureName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Name of the feature flag to update
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - isEnabled
+   *             properties:
+   *               isEnabled:
+   *                 type: boolean
+   *     responses:
+   *       200:
+   *         description: Updated feature flag
+   *       404:
+   *         description: Feature flag not found
+   */
+  app.put('/api/feature-flags/:featureName', bypassAuth, async (req, res) => {
+    try {
+      const { featureName } = req.params;
+      const { isEnabled } = req.body;
+      
+      if (typeof isEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'isEnabled must be a boolean value' });
+      }
+      
+      const flag = await storage.updateFeatureFlag(featureName, isEnabled);
+      
+      if (!flag) {
+        return res.status(404).json({ error: 'Feature flag not found' });
+      }
+      
+      res.json(flag);
+    } catch (error) {
+      console.error(`Error updating feature flag ${req.params.featureName}:`, error);
+      res.status(500).json({ error: 'Failed to update feature flag' });
+    }
+  });
   
   // API Routes
 
@@ -486,307 +642,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  /**
-   * @swagger
-   * /api/health-monitoring-data:
-   *   get:
-   *     summary: Get workflow health monitoring data
-   *     description: Retrieves comprehensive health data for workflows including performance metrics and error statistics
-   *     tags: [Monitoring]
-   *     parameters:
-   *       - in: query
-   *         name: userId
-   *         schema:
-   *           type: integer
-   *         description: Filter by user ID
-   *       - in: query
-   *         name: workflowId
-   *         schema:
-   *           type: integer
-   *         description: Filter by workflow ID
-   *       - in: query
-   *         name: timeRange
-   *         schema:
-   *           type: string
-   *           enum: [24h, 7d, 30d, 90d]
-   *         description: Time range for data aggregation
-   *       - in: query
-   *         name: status
-   *         schema:
-   *           type: string
-   *           enum: [all, success, failed]
-   *         description: Filter by execution status
-   *     responses:
-   *       200:
-   *         description: Health monitoring data
-   *       500:
-   *         description: Server error
-   */
-  app.get('/api/health-monitoring-data', async (req, res) => {
-    try {
-      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
-      const workflowId = req.query.workflowId ? parseInt(req.query.workflowId as string) : undefined;
-      const timeRange = req.query.timeRange as string || '7d';
-      const status = req.query.status as string || 'all';
-      
-      // Calculate date range based on timeRange
-      const endDate = new Date();
-      const startDate = new Date();
-      
-      switch (timeRange) {
-        case '24h':
-          startDate.setHours(startDate.getHours() - 24);
-          break;
-        case '7d':
-          startDate.setDate(startDate.getDate() - 7);
-          break;
-        case '30d':
-          startDate.setDate(startDate.getDate() - 30);
-          break;
-        case '90d':
-          startDate.setDate(startDate.getDate() - 90);
-          break;
-        default:
-          startDate.setDate(startDate.getDate() - 7); // Default: 7 days
-      }
-      
-      // Get all workflows (filtered by userId if provided)
-      let workflows = [];
-      if (userId) {
-        workflows = await storage.getWorkflowsByCreator(userId);
-      } else if (workflowId) {
-        const workflow = await storage.getWorkflow(workflowId);
-        if (workflow) workflows = [workflow];
-      } else {
-        workflows = await storage.getAllWorkflows();
-      }
-      
-      const workflowIds = workflows.map(wf => wf.id);
-      
-      // Get workflow runs for the selected workflows within the date range
-      let allRuns = [];
-      for (const wfId of workflowIds) {
-        const runs = await storage.getWorkflowRunsByDateRange(wfId, startDate, endDate);
-        allRuns = [...allRuns, ...runs];
-      }
-      
-      // Filter runs by status if specified
-      if (status === 'success') {
-        allRuns = allRuns.filter(run => run.status === 'completed');
-      } else if (status === 'failed') {
-        allRuns = allRuns.filter(run => run.status === 'failed');
-      }
-      
-      // Get all node executions for the workflow runs
-      const runIds = allRuns.map(run => run.id);
-      let allNodeExecutions = [];
-      
-      for (const runId of runIds) {
-        const nodeExecutions = await storage.getNodeExecutions(runId);
-        allNodeExecutions = [...allNodeExecutions, ...nodeExecutions];
-      }
-      
-      // Calculate summary metrics
-      const totalRuns = allRuns.length;
-      const successfulRuns = allRuns.filter(run => run.status === 'completed').length;
-      const failedRuns = allRuns.filter(run => run.status === 'failed').length;
-      const successRate = totalRuns > 0 ? (successfulRuns / totalRuns) * 100 : 0;
-      
-      // Calculate average execution time (in seconds)
-      let totalExecutionTime = 0;
-      let executionTimeCount = 0;
-      
-      allRuns.forEach(run => {
-        if (run.startTime && run.endTime) {
-          const startTime = new Date(run.startTime).getTime();
-          const endTime = new Date(run.endTime).getTime();
-          const executionTime = (endTime - startTime) / 1000; // Convert to seconds
-          
-          totalExecutionTime += executionTime;
-          executionTimeCount++;
-        }
-      });
-      
-      const averageExecutionTime = executionTimeCount > 0 
-        ? totalExecutionTime / executionTimeCount 
-        : 0;
-      
-      // Compile error breakdown
-      const errorCategories: Record<string, number> = {};
-      
-      allRuns.filter(run => run.status === 'failed').forEach(run => {
-        const category = run.errorCategory || 'uncategorized';
-        errorCategories[category] = (errorCategories[category] || 0) + 1;
-      });
-      
-      // Calculate workflow performance metrics
-      const workflowPerformance = workflows.map(workflow => {
-        const workflowRuns = allRuns.filter(run => run.workflowId === workflow.id);
-        const totalWorkflowRuns = workflowRuns.length;
-        const successfulWorkflowRuns = workflowRuns.filter(run => run.status === 'completed').length;
-        const workflowSuccessRate = totalWorkflowRuns > 0 
-          ? (successfulWorkflowRuns / totalWorkflowRuns) * 100 
-          : 0;
-        
-        // Calculate average execution time for this workflow
-        let workflowTotalTime = 0;
-        let workflowTimeCount = 0;
-        
-        workflowRuns.forEach(run => {
-          if (run.startTime && run.endTime) {
-            const startTime = new Date(run.startTime).getTime();
-            const endTime = new Date(run.endTime).getTime();
-            const executionTime = (endTime - startTime) / 1000;
-            
-            workflowTotalTime += executionTime;
-            workflowTimeCount++;
-          }
-        });
-        
-        const workflowAvgTime = workflowTimeCount > 0 
-          ? workflowTotalTime / workflowTimeCount 
-          : 0;
-        
-        return {
-          id: workflow.id,
-          name: workflow.name,
-          executions: totalWorkflowRuns,
-          successRate: parseFloat(workflowSuccessRate.toFixed(1)),
-          avgTime: parseFloat(workflowAvgTime.toFixed(1))
-        };
-      });
-      
-      // Generate execution timeline data (executions per day)
-      const timelineMap: Record<string, { executions: number, successCount: number }> = {};
-      
-      // Create entries for each day in the range
-      let currentDate = new Date(startDate);
-      while (currentDate <= endDate) {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        timelineMap[dateStr] = { executions: 0, successCount: 0 };
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-      
-      // Fill in with actual data
-      allRuns.forEach(run => {
-        if (run.startTime) {
-          const dateStr = new Date(run.startTime).toISOString().split('T')[0];
-          if (timelineMap[dateStr]) {
-            timelineMap[dateStr].executions++;
-            if (run.status === 'completed') {
-              timelineMap[dateStr].successCount++;
-            }
-          }
-        }
-      });
-      
-      // Convert timeline map to array
-      const executionTimeline = Object.entries(timelineMap).map(([date, data]) => ({
-        date,
-        executions: data.executions,
-        successRate: data.executions > 0 
-          ? Math.round((data.successCount / data.executions) * 100) 
-          : 0
-      }));
-      
-      // Generate optimization suggestions based on the data
-      const optimizationSuggestions = [];
-      
-      // Find workflows with low success rates
-      workflowPerformance
-        .filter(wf => wf.successRate < 90 && wf.executions >= 5)
-        .forEach(wf => {
-          // Get the most common error category for this workflow
-          const workflowRuns = allRuns.filter(
-            run => run.workflowId === wf.id && run.status === 'failed'
-          );
-          
-          const workflowErrors: Record<string, number> = {};
-          workflowRuns.forEach(run => {
-            const category = run.errorCategory || 'uncategorized';
-            workflowErrors[category] = (workflowErrors[category] || 0) + 1;
-          });
-          
-          let maxErrorCategory = 'uncategorized';
-          let maxErrorCount = 0;
-          
-          Object.entries(workflowErrors).forEach(([category, count]) => {
-            if (count > maxErrorCount) {
-              maxErrorCategory = category;
-              maxErrorCount = count;
-            }
-          });
-          
-          // Generate suggestion based on error category
-          let suggestion = '';
-          let potentialImprovement = '';
-          
-          switch (maxErrorCategory) {
-            case 'timeout':
-              suggestion = "Consider increasing timeout threshold for external API calls";
-              potentialImprovement = `Could improve success rate by approximately ${Math.round((maxErrorCount / workflowRuns.length) * 100)}%`;
-              break;
-            case 'api_rate_limit':
-              suggestion = "Implement rate limiting for API requests";
-              potentialImprovement = `Could prevent ${maxErrorCount} failures`;
-              break;
-            case 'data_validation':
-              suggestion = "Add data validation steps before processing";
-              potentialImprovement = `Could reduce validation errors by ${maxErrorCount}`;
-              break;
-            case 'authentication':
-              suggestion = "Check and refresh authentication credentials regularly";
-              potentialImprovement = `Could prevent ${maxErrorCount} authentication failures`;
-              break;
-            default:
-              suggestion = "Implement error handling and retry mechanisms";
-              potentialImprovement = `Could improve reliability for this workflow`;
-          }
-          
-          optimizationSuggestions.push({
-            workflowId: wf.id,
-            workflowName: wf.name,
-            suggestion,
-            potentialImprovement
-          });
-        });
-      
-      // Compose and return the health monitoring data
-      const healthData = {
-        summary: {
-          totalWorkflows: workflows.length,
-          activeWorkflows: workflows.filter(wf => wf.isPublished).length,
-          failedWorkflows: failedRuns,
-          successRate: parseFloat(successRate.toFixed(1)),
-          averageExecutionTime: parseFloat(averageExecutionTime.toFixed(1)),
-          totalExecutions: totalRuns,
+  // API endpoint to provide health monitoring data
+  app.get('/api/health-monitoring-data', (req, res) => {
+    // Sample health monitoring data
+    const healthData = {
+      summary: {
+        totalWorkflows: 24,
+        activeWorkflows: 18,
+        failedWorkflows: 3,
+        successRate: 87.5,
+        averageExecutionTime: 1.2, // in seconds
+        totalExecutions: 1457,
+      },
+      workflowPerformance: [
+        { id: 1, name: "Customer Onboarding", executions: 342, successRate: 98.2, avgTime: 0.8 },
+        { id: 2, name: "Lead Qualification", executions: 256, successRate: 95.7, avgTime: 1.1 },
+        { id: 3, name: "Email Campaign", executions: 189, successRate: 74.5, avgTime: 2.3 },
+        { id: 4, name: "Social Media Posting", executions: 147, successRate: 99.3, avgTime: 0.5 },
+        { id: 5, name: "Support Ticket Handling", executions: 523, successRate: 82.1, avgTime: 1.7 }
+      ],
+      errorBreakdown: {
+        apiConnectionIssues: 42,
+        dataValidationFailures: 23,
+        timeouts: 15,
+        authenticationFailures: 7,
+        rateLimitExceeded: 4
+      },
+      healthMetrics: {
+        systemMemory: 68, // percentage used
+        cpuUsage: 41, // percentage
+        apiAvailability: 99.8, // percentage
+        databaseLatency: 24 // ms
+      },
+      executionTimeline: [
+        { date: '2023-04-01', executions: 42, successRate: 88 },
+        { date: '2023-04-02', executions: 51, successRate: 92 },
+        { date: '2023-04-03', executions: 38, successRate: 84 },
+        { date: '2023-04-04', executions: 45, successRate: 91 },
+        { date: '2023-04-05', executions: 62, successRate: 95 },
+        { date: '2023-04-06', executions: 57, successRate: 89 },
+        { date: '2023-04-07', executions: 49, successRate: 86 }
+      ],
+      optimizationSuggestions: [
+        {
+          workflowId: 3,
+          workflowName: "Email Campaign",
+          suggestion: "Consider increasing timeout threshold for external API calls",
+          potentialImprovement: "Could improve success rate by approximately 12%"
         },
-        workflowPerformance,
-        errorBreakdown: errorCategories,
-        healthMetrics: {
-          systemMemory: 68, // These are system metrics that would come from a monitoring service
-          cpuUsage: 41,     // In a real implementation, these would be fetched from a system 
-          apiAvailability: 99.8, // monitoring service or calculated from actual system data
-          databaseLatency: 24
-        },
-        executionTimeline,
-        optimizationSuggestions,
-        filters: {
-          timeRange,
-          status,
-          userId,
-          workflowId
+        {
+          workflowId: 5,
+          workflowName: "Support Ticket Handling",
+          suggestion: "Implement retry mechanism for database operations",
+          potentialImprovement: "Could reduce failures by approximately 8%"
         }
-      };
-      
-      res.json(healthData);
-    } catch (error) {
-      console.error('Error generating health monitoring data:', error);
-      res.status(500).json({ 
-        message: 'Failed to generate health monitoring data',
-        error: error.message 
-      });
-    }
+      ]
+    };
+    
+    res.json(healthData);
   });
 
   const httpServer = createServer(app);

@@ -65,16 +65,6 @@ export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integratio
 // Data type definitions
 export type DataType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'any';
 
-// Schedule options for workflows
-export interface ScheduleOptions {
-  enabled: boolean;
-  frequency: 'once' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'custom';
-  runCount?: number;
-  customCron?: string;
-  nextRun?: string;
-  lastRun?: string;
-}
-
 // Workflow definitions
 export interface Workflow {
   id: string;
@@ -83,7 +73,6 @@ export interface Workflow {
   edges: Edge[];
   createdAt: string;
   updatedAt: string;
-  schedule?: ScheduleOptions;
 }
 
 // Workflow template definitions
