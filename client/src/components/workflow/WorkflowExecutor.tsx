@@ -24,6 +24,8 @@ import { NodeData } from '@/store/useWorkflowStore';
 import { WorkflowState } from '@/components/workflow/StateChangeAnimation';
 import { WorkflowExecution, ExecutionLog } from '@/types/workflow';
 import { v4 as uuidv4 } from 'uuid';
+import { WorkflowLoadingAnimation } from './WorkflowLoadingAnimation';
+import { InlineWorkflowLoading } from './InlineWorkflowLoading';
 
 interface WorkflowExecutorProps {
   nodes: Node<NodeData>[];
@@ -385,6 +387,15 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
                     }>
                       {executionState.charAt(0).toUpperCase() + executionState.slice(1)}
                     </Badge>
+                    
+                    {executionState === 'running' && (
+                      <InlineWorkflowLoading 
+                        size="sm" 
+                        text="Processing" 
+                        variant="processing" 
+                        showIcon={true} 
+                      />
+                    )}
                     
                     {startTime && (
                       <span className="text-xs text-muted-foreground">
