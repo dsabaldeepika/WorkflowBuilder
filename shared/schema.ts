@@ -44,6 +44,16 @@ export enum SubscriptionTier {
   ENTERPRISE = 'enterprise'
 }
 
+// Feature flags table to control functionality across the app
+export const featureFlags = pgTable("feature_flags", {
+  id: serial("id").primaryKey(),
+  featureName: varchar("feature_name", { length: 100 }).notNull().unique(),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Subscription plans table
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: serial("id").primaryKey(),
@@ -448,3 +458,13 @@ export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 // Subscription history type
 export type InsertSubscriptionHistory = z.infer<typeof insertSubscriptionHistorySchema>;
 export type SubscriptionHistory = typeof subscriptionHistory.$inferSelect;
+
+// Feature flag schema and type
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).pick({
+  featureName: true,
+  isEnabled: true,
+  description: true,
+});
+
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+export type FeatureFlag = typeof featureFlags.$inferSelect;
