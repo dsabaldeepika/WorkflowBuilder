@@ -109,9 +109,11 @@ export const ROUTES = {
   templates: '/templates',
   connections: '/connections',
   workflowAnimations: '/workflow-animations',
+  loadingAnimations: '/loading-animations',
   pricing: '/pricing',
   checkout: '/checkout',
   accountBilling: '/account/billing',
+  emailSettings: '/settings/email',
 }
 
 // Path to subscription plans in Stripe dashboard
@@ -124,6 +126,15 @@ export const API_ENDPOINTS = {
     logout: '/api/logout',
     register: '/api/register',
     user: '/api/user',
+  },
+  email: {
+    status: '/api/email/status',
+    config: '/api/email/config',
+    test: '/api/email/test',
+    templates: {
+      welcome: '/api/email/templates/welcome',
+      workflowError: '/api/email/templates/workflow-error',
+    }
   },
   subscriptions: {
     plans: '/api/subscriptions/plans',

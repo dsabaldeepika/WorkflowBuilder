@@ -259,6 +259,9 @@ export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 
+export type InsertWorkflowConnection = z.infer<typeof insertWorkflowConnectionSchema>;
+export type WorkflowConnection = typeof workflowConnections.$inferSelect;
+
 // Workflow templates table
 export const workflowTemplates = pgTable("workflow_templates", {
   id: serial("id").primaryKey(),
@@ -358,6 +361,31 @@ export const workflowNodeExecutions = pgTable("workflow_node_executions", {
   executionOrder: integer("execution_order").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Workflow connections table for storing node connections
+export const workflowConnections = pgTable("workflow_connections", {
+  id: serial("id").primaryKey(),
+  workflowId: integer("workflow_id").references(() => workflows.id, { onDelete: 'cascade' }),
+  sourceNodeId: text("source_node_id").notNull(),
+  targetNodeId: text("target_node_id").notNull(),
+  edgeId: text("edge_id").notNull().unique(),
+  isValid: boolean("is_valid").notNull().default(true),
+  validationMessage: text("validation_message"),
+  data: jsonb("data").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Schema for inserting workflow connections
+export const insertWorkflowConnectionSchema = createInsertSchema(workflowConnections).pick({
+  workflowId: true,
+  sourceNodeId: true,
+  targetNodeId: true,
+  edgeId: true,
+  isValid: true,
+  validationMessage: true,
+  data: true,
 });
 
 // Schemas for inserting data

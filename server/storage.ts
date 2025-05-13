@@ -157,6 +157,8 @@ export interface IStorage {
     errorCategory?: string
   ): Promise<WorkflowRun | undefined>;
   getWorkflowRuns(workflowId: number, limit?: number): Promise<WorkflowRun[]>;
+  getWorkflowRunsByDateRange(workflowId: number, startDate: Date, endDate: Date): Promise<WorkflowRun[]>;
+  getAllWorkflows(): Promise<Workflow[]>;
 
   // Workflow template methods
   getWorkflowTemplate(id: number): Promise<WorkflowTemplate | undefined>;
@@ -794,6 +796,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(workflowRuns.workflowId, workflowId))
       .orderBy(desc(workflowRuns.startTime))
       .limit(limit);
+  }
+  
+  async getWorkflowRunsByDateRange(workflowId: number, startDate: Date, endDate: Date): Promise<WorkflowRun[]> {
+    return db
+      .select()
+      .from(workflowRuns)
+      .where(
+        and(
+          eq(workflowRuns.workflowId, workflowId),
+          sql`${workflowRuns.startTime} >= ${startDate}`,
+          sql`${workflowRuns.startTime} <= ${endDate}`
+        )
+      )
+      .orderBy(desc(workflowRuns.startTime));
+  }
+  
+  async getAllWorkflows(): Promise<Workflow[]> {
+    return db
+      .select()
+      .from(workflows)
+      .orderBy(desc(workflows.updatedAt));
   }
   
   // Workflow template methods

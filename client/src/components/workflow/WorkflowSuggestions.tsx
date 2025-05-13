@@ -1,253 +1,369 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  Lightbulb,
+  FilePlus, 
+  Link as LinkIcon, 
+  Zap,
+  Settings,
+  Save,
+  Play
+} from 'lucide-react';
+import { useWorkflowStore } from '@/store/useWorkflowStore';
+import { NodeType } from '@/types/workflow';
+import type { Node, Edge } from 'reactflow';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { X, Lightbulb, ChevronLeft, ChevronRight, PlusCircle, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Node, Edge } from 'reactflow';
-import { NodeData } from '@/store/useWorkflowStore';
-import { NodeCategory } from '@/types/workflow';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-interface Suggestion {
+export type SuggestionPriority = 'high' | 'medium' | 'low';
+
+export interface Suggestion {
   id: string;
   title: string;
-  description: string;
-  action: string;
-  image?: string;
-  priority: 'low' | 'medium' | 'high';
-  nodeType?: string;
+  text: string;
+  actionLabel: string;
+  priority: SuggestionPriority;
+  action: () => void;
 }
 
 interface WorkflowSuggestionsProps {
-  nodes: Node<NodeData>[];
+  className?: string;
+  nodes: Node[];
   edges: Edge[];
-  onAddNode?: (nodeType: string) => void;
-  onConnect?: (source: string, target: string) => void;
-  onDismiss?: (suggestionId: string) => void;
+  onAddNode: (nodeType: string) => void;
+  onConnect: (sourceId: string, targetId: string) => void;
+  onDismiss: (suggestionId: string) => void;
 }
 
-const WorkflowSuggestions: React.FC<WorkflowSuggestionsProps> = ({ 
-  nodes, 
-  edges, 
-  onAddNode,
-  onConnect,
-  onDismiss 
-}) => {
+export function WorkflowSuggestions({ className, nodes, edges, onAddNode, onConnect, onDismiss }: WorkflowSuggestionsProps) {
+  const { addNode } = useWorkflowStore();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [visible, setVisible] = useState(false);
   
-  // Generate contextual suggestions based on the current workflow state
+  // Helper function to simulate connectNodes method
+  const connectNodes = (connParams: { id: string, source: string, target: string }) => {
+    onConnect(connParams.source, connParams.target);
+  };
+  
+  // Helper function to simulate getSelectedNode method
+  const getSelectedNode = () => {
+    const selectedNodeId = useWorkflowStore.getState().selectedNodeId;
+    if (!selectedNodeId) return null;
+    return nodes.find(node => node.id === selectedNodeId) || null;
+  };
+
+  // Analyze workflow and generate contextual suggestions
   useEffect(() => {
-    // Only show suggestions if we have at least one node
-    if (nodes.length === 0) return;
-    
     const newSuggestions: Suggestion[] = [];
     
-    // Suggestion for workflow with no edges
-    if (nodes.length > 1 && edges.length === 0) {
-      newSuggestions.push({
-        id: 'connect-nodes',
-        title: 'Connect Your Nodes',
-        description: 'Your workflow needs connections between nodes to function. Try connecting nodes to establish the process flow.',
-        action: 'Connect nodes',
-        priority: 'high',
-      });
-    }
-    
-    // Suggestion for ending a workflow without an output action
-    const hasOutput = nodes.some(node => 
-      node.data.nodeType === 'output' || 
-      node.data.type === 'output' || 
-      // Since 'output' is not in NodeCategory, check if it's a messaging or action node
-      // which are common output actions
-      node.data.category === 'messaging' || 
-      (node.data.type && node.data.type.includes('output'))
-    );
-    
-    if (nodes.length > 0 && !hasOutput) {
-      newSuggestions.push({
-        id: 'add-output',
-        title: 'Add an Output Action',
-        description: 'Your workflow doesn\'t have an output action. Consider adding one like "Send Email" or "Update Record".',
-        action: 'Add output',
-        nodeType: 'output',
-        priority: 'medium',
-      });
-    }
-    
-    // Suggestion for adding error handling
-    const hasErrorHandling = edges.some(edge => edge.data?.errorHandler === true);
-    
-    if (nodes.length > 2 && !hasErrorHandling) {
-      newSuggestions.push({
-        id: 'add-error-handling',
-        title: 'Add Error Handling',
-        description: 'This workflow has no error handling paths. Add alternate paths for failures to make your workflow more robust.',
-        action: 'Learn more',
-        priority: 'medium',
-      });
-    }
-    
-    // Suggestion based on specific node types
-    const hasTrigger = nodes.some(node => 
-      node.data.nodeType === 'trigger' || 
-      node.data.type === 'trigger' || 
-      node.data.category === 'trigger'
-    );
-    
-    if (nodes.length > 0 && !hasTrigger) {
+    // Suggestion 1: If there are no nodes, suggest adding a trigger
+    if (nodes.length === 0) {
       newSuggestions.push({
         id: 'add-trigger',
-        title: 'Add a Trigger',
-        description: 'Your workflow needs a starting trigger to initiate the process automatically.',
-        action: 'Add trigger',
-        nodeType: 'trigger',
+        title: 'Start Your Workflow',
+        text: 'Every workflow needs a starting point. Add a trigger node to begin your automation process.',
+        actionLabel: 'Add Trigger',
         priority: 'high',
+        action: () => {
+          onAddNode('trigger');
+        }
       });
     }
     
-    // Suggestion for complex workflows
-    if (nodes.length > 5) {
+    // Suggestion 2: If there's only a trigger node, suggest adding an action
+    if (nodes.length === 1 && nodes.some(node => node.type === 'trigger')) {
       newSuggestions.push({
-        id: 'consider-templates',
-        title: 'Consider Using Templates',
-        description: 'Your workflow is getting complex. Check out our pre-built templates for common patterns.',
-        action: 'View templates',
-        priority: 'low',
+        id: 'add-action',
+        title: 'Add an Action',
+        text: 'Now that you have a trigger, add an action to perform when the trigger activates.',
+        actionLabel: 'Add Action',
+        priority: 'high',
+        action: () => {
+          onAddNode('action');
+        }
       });
     }
     
-    // Set the suggestions and make the component visible if we have any
+    // Suggestion 3: If there are disconnected nodes, suggest connecting them
+    if (nodes.length >= 2) {
+      const connectedNodeIds = new Set<string>();
+      edges.forEach(edge => {
+        connectedNodeIds.add(edge.source);
+        connectedNodeIds.add(edge.target);
+      });
+      
+      const disconnectedNodes = nodes.filter(node => !connectedNodeIds.has(node.id));
+      
+      if (disconnectedNodes.length > 0) {
+        newSuggestions.push({
+          id: 'connect-nodes',
+          title: 'Connect Your Nodes',
+          text: 'Your workflow has disconnected nodes. Connect them to establish the process flow.',
+          actionLabel: 'Connect Nodes',
+          priority: 'medium',
+          action: () => {
+            // Find a trigger node and an action node to connect
+            const triggerNode = nodes.find(node => node.type === 'trigger');
+            const actionNode = nodes.find(node => node.type === 'action' && !edges.some(edge => edge.source === triggerNode?.id && edge.target === node.id));
+            
+            if (triggerNode && actionNode) {
+              onConnect(triggerNode.id, actionNode.id);
+            }
+          }
+        });
+      }
+    }
+    
+    // Suggestion 4: If there are nodes but no trigger, suggest adding one
+    if (nodes.length > 0 && !nodes.some(node => node.type === 'trigger')) {
+      newSuggestions.push({
+        id: 'missing-trigger',
+        title: 'Add a Trigger',
+        text: 'Your workflow is missing a trigger node. Every workflow needs a trigger to start the automation.',
+        actionLabel: 'Add Trigger',
+        priority: 'high',
+        action: () => {
+          onAddNode('trigger');
+        }
+      });
+    }
+    
+    // Suggestion 5: If there's a complex workflow (many nodes), suggest optimizing
+    if (nodes.length >= 5) {
+      newSuggestions.push({
+        id: 'optimize-workflow',
+        title: 'Optimize Your Workflow',
+        text: 'Your workflow is getting complex. Consider organizing nodes and adding comments for clarity.',
+        actionLabel: 'Auto-Arrange',
+        priority: 'low',
+        action: () => {
+          // Auto-arrange nodes in a more organized layout
+          const arrangedNodes = [...nodes].map((node, index) => {
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+            return {
+              ...node,
+              position: {
+                x: 150 + col * 300,
+                y: 150 + row * 200
+              }
+            };
+          });
+          
+          useWorkflowStore.setState({ nodes: arrangedNodes });
+        }
+      });
+    }
+    
+    // Suggestion 6: If workflow has nodes but isn't saved, suggest saving
+    if (nodes.length > 1) {
+      newSuggestions.push({
+        id: 'save-workflow',
+        title: 'Save Your Work',
+        text: 'Your workflow has multiple components. Remember to save it to prevent losing your work.',
+        actionLabel: 'Save Workflow',
+        priority: 'medium',
+        action: () => {
+          // Trigger save workflow action
+          console.log('Save workflow triggered from suggestion');
+          // This would typically open the save dialog or trigger direct save
+        }
+      });
+    }
+    
+    // Suggestion 7: Configure node if a node is selected but not configured
+    const selectedNode = getSelectedNode();
+    if (selectedNode && Object.keys(selectedNode.data.configuration || {}).length === 0) {
+      newSuggestions.push({
+        id: 'configure-node',
+        title: 'Configure Selected Node',
+        text: `Your "${selectedNode.data.label}" node needs configuration before it can work properly.`,
+        actionLabel: 'Configure',
+        priority: 'medium',
+        action: () => {
+          // This would typically open the node configuration panel
+          console.log('Configure node triggered from suggestion');
+        }
+      });
+    }
+    
+    // Suggestion 8: Test workflow if it has a complete flow
+    if (nodes.length >= 2 && edges.length >= 1 && nodes.some(node => node.type === 'trigger')) {
+      const hasValidFlow = edges.some(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        return sourceNode?.type === 'trigger';
+      });
+      
+      if (hasValidFlow) {
+        newSuggestions.push({
+          id: 'test-workflow',
+          title: 'Test Your Workflow',
+          text: 'Your workflow looks ready for testing. Run a test to verify it works as expected.',
+          actionLabel: 'Test Now',
+          priority: 'low',
+          action: () => {
+            // This would trigger the workflow test functionality
+            console.log('Test workflow triggered from suggestion');
+          }
+        });
+      }
+    }
+    
     if (newSuggestions.length > 0) {
       setSuggestions(newSuggestions);
-      setIsVisible(true);
+      setVisible(true);
+      setCurrentIndex(0); // Reset to first suggestion
     } else {
-      setIsVisible(false);
-    }
-  }, [nodes, edges]);
-  
-  const currentSuggestion = suggestions[currentSuggestionIndex];
-  
-  // Handle actions based on suggestion type
-  const handleAction = () => {
-    if (!currentSuggestion) return;
-    
-    if (currentSuggestion.nodeType && onAddNode) {
-      onAddNode(currentSuggestion.nodeType);
-    } else if (currentSuggestion.id === 'connect-nodes' && nodes.length >= 2) {
-      // Suggest connecting the first two nodes as a starting point
-      onConnect && onConnect(nodes[0].id, nodes[1].id);
+      setVisible(false);
     }
     
-    // Always dismiss the suggestion after taking action
-    handleDismiss();
+  }, [nodes, edges, addNode, connectNodes, getSelectedNode]);
+  
+  // Handle suggestion navigation
+  const goToPrevious = () => {
+    setCurrentIndex(prev => Math.max(0, prev - 1));
   };
   
-  const handleDismiss = () => {
-    if (!currentSuggestion) return;
-    onDismiss && onDismiss(currentSuggestion.id);
-    
-    // If we have more suggestions, show the next one, otherwise hide
-    if (currentSuggestionIndex < suggestions.length - 1) {
-      setCurrentSuggestionIndex(currentSuggestionIndex + 1);
-    } else {
-      setIsVisible(false);
+  const goToNext = () => {
+    setCurrentIndex(prev => Math.min(suggestions.length - 1, prev + 1));
+  };
+  
+  // Handle closing the suggestion
+  const closeSuggestion = () => {
+    if (suggestions.length > 0) {
+      const currentSuggestion = suggestions[currentIndex];
+      onDismiss(currentSuggestion.id);
     }
+    setVisible(false);
   };
   
-  const navigateSuggestion = (direction: 'prev' | 'next') => {
-    if (direction === 'prev' && currentSuggestionIndex > 0) {
-      setCurrentSuggestionIndex(currentSuggestionIndex - 1);
-    } else if (direction === 'next' && currentSuggestionIndex < suggestions.length - 1) {
-      setCurrentSuggestionIndex(currentSuggestionIndex + 1);
-    }
-  };
+  // If no suggestions or not visible, don't render
+  if (!visible || suggestions.length === 0) return null;
   
-  // Don't render if there are no suggestions or the component is hidden
-  if (!isVisible || suggestions.length === 0) return null;
-  
-  // Get the appropriate color based on priority
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-yellow-50 border-yellow-200';
-      case 'medium':
-        return 'bg-blue-50 border-blue-200';
-      case 'low':
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
+  const currentSuggestion = suggestions[currentIndex];
   
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.3 }}
-          className="absolute bottom-8 right-8 z-50 max-w-md w-full shadow-lg"
-        >
-          <Card className={`${getPriorityColor(currentSuggestion.priority)} border`}>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center">
-                  <Lightbulb className="h-5 w-5 text-yellow-500 mr-2" />
-                  <span className="font-bold">{currentSuggestion.title}</span>
-                </div>
-                <Button variant="ghost" size="icon" onClick={handleDismiss} className="h-7 w-7">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-4">{currentSuggestion.description}</p>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1">
-                  {suggestions.length > 1 && (
-                    <>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => navigateSuggestion('prev')}
-                        disabled={currentSuggestionIndex === 0}
-                        className="h-7 w-7"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-xs text-gray-500">
-                        {currentSuggestionIndex + 1} / {suggestions.length}
-                      </span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => navigateSuggestion('next')}
-                        disabled={currentSuggestionIndex === suggestions.length - 1}
-                        className="h-7 w-7"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-                
-                <Button 
-                  size="sm" 
-                  onClick={handleAction}
-                  className="flex items-center gap-1"
-                >
-                  {currentSuggestion.nodeType && <PlusCircle className="h-4 w-4" />}
-                  {!currentSuggestion.nodeType && <ArrowRight className="h-4 w-4" />}
-                  {currentSuggestion.action}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+    <div 
+      className={cn(
+        "fixed bottom-6 right-6 w-80 bg-card rounded-lg shadow-lg border overflow-hidden z-50 transition-all duration-300 transform",
+        className,
+        {
+          "translate-y-0 opacity-100": visible,
+          "translate-y-10 opacity-0": !visible,
+          "border-l-4 border-l-amber-500": currentSuggestion.priority === 'high',
+          "border-l-4 border-l-blue-500": currentSuggestion.priority === 'medium',
+          "border-l-4 border-l-slate-400": currentSuggestion.priority === 'low'
+        }
       )}
-    </AnimatePresence>
+    >
+      <div className="flex items-center justify-between p-3 bg-muted/30">
+        <div className="flex items-center space-x-2">
+          <div className={cn(
+            "p-1 rounded-full",
+            {
+              "text-amber-500": currentSuggestion.priority === 'high',
+              "text-blue-500": currentSuggestion.priority === 'medium',
+              "text-slate-500": currentSuggestion.priority === 'low'
+            }
+          )}>
+            <Lightbulb size={18} />
+          </div>
+          <h3 className="font-medium text-sm">{currentSuggestion.title}</h3>
+        </div>
+        <button 
+          onClick={closeSuggestion}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <p className="text-sm text-muted-foreground mb-4">{currentSuggestion.text}</p>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={goToPrevious}
+                    disabled={currentIndex === 0}
+                    className={cn(
+                      "p-1 rounded hover:bg-muted transition-colors",
+                      { "opacity-30 cursor-not-allowed": currentIndex === 0 }
+                    )}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Previous suggestion</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <span className="text-xs text-muted-foreground">
+              {currentIndex + 1} / {suggestions.length}
+            </span>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={goToNext}
+                    disabled={currentIndex === suggestions.length - 1}
+                    className={cn(
+                      "p-1 rounded hover:bg-muted transition-colors",
+                      { "opacity-30 cursor-not-allowed": currentIndex === suggestions.length - 1 }
+                    )}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Next suggestion</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          <Button 
+            size="sm" 
+            onClick={() => currentSuggestion.action()}
+            className="flex items-center space-x-1"
+          >
+            {getSuggestionIcon(currentSuggestion.id)}
+            <span>{currentSuggestion.actionLabel}</span>
+          </Button>
+        </div>
+      </div>
+    </div>
   );
-};
+}
 
-export default WorkflowSuggestions;
+// Helper function to get appropriate icon for suggestion action
+function getSuggestionIcon(suggestionId: string) {
+  switch (suggestionId) {
+    case 'add-trigger':
+    case 'missing-trigger':
+    case 'add-action':
+      return <FilePlus size={14} />;
+    case 'connect-nodes':
+      return <LinkIcon size={14} />;
+    case 'optimize-workflow':
+      return <Zap size={14} />;
+    case 'configure-node':
+      return <Settings size={14} />;
+    case 'save-workflow':
+      return <Save size={14} />;
+    case 'test-workflow':
+      return <Play size={14} />;
+    default:
+      return <Lightbulb size={14} />;
+  }
+}

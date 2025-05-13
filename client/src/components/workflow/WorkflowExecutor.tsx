@@ -8,22 +8,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { motion } from 'framer-motion';
 import { 
   Play, 
   StopCircle, 
   PauseCircle, 
   RotateCcw, 
+  RotateCw,
   SkipForward,
   ClipboardList,
   Hourglass,
   RefreshCcw,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Workflow
 } from 'lucide-react';
 import { NodeData } from '@/store/useWorkflowStore';
 import { WorkflowState } from '@/components/workflow/StateChangeAnimation';
 import { WorkflowExecution, ExecutionLog } from '@/types/workflow';
 import { v4 as uuidv4 } from 'uuid';
+import { InlineWorkflowLoading } from './InlineWorkflowLoading';
 
 interface WorkflowExecutorProps {
   nodes: Node<NodeData>[];
@@ -49,7 +53,11 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   
-  const [scheduledTime, setScheduledTime] = useState('');
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 5); // Default to 5 minutes from now
+    return now.toISOString().slice(0, 16);
+  });
   const [runOnce, setRunOnce] = useState(true);
   const [repeatInterval, setRepeatInterval] = useState('daily');
   
@@ -386,6 +394,15 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
                       {executionState.charAt(0).toUpperCase() + executionState.slice(1)}
                     </Badge>
                     
+                    {executionState === 'running' && (
+                      <InlineWorkflowLoading 
+                        size="sm" 
+                        text="Processing" 
+                        variant="processing" 
+                        showIcon={true} 
+                      />
+                    )}
+                    
                     {startTime && (
                       <span className="text-xs text-muted-foreground">
                         Started: {startTime.toLocaleTimeString()}
@@ -483,16 +500,40 @@ export const WorkflowExecutor: React.FC<WorkflowExecutorProps> = ({
                 ) : (
                   <div className="flex items-center justify-center border rounded-md p-8">
                     <div className="flex flex-col items-center text-center text-muted-foreground">
-                      <ClipboardList className="h-12 w-12 mb-2 opacity-50" />
-                      <p>No execution logs yet</p>
-                      <p className="text-sm">Run the workflow to see execution logs</p>
+                      {executionState === 'running' ? (
+                        <>
+                          <div className="mb-4">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{
+                                duration: 2,
+                                ease: "linear",
+                                repeat: Infinity
+                              }}
+                            >
+                              <Workflow className="h-16 w-16 text-blue-500" />
+                            </motion.div>
+                          </div>
+                          <InlineWorkflowLoading 
+                            size="lg" 
+                            text="Workflow is running" 
+                            variant="default" 
+                          />
+                          <p className="text-sm mt-3">Logs will appear as nodes are executed</p>
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardList className="h-12 w-12 mb-2 opacity-50" />
+                          <p>No execution logs yet</p>
+                          <p className="text-sm">Run the workflow to see execution logs</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
               </>
             )}
           </TabsContent>
-          
           <TabsContent value="scheduling" className="py-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="scheduled-time">Scheduled Time</Label>

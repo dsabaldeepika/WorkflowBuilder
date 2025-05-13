@@ -12,19 +12,11 @@ import { CheckCircle, CheckCircle2, CreditCard, X } from 'lucide-react';
 import { API_ENDPOINTS, ROUTES } from '@/../../shared/config';
 
 // Make sure to call loadStripe outside of a component's render to avoid recreating the Stripe object
-// Try to load Stripe, but handle potential errors
-let stripePromise: Promise<any>;
-try {
-  if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-    console.warn('Missing Stripe public key');
-    stripePromise = Promise.resolve(null);
-  } else {
-    stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-  }
-} catch (error) {
-  console.error('Error loading Stripe:', error);
-  stripePromise = Promise.resolve(null);
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  throw new Error('Missing Stripe public key');
 }
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const CheckoutForm = ({ onSuccess, onCancel }: { onSuccess: () => void, onCancel: () => void }) => {
   const stripe = useStripe();
@@ -262,17 +254,9 @@ export default function CheckoutPage() {
               <CardDescription>Your payment is securely processed by Stripe</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Only show Elements if Stripe is available */}
-              {stripePromise ? (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <CheckoutForm onSuccess={handlePaymentSuccess} onCancel={handleCancel} />
-                </Elements>
-              ) : (
-                <div className="p-6 text-center">
-                  <p className="text-destructive mb-4">Stripe payment system could not be loaded.</p>
-                  <Button onClick={handleCancel}>Return to Pricing</Button>
-                </div>
-              )}
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <CheckoutForm onSuccess={handlePaymentSuccess} onCancel={handleCancel} />
+              </Elements>
             </CardContent>
           </Card>
 

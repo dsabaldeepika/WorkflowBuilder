@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import cors from 'cors';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -11,12 +12,20 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = 3000; // Use a different port to avoid conflicts
 
+// Enable CORS for all routes
+app.use(cors());
+
 // Serve static files
 app.use(express.static(path.join(__dirname)));
 
 // Serve the standalone workflow page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'direct-launch.html'));
+});
+
+// Serve the workflow suggestions demo
+app.get('/suggestions-demo', (req, res) => {
+  res.sendFile(path.join(__dirname, 'suggestions-demo.html'));
 });
 
 // Create a mock API endpoint for workflow templates

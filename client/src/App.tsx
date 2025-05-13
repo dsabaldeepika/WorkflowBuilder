@@ -14,17 +14,39 @@ import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
 import WorkflowMonitoring from "@/pages/workflow-monitoring";
 import HealthDashboardPage from "@/pages/health-dashboard-page";
 import TemplatesPage from "@/pages/templates-page";
+import TemplateSetupPage from "@/pages/template-setup-page";
 import PricingPage from "@/pages/pricing-page";
 import AccountBillingPage from "@/pages/account-billing-page";
-import CheckoutPage from "@/pages/checkout-page";
+import LoadingAnimationsDemo from "@/pages/loading-animations-demo";
+import EmailSettingsPage from "@/pages/email-settings-page";
+// Temporarily disabled to fix Stripe.js loading issue
+// import CheckoutPage from "@/pages/checkout-page";
 import { useAuth } from "@/hooks/useAuth";
+import { motion } from "framer-motion";
+import { Workflow } from "lucide-react";
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated, isLoading, login } = useAuth();
   
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 2,
+              ease: "linear",
+              repeat: Infinity
+            }}
+          >
+            <Workflow className="h-12 w-12 text-blue-500" />
+          </motion.div>
+          <span className="text-lg text-gray-600">Loading your workspace...</span>
+        </div>
+      </div>
+    );
   }
   
   if (!isAuthenticated) {
@@ -56,9 +78,13 @@ function Router() {
       <Route path="/monitoring" component={WorkflowMonitoring} />
       <Route path="/health-dashboard" component={HealthDashboardPage} />
       <Route path={ROUTES.templates} component={TemplatesPage} />
+      <Route path="/template-setup/:id" component={TemplateSetupPage} />
       <Route path={ROUTES.pricing} component={PricingPage} />
-      <Route path={ROUTES.checkout} component={CheckoutPage} />
+      <Route path={ROUTES.loadingAnimations} component={LoadingAnimationsDemo} />
+      {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
+      <Route path={ROUTES.checkout} component={PricingPage} />
       <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
+      <Route path={ROUTES.emailSettings} component={EmailSettingsPage} />
       <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
   );
