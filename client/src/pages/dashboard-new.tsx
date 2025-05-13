@@ -164,8 +164,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">Health Dashboard</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">Monitor workflow performance</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/health-dashboard'}>
-                View Metrics
+              <Button className="w-full" variant="outline" asChild>
+                <PrefetchLink to="/health-dashboard">View Metrics</PrefetchLink>
               </Button>
             </CardContent>
           </Card>
@@ -177,8 +177,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">Performance Tools</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">Optimize workflow execution</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/performance'}>
-                Optimize Now
+              <Button className="w-full" variant="outline" asChild>
+                <PrefetchLink to="/performance">Optimize Now</PrefetchLink>
               </Button>
             </CardContent>
           </Card>
@@ -190,8 +190,8 @@ export default function Dashboard() {
               </div>
               <h3 className="font-medium">State Animations</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4">View workflow transitions</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/workflow-animations'}>
-                View Animations
+              <Button className="w-full" variant="outline" asChild>
+                <PrefetchLink to="/workflow-animations">View Animations</PrefetchLink>
               </Button>
             </CardContent>
           </Card>
@@ -235,9 +235,11 @@ export default function Dashboard() {
               </div>
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => window.location.href = '/health-dashboard'}
+                asChild
               >
-                Explore Health Dashboard
+                <PrefetchLink to="/health-dashboard">
+                  Explore Health Dashboard
+                </PrefetchLink>
               </Button>
             </div>
           </CardContent>
@@ -312,7 +314,9 @@ export default function Dashboard() {
                     <p className="text-muted-foreground mb-4">
                       You haven't created any workflows yet. Start by creating a new workflow or using a template.
                     </p>
-                    <Button onClick={() => window.location.href = '/create'}>Create Workflow</Button>
+                    <Button asChild>
+                      <PrefetchLink to="/workflow-builder">Create Workflow</PrefetchLink>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -327,12 +331,12 @@ export default function Dashboard() {
                 <p className="text-muted-foreground">View recent workflow executions and state changes.</p>
               </div>
               
-              <Link href="/workflow-animations">
-                <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" asChild>
+                <PrefetchLink to="/workflow-animations">
                   <Zap className="h-4 w-4 mr-2" />
                   View All Animations
-                </Button>
-              </Link>
+                </PrefetchLink>
+              </Button>
             </div>
             
             <div className="space-y-4">

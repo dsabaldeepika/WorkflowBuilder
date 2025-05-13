@@ -1,60 +1,53 @@
-import { useCallback } from 'react';
-import { prefetchOnHover } from '@/lib/prefetch';
+import { ReactNode, useCallback, useEffect, memo } from 'react';
+import { Link, LinkProps } from 'wouter';
+import { prefetchOnHover } from '../lib/prefetch';
 
 /**
- * Hook for efficient prefetching of route data on hover
- * 
- * @param route The route to prefetch when hovered
- * @returns Object with onMouseEnter and onMouseLeave handlers
+ * Custom hook that sets up element mouseover/mouseout listeners for route prefetching
+ * @param route The route to prefetch on hover
+ * @returns An object containing refs to attach to elements
  */
 export function usePrefetchOnHover(route: string) {
-  // Create stable reference to cleanup function
-  let cleanupFunction: (() => void) | undefined;
-  
-  // Create memoized handlers
   const handleMouseEnter = useCallback(() => {
-    cleanupFunction = prefetchOnHover(route);
+    return prefetchOnHover(route);
   }, [route]);
-  
-  const handleMouseLeave = useCallback(() => {
-    if (cleanupFunction) {
-      cleanupFunction();
-      cleanupFunction = undefined;
-    }
-  }, []);
-  
-  return {
-    onMouseEnter: handleMouseEnter,
-    onMouseLeave: handleMouseLeave,
-  };
+
+  return { onMouseEnter: handleMouseEnter };
 }
 
 /**
- * Component wrapper to add prefetching behavior to navigation elements
+ * Enhanced Link component that prefetches resources when hovered
+ * Uses our resource prefetching system to load components and data ahead of navigation
  */
-export function PrefetchLink({
-  to,
+export const PrefetchLink = memo(({
   children,
-  className,
-  activeClassName,
-  ...props
-}: {
-  to: string;
-  children: React.ReactNode;
-  className?: string;
-  activeClassName?: string;
-  [key: string]: any;
-}) {
-  const prefetchHandlers = usePrefetchOnHover(to);
+  to,
+  ...rest
+}: LinkProps & { children: ReactNode }) => {
+  // Set up prefetching callback
+  const prefetch = useCallback(() => {
+    const cleanup = prefetchOnHover(to);
+    return cleanup;
+  }, [to]);
+
+  // Clean up any pending prefetch operations on unmount
+  useEffect(() => {
+    return () => {
+      const cleanup = prefetch();
+      if (cleanup) cleanup();
+    };
+  }, [prefetch]);
   
   return (
-    <a
-      href={to}
-      className={className}
-      {...prefetchHandlers}
-      {...props}
+    <Link 
+      {...rest} 
+      to={to} 
+      onMouseEnter={prefetch} 
+      onFocus={prefetch}
     >
       {children}
-    </a>
+    </Link>
   );
-}
+});
+
+PrefetchLink.displayName = 'PrefetchLink';
