@@ -11,6 +11,7 @@ import appIntegrationsRoutes from "./routes/appIntegrations";
 import workflowExecutionRoutes from "./routes/workflowExecution";
 import workflowConnectionsRoutes from "./routes/workflowConnections";
 import emailRoutes from "./routes/emailRoutes";
+import contactRoutes from "./routes/contactRoutes";
 // Temporarily disabled to fix Stripe.js loading issue
 // import { subscriptionsRouter } from "./routes/subscriptions";
 // import { setupAuth, isAuthenticated } from "./replitAuth"; 

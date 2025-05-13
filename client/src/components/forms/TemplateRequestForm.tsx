@@ -34,7 +34,10 @@ export function TemplateRequestForm() {
     try {
       // If email feature is enabled, send the template request data to the server
       if (FEATURE_FLAGS.enableEmail) {
-        await apiRequest('POST', '/api/template-request', data);
+        await apiRequest('/api/template-request', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
       } else {
         // Simulate server delay without actually sending email
         await new Promise(resolve => setTimeout(resolve, 750));
@@ -47,15 +50,14 @@ export function TemplateRequestForm() {
       
       toast({
         title: "Template request submitted",
-        description: "Thank you for your request! We'll review it and get back to you soon.",
-        variant: "default",
+        description: "Thank you for your request! We'll review it and get back to you soon."
       });
     } catch (error) {
       console.error('Error submitting template request:', error);
       toast({
         title: "Failed to submit request",
         description: "An error occurred while submitting your request. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);

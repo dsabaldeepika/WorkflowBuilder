@@ -33,7 +33,10 @@ export function ContactForm() {
     try {
       // If email feature is enabled, send the contact form data to the server
       if (FEATURE_FLAGS.enableEmail) {
-        await apiRequest('POST', '/api/contact', data);
+        await apiRequest('/api/contact', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
       } else {
         // Simulate server delay without actually sending email
         await new Promise(resolve => setTimeout(resolve, 750));
