@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useMemo, memo } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -28,14 +28,6 @@ import { WorkflowNodePicker } from './WorkflowNodePicker';
 import { AgentBuilder } from '../agent/AgentBuilder';
 import { WorkflowSuggestions } from './WorkflowSuggestions';
 import { Clock, Plus, Sparkles } from 'lucide-react';
-
-/**
- * Performance optimization for workflow builder to support scaling to 5000+ users
- * - Uses React.memo for expensive components
- * - Implements useMemo for complex calculations
- * - Uses useCallback for event handlers to prevent recreation
- * - Optimizes rerendering patterns
- */
 
 // Define custom node types outside of component to avoid recreation on each render
 const customNodeTypes = {
@@ -590,3 +582,4 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
     </div>
   );
 }
+
