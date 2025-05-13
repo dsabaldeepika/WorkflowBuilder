@@ -109,12 +109,14 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     if (template) {
       // Prepare workflow name using template name as a base
       setWorkflowName(`${template.name} Workflow`);
-      setWorkflowDescription(template.description);
+      setWorkflowDescription(template.description || '');
       
       // Load the workflow data into the store (for the canvas preview)
       if (template.nodes && template.edges) {
         try {
-          loadWorkflowFromTemplate(template);
+          const parsedNodes = typeof template.nodes === 'string' ? JSON.parse(template.nodes) : template.nodes;
+          const parsedEdges = typeof template.edges === 'string' ? JSON.parse(template.edges) : template.edges;
+          loadWorkflowFromTemplate(parsedNodes, parsedEdges);
         } catch (err) {
           console.error('Error loading workflow template:', err);
         }
@@ -180,11 +182,39 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     
     try {
       // Save the workflow
+      // Prepare nodes with credential values
+      const nodesWithCredentials = nodes.map(node => {
+        if (!node.data?.config) return node;
+        
+        // Replace credential placeholders with actual values
+        const updatedConfig = { ...node.data.config };
+        Object.entries(updatedConfig).forEach(([key, value]) => {
+          if (typeof value === 'string' && value.includes('${')) {
+            // Find and replace all credential placeholders
+            Object.entries(credentials).forEach(([credKey, credValue]) => {
+              const placeholder = `\${${credKey}}`;
+              if (value.includes(placeholder)) {
+                updatedConfig[key] = value.replace(placeholder, credValue);
+              }
+            });
+          }
+        });
+        
+        // Return node with updated config
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            config: updatedConfig
+          }
+        };
+      });
+      
       const savedWorkflow = await saveWorkflow({
         name: workflowName,
         description: workflowDescription,
-        templateId: template.id,
-        credentials
+        nodes: nodesWithCredentials,
+        edges: edges
       });
       
       toast({
