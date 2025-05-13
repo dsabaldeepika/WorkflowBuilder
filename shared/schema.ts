@@ -504,5 +504,20 @@ export const templateRequestFormSchema = z.object({
   integrations: z.string().optional(),
 });
 
+// Demo request form schema for scheduling demos
+export const demoRequestFormSchema = z.object({
+  name: z.string().min(2, { message: "Name is required and must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  companyName: z.string().min(2, { message: "Company name is required" }),
+  jobTitle: z.string().min(2, { message: "Job title is required" }),
+  phoneNumber: z.string().optional(),
+  teamSize: z.string().min(1, { message: "Please select your team size" }),
+  interestedIn: z.array(z.string()).min(1, { message: "Please select at least one area of interest" }),
+  preferredDate: z.string().min(1, { message: "Please select a preferred date" }),
+  preferredTime: z.string().min(1, { message: "Please select a preferred time" }),
+  message: z.string().optional(),
+});
+
 export type TemplateRequestFormInput = z.infer<typeof templateRequestFormSchema>;
 export type TemplateRequestInput = z.infer<typeof templateRequestSchema>;
+export type DemoRequestFormInput = z.infer<typeof demoRequestFormSchema>;
