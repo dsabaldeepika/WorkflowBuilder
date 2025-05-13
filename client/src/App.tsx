@@ -4,21 +4,27 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ROUTES } from "@shared/config";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
-import WorkflowBuilder from "@/pages/workflow-builder";
-import Login from "@/pages/login";
-import Dashboard from "@/pages/dashboard-new";
-import Callback from "@/pages/auth/callback";
-import WorkflowAnimationsDemo from "@/pages/workflow-animations-demo";
-import WorkflowMonitoring from "@/pages/workflow-monitoring";
-import HealthDashboardPage from "@/pages/health-dashboard-page";
-import TemplatesPage from "@/pages/templates-page";
-import PricingPage from "@/pages/pricing-page";
-import AccountBillingPage from "@/pages/account-billing-page";
-import CheckoutPage from "@/pages/checkout-page";
-import FeatureFlagsPage from "@/pages/feature-flags-page";
+import { Suspense, lazy } from "react";
 import { useAuth } from "@/hooks/useAuth";
+
+// Loading fallback component
+import PageLoader from "@/components/ui/page-loader";
+
+// Lazy load all page components to reduce initial bundle size
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Home = lazy(() => import("@/pages/home"));
+const WorkflowBuilder = lazy(() => import("@/pages/workflow-builder"));
+const Login = lazy(() => import("@/pages/login"));
+const Dashboard = lazy(() => import("@/pages/dashboard-new"));
+const Callback = lazy(() => import("@/pages/auth/callback"));
+const WorkflowAnimationsDemo = lazy(() => import("@/pages/workflow-animations-demo"));
+const WorkflowMonitoring = lazy(() => import("@/pages/workflow-monitoring"));
+const HealthDashboardPage = lazy(() => import("@/pages/health-dashboard-page"));
+const TemplatesPage = lazy(() => import("@/pages/templates-page"));
+const PricingPage = lazy(() => import("@/pages/pricing-page"));
+const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
+const CheckoutPage = lazy(() => import("@/pages/checkout-page"));
+const FeatureFlagsPage = lazy(() => import("@/pages/feature-flags-page"));
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
@@ -43,25 +49,41 @@ function Router() {
   
   // Automatic redirect to workflow page
   const HomeRoute = () => {
-    return <Dashboard />;
+    return (
+      <Suspense fallback={<PageLoader message="Loading dashboard..." />}>
+        <Dashboard />
+      </Suspense>
+    );
   };
+  
+  // Wrap each route component with Suspense for lazy loading
+  const LazyRoute = ({ component: Component, ...props }: any) => (
+    <Route
+      {...props}
+      component={(routeProps: any) => (
+        <Suspense fallback={<PageLoader />}>
+          <Component {...routeProps} />
+        </Suspense>
+      )}
+    />
+  );
   
   return (
     <Switch>
       <Route path={ROUTES.home} component={HomeRoute} />
-      <Route path="/login" component={Dashboard} /> {/* Bypass login */}
-      <Route path="/auth/callback" component={Dashboard} /> {/* Bypass callback */}
-      <Route path={ROUTES.dashboard} component={Dashboard} />
-      <Route path={ROUTES.createWorkflow} component={WorkflowBuilder} />
-      <Route path={ROUTES.workflowAnimations} component={WorkflowAnimationsDemo} />
-      <Route path="/monitoring" component={WorkflowMonitoring} />
-      <Route path="/health-dashboard" component={HealthDashboardPage} />
-      <Route path={ROUTES.templates} component={TemplatesPage} />
-      <Route path={ROUTES.pricing} component={PricingPage} />
-      <Route path={ROUTES.checkout} component={CheckoutPage} />
-      <Route path={ROUTES.accountBilling} component={AccountBillingPage} />
-      <Route path={ROUTES.featureFlags} component={FeatureFlagsPage} />
-      <Route component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
+      <LazyRoute path="/login" component={Dashboard} /> {/* Bypass login */}
+      <LazyRoute path="/auth/callback" component={Dashboard} /> {/* Bypass callback */}
+      <LazyRoute path={ROUTES.dashboard} component={Dashboard} />
+      <LazyRoute path={ROUTES.createWorkflow} component={WorkflowBuilder} />
+      <LazyRoute path={ROUTES.workflowAnimations} component={WorkflowAnimationsDemo} />
+      <LazyRoute path="/monitoring" component={WorkflowMonitoring} />
+      <LazyRoute path="/health-dashboard" component={HealthDashboardPage} />
+      <LazyRoute path={ROUTES.templates} component={TemplatesPage} />
+      <LazyRoute path={ROUTES.pricing} component={PricingPage} />
+      <LazyRoute path={ROUTES.checkout} component={CheckoutPage} />
+      <LazyRoute path={ROUTES.accountBilling} component={AccountBillingPage} />
+      <LazyRoute path={ROUTES.featureFlags} component={FeatureFlagsPage} />
+      <LazyRoute component={Dashboard} /> {/* Default to Dashboard instead of NotFound */}
     </Switch>
   );
 }
