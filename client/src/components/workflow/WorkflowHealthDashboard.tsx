@@ -25,6 +25,24 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+// Recharts for visualizations
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line
+} from 'recharts';
 
 // Health dashboard data interface
 interface HealthData {
@@ -389,24 +407,90 @@ const WorkflowHealthDashboard: React.FC = () => {
               <CardDescription>Performance metrics for individual workflow nodes</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {data.nodePerfData.map((node, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="font-medium">{node.name}</div>
-                      <Badge variant={node.errorRate > 5 ? "destructive" : "outline"}>
-                        {node.errorRate}% errors
-                      </Badge>
+              {data.nodePerfData.length > 0 ? (
+                <>
+                  {data.nodePerfData.length > 1 && (
+                    <div className="h-60 mb-8">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={data.nodePerfData.slice()}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                          layout="vertical"
+                        >
+                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                          <XAxis type="number" domain={[0, 'dataMax']} unit="s" />
+                          <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} />
+                          <Tooltip
+                            formatter={(value, name) => {
+                              if (name === 'avgTime') return [`${value}s`, 'Avg. Execution Time'];
+                              if (name === 'errorRate') return [`${value}%`, 'Error Rate'];
+                              return [value, name];
+                            }}
+                          />
+                          <Legend />
+                          <Bar 
+                            dataKey="avgTime" 
+                            name="Execution Time" 
+                            fill="#3b82f6" 
+                            barSize={20}
+                          />
+                          <Bar 
+                            dataKey="errorRate" 
+                            name="Error Rate (%)" 
+                            fill="#ef4444" 
+                            barSize={20}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-500">
-                      <span>Avg. execution: {node.avgTime}s</span>
-                      <span>Health: {node.errorRate < 3 ? "Good" : node.errorRate < 8 ? "Fair" : "Poor"}</span>
-                    </div>
-                    <Progress value={100 - node.errorRate} 
-                      className={node.errorRate < 3 ? "bg-gray-100" : node.errorRate < 8 ? "bg-yellow-100" : "bg-red-100"} />
+                  )}
+
+                  <div className="space-y-6">
+                    {data.nodePerfData.map((node, index) => (
+                      <div key={index} className="space-y-2 p-3 rounded-md hover:bg-gray-50 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <div className="font-medium">{node.name}</div>
+                          <Badge variant={node.errorRate > 5 ? "destructive" : node.errorRate > 0 ? "outline" : "secondary"}>
+                            {node.errorRate > 0 ? `${node.errorRate}% errors` : 'No errors'}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-500">
+                          <span>Avg. execution: {node.avgTime}s</span>
+                          <span>Health: {node.errorRate < 3 ? "Good" : node.errorRate < 8 ? "Fair" : "Poor"}</span>
+                        </div>
+                        <div className="relative pt-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <div>
+                              <span className="text-xs font-semibold inline-block text-blue-600">
+                                Performance
+                              </span>
+                            </div>
+                            <div>
+                              <span className={`text-xs font-semibold inline-block ${
+                                node.errorRate < 3 ? "text-green-600" : node.errorRate < 8 ? "text-yellow-600" : "text-red-600"
+                              }`}>
+                                {100 - node.errorRate}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
+                            <div style={{ width: `${100 - node.errorRate}%` }} 
+                              className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${
+                                node.errorRate < 3 ? "bg-green-500" : node.errorRate < 8 ? "bg-yellow-500" : "bg-red-500"
+                              }`}>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Activity className="h-12 w-12 mb-2 opacity-20" />
+                  <p>No node performance data available</p>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button variant="outline" className="w-full">View Detailed Node Metrics</Button>
@@ -420,32 +504,106 @@ const WorkflowHealthDashboard: React.FC = () => {
               <CardTitle>Performance History</CardTitle>
               <CardDescription>Execution time and error rate trends</CardDescription>
             </CardHeader>
-            <CardContent className="h-80">
-              <div className="text-center text-gray-500 italic">
-                Interactive charts would be displayed here showing:
-                <ul className="list-disc list-inside text-left mt-4">
-                  <li>Execution time trends over the selected time period</li>
-                  <li>Error rate changes over time</li>
-                  <li>Success/failure ratio changes</li>
-                </ul>
-                <div className="mt-4 flex justify-center gap-4">
-                  <Button variant="outline" size="sm">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Bar Chart
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Line Chart
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <PieChart className="h-4 w-4 mr-2" />
-                    Pie Chart
-                  </Button>
+            <CardContent className="h-96">
+              {data.performanceHistory.length > 0 ? (
+                <div className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={data.performanceHistory.slice().reverse()}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorExecTime" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                        </linearGradient>
+                        <linearGradient id="colorErrorRate" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }} 
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        yAxisId="left" 
+                        orientation="left" 
+                        tick={{ fontSize: 12 }} 
+                        tickLine={false}
+                        tickFormatter={(value) => `${value}s`}
+                        label={{ value: 'Execution Time (s)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                      />
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right" 
+                        tick={{ fontSize: 12 }} 
+                        tickLine={false}
+                        tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+                        label={{ value: 'Error Rate (%)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } }}
+                      />
+                      <Tooltip
+                        formatter={(value, name) => {
+                          if (name === 'executionTime') return [`${value}s`, 'Execution Time'];
+                          if (name === 'errorRate') return [`${(Number(value) * 100).toFixed(1)}%`, 'Error Rate'];
+                          return [value, name];
+                        }}
+                        labelFormatter={(label) => `Date: ${label}`}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="executionTime"
+                        stroke="#3b82f6"
+                        fillOpacity={1}
+                        fill="url(#colorExecTime)"
+                        yAxisId="left"
+                        name="executionTime"
+                        activeDot={{ r: 6 }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="errorRate"
+                        stroke="#ef4444"
+                        fillOpacity={1}
+                        fill="url(#colorErrorRate)"
+                        yAxisId="right"
+                        name="errorRate"
+                        activeDot={{ r: 6 }}
+                      />
+                      <Legend 
+                        formatter={(value) => {
+                          if (value === 'executionTime') return 'Execution Time';
+                          if (value === 'errorRate') return 'Error Rate';
+                          return value;
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <TrendingUp className="h-16 w-16 mb-4 opacity-20" />
+                  <p className="text-lg">No historical data available</p>
+                  <p className="text-sm">Performance data will appear here once workflows have been executed</p>
+                </div>
+              )}
             </CardContent>
-            <CardFooter className="text-xs text-gray-500">
-              Last updated: {data.lastUpdate}
+            <CardFooter className="flex flex-col sm:flex-row gap-2 justify-between">
+              <div className="text-xs text-gray-500">
+                Last updated: {data.lastUpdate}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Bar Chart
+                </Button>
+                <Button variant="default" size="sm">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Area Chart
+                </Button>
+              </div>
             </CardFooter>
           </Card>
         </TabsContent>
