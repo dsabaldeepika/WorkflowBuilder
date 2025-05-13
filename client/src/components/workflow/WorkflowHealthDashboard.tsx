@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { 
   Activity, AlertCircle, CheckCircle, Clock, FilterX, Search,
   RefreshCw, Zap, BarChart3, PieChart, TrendingUp, Users, Workflow 
 } from 'lucide-react';
+import { InlineWorkflowLoading } from '@/components/workflow/InlineWorkflowLoading';
 import { apiRequest } from "@/lib/queryClient";
 import {
   Card,
@@ -180,14 +182,24 @@ const WorkflowHealthDashboard: React.FC = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Workflow Health Dashboard</h1>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          {isRefreshing ? (
+            <div className="w-32">
+              <InlineWorkflowLoading
+                text="Refreshing"
+                size="sm"
+                variant="processing"
+                className="bg-accent border border-muted"
+              />
+            </div>
+          ) : (
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          )}
         </div>
       </div>
       
