@@ -45,7 +45,7 @@ import defaultTemplatePreview from "@/assets/templates/workflow-template-placeho
 import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
 import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
 import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets-updated.svg";
-import pumpfluxWorkflowPreview from "@/assets/templates/pumpflux-workflow.svg";
+import anthropicToSheetsPreview from "@/assets/templates/anthropic-to-sheets.svg";
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -157,22 +157,40 @@ export function TemplateSearch() {
 
   // Get appropriate preview image based on template name and ID
   const getTemplatePreviewImage = (template: WorkflowTemplate) => {
-    // Special case matching for template ID 13 (Pipedrive to Google Sheets)
+    if (!template.name) {
+      return defaultTemplatePreview;
+    }
+    
+    const templateName = template.name.toLowerCase();
+    
+    // Pipedrive to Google Sheets template
     if (template.id === 13 || 
-        (template.name && 
-         template.name.toLowerCase().includes('pipedrive') && 
-         template.name.toLowerCase().includes('google') && 
-         template.name.toLowerCase().includes('sheet'))
+        (templateName.includes('pipedrive') && 
+         templateName.includes('google') && 
+         templateName.includes('sheet'))
     ) {
       return pipedriveToGoogleSheetsPreview;
     }
     
-    // Match by keywords in template name
-    const templateName = template.name.toLowerCase();
+    // Anthropic/Claude/AI to Google Sheets template
+    if ((templateName.includes('anthropic') || templateName.includes('claude') || 
+         (templateName.includes('ai') && templateName.includes('scraping'))) && 
+        templateName.includes('sheet')
+    ) {
+      return anthropicToSheetsPreview;
+    }
     
-    if (templateName.includes('facebook') && (templateName.includes('hubspot') || templateName.includes('lead'))) {
+    // Facebook to Hubspot template
+    if ((templateName.includes('facebook') || templateName.includes('fb')) && 
+        (templateName.includes('hubspot') || templateName.includes('lead'))
+    ) {
       return facebookToHubspotPreview;
-    } else if (templateName.includes('customer') && templateName.includes('follow')) {
+    }
+    
+    // Customer follow-up template
+    if (templateName.includes('customer') && 
+        (templateName.includes('follow') || templateName.includes('email'))
+    ) {
       return customerFollowUpPreview;
     }
     
