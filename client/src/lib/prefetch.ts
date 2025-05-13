@@ -54,10 +54,6 @@ export const preloadRoutes = async (routes: string[]) => {
       component: () => import('../pages/pricing-page'),
       data: ['/api/subscription/plans']
     },
-    '/performance': {
-      component: () => import('../pages/performance-optimization-page'),
-      data: []
-    },
   };
 
   try {
@@ -90,9 +86,8 @@ export const preloadRoutes = async (routes: string[]) => {
  */
 export const prefetchOnHover = (route: string) => {
   // Don't prefetch if the device might be on a limited data plan
-  // Skip prefetching on slow connections to save data
   if (navigator.connection && 
-      ['slow-2g', '2g'].includes(navigator.connection.effectiveType)) {
+      ['slow-2g', '2g', 'slow-3g'].includes(navigator.connection.effectiveType)) {
     return;
   }
   
