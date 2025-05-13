@@ -382,20 +382,77 @@ const WorkflowHealthDashboard: React.FC = () => {
               <CardDescription>Common issues affecting workflow reliability</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {data.mostFrequentErrors.map((error, index) => (
-                  <div key={index} className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                    <div>
-                      <div className="font-medium">{error.message}</div>
-                      <div className="text-sm text-gray-500">Occurred {error.count} times</div>
+              {data.mostFrequentErrors.length > 0 ? (
+                <>
+                  {data.mostFrequentErrors.length > 1 && (
+                    <div className="h-64 mb-6">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={data.mostFrequentErrors}
+                            dataKey="count"
+                            nameKey="message"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
+                            label={(entry: any) => `${entry.name?.substring(0, 15)}... (${(entry.percent * 100).toFixed(0)}%)`}
+                            labelLine={false}
+                          >
+                            {data.mostFrequentErrors.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={[
+                                  "#ef4444", "#f97316", "#f59e0b", "#84cc16", 
+                                  "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6"
+                                ][index % 8]} 
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value) => [`${value} occurrences`, 'Count']} 
+                            labelFormatter={(label) => `Error: ${label}`}
+                          />
+                          <Legend layout="vertical" verticalAlign="bottom" align="center" />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
                     </div>
+                  )}
+                  
+                  <div className="space-y-4 max-h-64 overflow-auto p-1">
+                    {data.mostFrequentErrors.map((error, index) => (
+                      <div key={index} className="flex items-start p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+                        <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 shrink-0" />
+                        <div className="w-full">
+                          <div className="font-medium text-red-900">{error.message}</div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="text-sm text-gray-500">Occurred {error.count} times</div>
+                            <Badge variant="destructive" className="ml-2">
+                              {data.failed > 0 ? `${Math.round((error.count / data.failed) * 100)}%` : '0%'} of errors
+                            </Badge>
+                          </div>
+                          <Progress 
+                            className="mt-2 h-1.5" 
+                            value={data.failed > 0 ? Math.min(100, (error.count / data.failed) * 100) : 0}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                  <CheckCircle className="h-16 w-16 mb-4 text-green-500 opacity-80" />
+                  <p className="text-lg">No errors detected</p>
+                  <p className="text-sm mt-1">All workflows are running smoothly</p>
+                </div>
+              )}
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">View Full Error Log</Button>
+            <CardFooter className="flex justify-between">
+              <div className="text-xs text-gray-500">
+                {data.failed > 0 ? `Showing ${data.mostFrequentErrors.length} most frequent errors out of ${data.failed} total failures` : 'No errors to display'}
+              </div>
+              <Button variant="outline">View Full Error Log</Button>
             </CardFooter>
           </Card>
         </TabsContent>
