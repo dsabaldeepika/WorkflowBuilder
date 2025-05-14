@@ -1,6 +1,6 @@
 import { eq, and, desc, or, sql } from "drizzle-orm";
 import { db } from "./db";
-import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
+import { SubscriptionTier as ConfigSubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
 import { 
   users, 
   workflows, 
@@ -826,8 +826,8 @@ export class DatabaseStorage implements IStorage {
         
         if (user) {
           // Get user's subscription information to check execution limits
-          const subscriptionTier = user.subscriptionTier || SubscriptionTier.FREE;
-          const executionLimit = SUBSCRIPTION_LIMITS[subscriptionTier as SubscriptionTier].maxExecutionsPerMonth;
+          const subscriptionTier = user.subscriptionTier || ConfigSubscriptionTier.FREE;
+          const executionLimit = SUBSCRIPTION_LIMITS[subscriptionTier as ConfigSubscriptionTier].maxExecutionsPerMonth;
           const used = currentRunCount + 1;
           const percentUsed = Math.round((used / executionLimit) * 100);
           
