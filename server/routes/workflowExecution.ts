@@ -66,6 +66,20 @@ router.post('/runs/:runId/complete', async (req, res) => {
       return res.status(404).json({ message: 'Workflow run not found' });
     }
     
+    // Only increment the workflow run count for successful executions
+    // This ensures only successful runs count towards usage limits
+    if (status === 'completed') {
+      try {
+        await storage.incrementWorkflowRunCount(run.workflowId);
+        console.log(`Workflow ${run.workflowId} run count incremented - execution completed successfully`);
+      } catch (countError) {
+        console.error('Error incrementing workflow run count:', countError);
+        // Don't fail the request if incrementing count fails
+      }
+    } else {
+      console.log(`Workflow ${run.workflowId} run count not incremented - execution status: ${status}`);
+    }
+    
     // Handle email notifications if a workflow has completed or failed
     try {
       // Get additional data needed for email notification
