@@ -252,7 +252,6 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
         {
           onSettled: () => {
             clearInterval(interval);
-            setProgress(100);
           }
         }
       );
@@ -291,6 +290,7 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
                               ...optimizedNodes[nodeIndex].data,
                               optimized: true,
                               label: `${optimizedNodes[nodeIndex].data.label || nodeId} (Optimized)`,
+                              // @ts-ignore - Adding custom properties to node data
                               timeoutConfig: {
                                 enabled: true,
                                 duration: 30000, // 30 seconds
@@ -314,6 +314,7 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
                               ...optimizedNodes[nodeIndex].data,
                               optimized: true,
                               label: `${optimizedNodes[nodeIndex].data.label || nodeId} (Optimized)`,
+                              // @ts-ignore - Adding custom properties to node data
                               executionStrategy: 'parallel'
                             }
                           };
@@ -332,6 +333,7 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
                               ...optimizedNodes[nodeIndex].data,
                               optimized: true,
                               label: `${optimizedNodes[nodeIndex].data.label || nodeId} (Optimized)`,
+                              // @ts-ignore - Adding custom properties to node data
                               combinedTransformation: true
                             }
                           };
@@ -348,6 +350,7 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
                             ...node.data,
                             optimized: true,
                             label: `${node.data.label || node.id} (Optimized)`,
+                            // @ts-ignore - Adding custom properties to node data
                             errorHandling: {
                               enabled: true,
                               retryOnError: true,
@@ -435,14 +438,14 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
     
     const redundancies: PerformanceIssue[] = [];
     const possibleTypes = [
-      'Duplicate API Call',
-      'Repeated Calculation',
+      'Duplicate API Calls',
       'Redundant Data Transformation',
-      'Unnecessary Validation'
+      'Repeated Calculations',
+      'Unnecessary Data Mapping'
     ];
     
-    // Choose 0-2 random nodes to have redundancies
-    const nodeCount = Math.min(nodes.length, Math.floor(Math.random() * 3));
+    // Choose 1-2 random nodes to have redundancies
+    const nodeCount = Math.min(nodes.length, Math.floor(Math.random() * 2) + 1);
     const nodeIndices = getRandomIndices(nodes.length, nodeCount);
     
     nodeIndices.forEach(idx => {
@@ -453,8 +456,8 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
         id: `redundancy-${node.id}`,
         nodeId: node.id,
         type: possibleTypes[typeIndex],
-        severity: ['low', 'medium'][Math.floor(Math.random() * 2)] as 'low' | 'medium',
-        message: `Redundant operation detected in ${node.data.label || 'node'}`,
+        severity: 'medium',
+        message: `${possibleTypes[typeIndex]} detected in ${node.data.label || 'node'}`,
         suggestion: getSuggestionForIssue(possibleTypes[typeIndex])
       });
     });
@@ -462,43 +465,32 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
     return redundancies;
   };
   
-  // Generate random API call issues for demo
+  // Generate random API issues for demo
   const generateApiIssues = (): PerformanceIssue[] => {
     if (nodes.length === 0) return [];
     
     const apiIssues: PerformanceIssue[] = [];
     const possibleTypes = [
+      'Slow API Response',
+      'No Request Timeout',
       'Sequential API Calls',
-      'Missing Pagination',
-      'No Response Caching',
-      'Large Payload',
-      'Missing Rate Limiting'
+      'No Error Handling'
     ];
     
-    // Find nodes that might be API-related
-    const apiNodeCandidates = nodes.filter(node => 
-      node.data.nodeType === 'action' || 
-      node.data.nodeType === 'integration' ||
-      node.data.type === 'action' ||
-      node.data.type === 'integration'
-    );
-    
-    if (apiNodeCandidates.length === 0) return [];
-    
-    // Choose up to 2 API nodes to have issues
-    const nodeCount = Math.min(apiNodeCandidates.length, Math.floor(Math.random() * 2) + 1);
-    const nodeIndices = getRandomIndices(apiNodeCandidates.length, nodeCount);
+    // Choose 1-3 random nodes to have API issues
+    const nodeCount = Math.min(nodes.length, Math.floor(Math.random() * 3) + 1);
+    const nodeIndices = getRandomIndices(nodes.length, nodeCount);
     
     nodeIndices.forEach(idx => {
-      const node = apiNodeCandidates[idx];
+      const node = nodes[idx];
       const typeIndex = Math.floor(Math.random() * possibleTypes.length);
       
       apiIssues.push({
         id: `api-${node.id}`,
         nodeId: node.id,
         type: possibleTypes[typeIndex],
-        severity: ['medium', 'high'][Math.floor(Math.random() * 2)] as 'medium' | 'high',
-        message: `API call optimization opportunity in ${node.data.label || 'node'}`,
+        severity: 'medium',
+        message: `${possibleTypes[typeIndex]} issue detected in ${node.data.label || 'node'}`,
         suggestion: getSuggestionForIssue(possibleTypes[typeIndex])
       });
     });
@@ -506,265 +498,273 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
     return apiIssues;
   };
   
-  // Helper to get random indices without repeats
+  // Get suggestion based on issue type
+  const getSuggestionForIssue = (issueType: string): string => {
+    const suggestions: Record<string, string> = {
+      'Nested Loop': 'Optimize loop structure to reduce computational complexity',
+      'Unoptimized Data Processing': 'Combine multiple transformation steps into a single operation',
+      'Long-running Computation': 'Implement caching or consider using a worker thread',
+      'Resource Contention': 'Reduce concurrent resource access or implement resource pooling',
+      'Duplicate API Calls': 'Cache API responses to avoid redundant calls',
+      'Redundant Data Transformation': 'Consolidate transformation steps to reduce overhead',
+      'Repeated Calculations': 'Store calculation results to avoid repeating the same computation',
+      'Unnecessary Data Mapping': 'Simplify data mapping by processing only required fields',
+      'Slow API Response': 'Implement timeouts and retry logic',
+      'No Request Timeout': 'Add an appropriate timeout to prevent workflow blocking',
+      'Sequential API Calls': 'Parallelize independent API calls to reduce overall execution time',
+      'No Error Handling': 'Add comprehensive error handling with fallback options'
+    };
+    
+    return suggestions[issueType] || 'Optimize implementation to improve performance';
+  };
+  
+  // Generate random indices for selecting nodes
   const getRandomIndices = (max: number, count: number): number[] => {
     const indices: number[] = [];
-    const available = Array.from({ length: max }, (_, i) => i);
-    
-    for (let i = 0; i < count && available.length > 0; i++) {
-      const randomIndex = Math.floor(Math.random() * available.length);
-      indices.push(available[randomIndex]);
-      available.splice(randomIndex, 1);
+    while (indices.length < count) {
+      const index = Math.floor(Math.random() * max);
+      if (!indices.includes(index)) {
+        indices.push(index);
+      }
     }
-    
     return indices;
   };
   
-  // Get suggestion based on issue type
-  const getSuggestionForIssue = (type: string): string => {
-    const suggestions: Record<string, string> = {
-      // Bottlenecks
-      'Nested Loop': 'Refactor nested loops using map/reduce operations or database joins',
-      'Unoptimized Data Processing': 'Use batch processing or streaming to handle large datasets',
-      'Long-running Computation': 'Consider breaking computation into smaller steps or using a queue',
-      'Resource Contention': 'Implement proper locking or use a resource pool to manage connections',
-      
-      // Redundancies
-      'Duplicate API Call': 'Cache API responses to avoid repeated calls for the same data',
-      'Repeated Calculation': 'Cache calculation results or move calculation earlier in the workflow',
-      'Redundant Data Transformation': 'Combine multiple transformations into a single step',
-      'Unnecessary Validation': 'Remove duplicate validation or move validation earlier in the process',
-      
-      // API Issues
-      'Sequential API Calls': 'Use Promise.all or parallel execution to run API calls concurrently',
-      'Missing Pagination': 'Implement pagination to process large datasets in smaller batches',
-      'No Response Caching': 'Add caching for frequently accessed data to reduce API calls',
-      'Large Payload': 'Request only needed fields or use compression for large data transfers',
-      'Missing Rate Limiting': 'Implement rate limiting to avoid API throttling or quota issues'
-    };
-    
-    return suggestions[type] || 'Review and optimize this operation for better performance';
-  };
-  
-  // Get severity badge color
-  const getSeverityColor = (severity: string): string => {
-    switch (severity) {
-      case 'critical':
-        return 'destructive';
+  // Format impact level with appropriate color
+  const getImpactBadge = (impactLevel: string) => {
+    switch (impactLevel.toLowerCase()) {
       case 'high':
-        return 'destructive';
+        return <Badge variant="destructive">High Impact</Badge>;
       case 'medium':
-        return 'default';
+        return <Badge variant="secondary">Medium Impact</Badge>;
       case 'low':
-        return 'secondary';
+        return <Badge variant="outline">Low Impact</Badge>;
       default:
-        return 'outline';
+        return <Badge>{impactLevel}</Badge>;
     }
   };
-  
-  // Render performance issues
-  const renderPerformanceIssues = (issues: PerformanceIssue[], title: string, icon: React.ReactNode) => {
-    if (issues.length === 0) return null;
-    
-    return (
-      <AccordionItem value={title.toLowerCase()}>
-        <AccordionTrigger className="py-2">
-          <div className="flex items-center">
-            {icon}
-            <span className="ml-2">{title}</span>
-            <Badge variant="outline" className="ml-2">{issues.length}</Badge>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent>
-          <div className="space-y-3">
-            {issues.map(issue => {
-              const node = nodes.find(n => n.id === issue.nodeId);
-              
-              return (
-                <div key={issue.id} className="border rounded-md p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium">{node?.data.label || issue.nodeId}</div>
-                    <Badge variant={getSeverityColor(issue.severity) as any}>
-                      {issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1)}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">{issue.type}</div>
-                  <div className="text-sm mb-2">{issue.message}</div>
-                  <div className="text-sm bg-secondary/30 p-2 rounded">
-                    <span className="font-medium">Suggestion:</span> {issue.suggestion}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    );
-  };
-  
+
   return (
-    <Card className={className}>
+    <Card className={className || 'w-full max-w-3xl mx-auto mb-8'}>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Zap className="mr-2 h-5 w-5 text-primary" />
-          Performance Optimizer
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          One-Click Performance Optimizer
         </CardTitle>
         <CardDescription>
-          Analyze and optimize your workflow for better performance
+          Analyze and apply automatic optimizations to improve workflow performance
         </CardDescription>
       </CardHeader>
-      
-      <CardContent className="space-y-6">
-        {nodes.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No workflow to optimize.</p>
-            <p className="text-sm">Create a workflow first before optimizing.</p>
+      <CardContent>
+        {!isAnalyzing && !performanceReport && optimizationSuggestions.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-4">
+              Click the button below to analyze your workflow for performance issues and optimization opportunities.
+            </p>
+            <Button onClick={analyzeWorkflow} className="mx-auto">
+              <BarChart className="mr-2 h-4 w-4" />
+              Analyze Workflow
+            </Button>
           </div>
-        ) : (
-          <>
-            {!performanceReport ? (
-              <Button 
-                onClick={analyzeWorkflow}
-                disabled={isAnalyzing || nodes.length === 0}
-                className="w-full"
-              >
-                {isAnalyzing ? 'Analyzing...' : 'Analyze Workflow'}
-              </Button>
-            ) : (
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={analyzeWorkflow}
-                  variant="outline"
-                  disabled={isAnalyzing || isOptimizing}
-                  className="flex-1"
-                >
-                  Re-Analyze
-                </Button>
-                <Button 
-                  onClick={optimizeWorkflow}
-                  disabled={isOptimizing || optimized}
-                  className="flex-1"
-                >
-                  {isOptimizing ? 'Optimizing...' : optimized ? 'Optimized!' : 'Apply Optimizations'}
-                </Button>
-              </div>
-            )}
-            
-            {(isAnalyzing || isOptimizing) && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>
-                    {isAnalyzing ? 'Analyzing workflow...' : 'Applying optimizations...'}
-                  </span>
-                  <span>{Math.round(progress)}%</span>
+        )}
+        
+        {(isAnalyzing || isOptimizing) && (
+          <div className="py-4">
+            <p className="text-center mb-3 font-medium">
+              {isAnalyzing ? 'Analyzing workflow performance...' : 'Applying optimizations...'}
+            </p>
+            <Progress value={progress} className="h-2 mb-2" />
+            <p className="text-xs text-center text-muted-foreground">
+              {Math.round(progress)}% complete
+            </p>
+          </div>
+        )}
+        
+        {performanceReport && !isAnalyzing && !isOptimizing && !optimized && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between">
+              <div className="bg-muted rounded-md p-3 flex-1">
+                <p className="text-sm font-medium mb-1">Execution Time</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">{performanceReport.executionTime}ms</span>
+                  <Hourglass className="h-5 w-5 text-amber-500" />
                 </div>
-                <Progress value={progress} className="w-full" />
               </div>
-            )}
+              <div className="bg-muted rounded-md p-3 flex-1">
+                <p className="text-sm font-medium mb-1">Memory Usage</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">{performanceReport.memoryUsage}MB</span>
+                  <Database className="h-5 w-5 text-blue-500" />
+                </div>
+              </div>
+            </div>
             
-            {performanceReport && !isAnalyzing && !isOptimizing && (
+            {/* Performance Issues Accordion */}
+            <Accordion type="single" collapsible className="w-full">
+              {performanceReport.bottlenecks.length > 0 && (
+                <AccordionItem value="bottlenecks">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="destructive" className="rounded-sm">
+                        {performanceReport.bottlenecks.length}
+                      </Badge>
+                      <span>Performance Bottlenecks</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="space-y-2">
+                      {performanceReport.bottlenecks.map((bottleneck, index) => (
+                        <li key={`bottleneck-${index}`} className="bg-muted/50 p-2 rounded-sm">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-sm">{bottleneck.message}</p>
+                              <p className="text-xs text-muted-foreground">Node: {bottleneck.nodeId}</p>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              
+              {performanceReport.redundancies.length > 0 && (
+                <AccordionItem value="redundancies">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="rounded-sm">
+                        {performanceReport.redundancies.length}
+                      </Badge>
+                      <span>Data Processing Redundancies</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="space-y-2">
+                      {performanceReport.redundancies.map((redundancy, index) => (
+                        <li key={`redundancy-${index}`} className="bg-muted/50 p-2 rounded-sm">
+                          <div className="flex items-start gap-2">
+                            <FileWarning className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-sm">{redundancy.message}</p>
+                              <p className="text-xs text-muted-foreground">Node: {redundancy.nodeId}</p>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              
+              {performanceReport.apiCalls.length > 0 && (
+                <AccordionItem value="apiCalls">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="rounded-sm">
+                        {performanceReport.apiCalls.length}
+                      </Badge>
+                      <span>API Performance Issues</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="space-y-2">
+                      {performanceReport.apiCalls.map((apiIssue, index) => (
+                        <li key={`api-${index}`} className="bg-muted/50 p-2 rounded-sm">
+                          <div className="flex items-start gap-2">
+                            <FileWarning className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-sm">{apiIssue.message}</p>
+                              <p className="text-xs text-muted-foreground">Node: {apiIssue.nodeId}</p>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
+            
+            {/* Optimization Suggestions */}
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">Recommended Optimizations</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="border rounded-md p-3 flex flex-col items-center justify-center text-center">
-                    <Hourglass className="h-5 w-5 mb-1 text-amber-500" />
-                    <div className="text-sm text-muted-foreground">Execution Time</div>
-                    <div className="font-medium">{performanceReport.executionTime} ms</div>
-                  </div>
-                  
-                  <div className="border rounded-md p-3 flex flex-col items-center justify-center text-center">
-                    <Database className="h-5 w-5 mb-1 text-blue-500" />
-                    <div className="text-sm text-muted-foreground">Memory Usage</div>
-                    <div className="font-medium">{performanceReport.memoryUsage} MB</div>
-                  </div>
-                </div>
-                
-                <div className="border rounded-md p-4">
-                  <div className="font-medium mb-2 flex items-center">
-                    <BarChart className="h-4 w-4 mr-1" />
-                    <span>Performance Analysis</span>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" />
-                        <span>Bottlenecks</span>
+                {optimizationSuggestions.map((suggestion) => (
+                  <div key={suggestion.id} className="border rounded-md p-4">
+                    <div className="flex items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{suggestion.title}</h4>
+                          {getImpactBadge(suggestion.impactLevel)}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Applies to {suggestion.nodeIds.length} {suggestion.nodeIds.length === 1 ? 'node' : 'nodes'}
+                        </p>
                       </div>
-                      <Badge variant="outline">{performanceReport.bottlenecks.length}</Badge>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <FileWarning className="h-4 w-4 text-blue-500 mr-1" />
-                        <span>Redundancies</span>
+                      <div className="pl-4">
+                        <Checkbox 
+                          id={`opt-${suggestion.id}`}
+                          checked={suggestion.selected}
+                          onCheckedChange={() => toggleOptimizationSelection(suggestion.id)}
+                        />
                       </div>
-                      <Badge variant="outline">{performanceReport.redundancies.length}</Badge>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Database className="h-4 w-4 text-emerald-500 mr-1" />
-                        <span>API Optimizations</span>
-                      </div>
-                      <Badge variant="outline">{performanceReport.apiCalls.length}</Badge>
                     </div>
                   </div>
-                </div>
-                
-                <Accordion type="multiple" defaultValue={['bottlenecks']} className="w-full">
-                  {renderPerformanceIssues(
-                    performanceReport.bottlenecks,
-                    'Bottlenecks',
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  )}
-                  
-                  {renderPerformanceIssues(
-                    performanceReport.redundancies,
-                    'Redundancies',
-                    <FileWarning className="h-4 w-4 text-blue-500" />
-                  )}
-                  
-                  {renderPerformanceIssues(
-                    performanceReport.apiCalls,
-                    'API Optimizations',
-                    <Database className="h-4 w-4 text-emerald-500" />
-                  )}
-                  
-                  <AccordionItem value="suggestions">
-                    <AccordionTrigger className="py-2">
-                      <div className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-emerald-500" />
-                        <span className="ml-2">Recommendations</span>
+                ))}
+              </div>
+            </div>
+            
+            <div className="pt-6 text-center">
+              <Button 
+                onClick={optimizeWorkflow}
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                Apply Optimizations
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                One-click performance improvement with intelligent optimization
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {optimized && !isOptimizing && (
+          <div className="py-4 text-center">
+            <CheckCircle className="h-16 w-16 text-primary mx-auto mb-2" />
+            <h3 className="text-xl font-semibold mb-1">Workflow Optimized</h3>
+            <p className="text-muted-foreground mb-4">
+              Your workflow has been successfully optimized for improved performance.
+            </p>
+            
+            {appliedOptimizations.length > 0 && (
+              <div className="mb-6 mt-4">
+                <h4 className="font-medium mb-3 text-left">Applied Optimizations:</h4>
+                <ul className="space-y-2 text-left">
+                  {appliedOptimizations.map((optimization) => (
+                    <li key={optimization.id} className="bg-muted/50 p-3 rounded-md flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                      <div>
+                        <p className="font-medium">{optimization.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Applied to {optimization.appliedTo} {optimization.appliedTo === 1 ? 'node' : 'nodes'}
+                        </p>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="space-y-2 ml-5 list-disc">
-                        {performanceReport.suggestions.map((suggestion, i) => (
-                          <li key={i} className="text-sm">{suggestion}</li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                
-                {optimized && (
-                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-md">
-                    <div className="flex items-center font-medium">
-                      <CheckCircle className="h-4 w-4 text-emerald-500 mr-2" />
-                      Optimization Complete
-                    </div>
-                    <p className="text-sm mt-1">
-                      Performance optimizations have been applied to your workflow. 
-                      Continue to the execution tab to test the improvements.
-                    </p>
-                  </div>
-                )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-          </>
+            
+            <Button variant="outline" onClick={analyzeWorkflow}>
+              Re-analyze Workflow
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 };
-
-export default PerformanceOptimizer;
