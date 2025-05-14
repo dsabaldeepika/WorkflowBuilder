@@ -125,7 +125,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     ? (typeof template.edges === 'string' ? JSON.parse(template.edges) : template.edges) 
     : [];
 
-  // Extract required credentials from the template
+  // Extract required credentials from the template and automatically launch node configuration
   useEffect(() => {
     if (template) {
       // Prepare workflow name using template name as a base
@@ -138,6 +138,17 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
           const parsedNodes = typeof template.nodes === 'string' ? JSON.parse(template.nodes) : template.nodes;
           const parsedEdges = typeof template.edges === 'string' ? JSON.parse(template.edges) : template.edges;
           loadWorkflowFromTemplate(parsedNodes, parsedEdges);
+          
+          // Automatically show the node configuration wizard after a short delay
+          const hasConfigurableNodes = parsedNodes.some(node => 
+            node.data.service || (node.data.config && Object.keys(node.data.config).length > 0)
+          );
+          
+          if (hasConfigurableNodes) {
+            setTimeout(() => {
+              setShowWizard(true);
+            }, 500); // Short delay to ensure the workflow is loaded properly
+          }
         } catch (err) {
           console.error('Error loading workflow template:', err);
         }
@@ -956,7 +967,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                           ) : (
                             <>
                               <Wand2 className="h-4 w-4 mr-2" />
-                              Setup with Guided Wizard
+                              Configure Workflow Nodes
                             </>
                           )}
                         </Button>
