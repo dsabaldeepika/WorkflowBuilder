@@ -760,7 +760,7 @@ export function ConnectionManager({
                       <ol className="list-decimal pl-4 space-y-2">
                         <li>Go to Facebook for Developers</li>
                         <li>Create a new app or select an existing one</li>
-                        <li>Navigate to Settings > Basic to find your App ID and App Secret</li>
+                        <li>Navigate to Settings &gt; Basic to find your App ID and App Secret</li>
                         <li>Use the Graph API Explorer to generate a long-lived access token</li>
                       </ol>
                     </div>
@@ -771,7 +771,7 @@ export function ConnectionManager({
                       <p>To connect to HubSpot, you need to:</p>
                       <ol className="list-decimal pl-4 space-y-2">
                         <li>Log in to your HubSpot account</li>
-                        <li>Go to Settings > Integrations > API Keys</li>
+                        <li>Go to Settings &gt; Integrations &gt; API Keys</li>
                         <li>Create a new API key or use an existing one</li>
                       </ol>
                     </div>
