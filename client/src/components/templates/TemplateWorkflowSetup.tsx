@@ -21,7 +21,8 @@ import {
   Workflow, 
   MessageCircle, 
   LifeBuoy,
-  HelpCircle 
+  HelpCircle, 
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +34,24 @@ import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspo
 import customerFollowUpPreview from "@/assets/templates/customer-follow-up.svg";
 import pipedriveToGoogleSheetsPreview from "@/assets/templates/pipedrive-to-googlesheets.svg";
 import { TemplateIntegrationGuide } from './TemplateIntegrationGuide';
+// Import integration components
+import { ConnectionManager } from '@/components/integration/ConnectionManager';
+import { GoogleSheetsConnector } from '@/components/integration/GoogleSheetsConnector';
+// Import integration icons
+import { 
+  SiGooglesheets, 
+  SiHubspot, 
+  SiFacebook, 
+  SiPipedrive, 
+  SiClickup, 
+  SiTrello, 
+  SiSalesforce, 
+  SiMailchimp, 
+  SiAirtable,
+  SiPandadoc,
+  SiSlack,
+  SiGmail
+} from 'react-icons/si';
 
 interface TemplateWorkflowSetupProps {
   templateId?: string | null;
@@ -528,7 +547,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                           Connection Details
                         </h2>
                         <Badge className={Object.keys(credentials).length > 0 ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
-                          {Object.keys(credentials).length > 0 ? "Credentials Needed" : "No Credentials Required"}
+                          {Object.keys(credentials).length > 0 ? "Connections Needed" : "No Connections Required"}
                         </Badge>
                       </div>
                       
@@ -537,47 +556,335 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                           <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded mb-6">
                             <h3 className="text-indigo-800 font-medium mb-1 flex items-center">
                               <Info className="h-4 w-4 mr-2" />
-                              Secure Connection
+                              Service Connections
                             </h3>
                             <p className="text-sm text-indigo-700">
-                              Your credentials are securely encrypted and only used to connect your services.
+                              Configure connections to external services required for this workflow
                             </p>
                           </div>
                           
-                          <div className="space-y-6">
-                            {Object.entries(credentials).map(([key, value]) => (
-                              <div key={key}>
-                                <div className="flex items-center justify-between mb-2">
-                                  <Label htmlFor={`credential-${key}`} className="text-gray-700 flex items-center">
-                                    {key.replace(/_/g, ' ')}
-                                  </Label>
-                                  {value.trim() !== '' ? (
-                                    <Badge className="bg-green-100 text-green-800 flex items-center">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Provided
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-amber-100 text-amber-800">Required</Badge>
-                                  )}
-                                </div>
-                                <Input
-                                  id={`credential-${key}`}
-                                  value={value}
-                                  onChange={(e) => handleCredentialChange(key, e.target.value)}
-                                  placeholder={`Enter ${key.replace(/_/g, ' ')}`}
-                                  type={key.toLowerCase().includes('key') || key.toLowerCase().includes('secret') || key.toLowerCase().includes('password') ? 'password' : 'text'}
-                                  className={`border-gray-300 ${value.trim() !== '' ? 'border-green-300 bg-green-50' : ''}`}
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {key.toLowerCase().includes('api') ? 
-                                    "API key from your account settings" : 
-                                    key.toLowerCase().includes('token') ? 
-                                      "Authentication token for secure access" : 
-                                      "Required for connection"}
-                                </p>
+                          {/* Google Sheets specific connection UI */}
+                          {templateNodes.some(node => 
+                            node.data?.service === 'google-sheets' || 
+                            (node.type === 'action' && node.data?.service?.includes('google')) ||
+                            Object.keys(credentials).some(key => 
+                              key.includes('spreadsheet') || 
+                              key.includes('sheet_')
+                            )
+                          ) && (
+                            <div className="mb-6 p-4 border rounded-md bg-green-50/30">
+                              <div className="flex items-center mb-4">
+                                <SiGooglesheets className="h-5 w-5 text-green-600 mr-2" />
+                                <h3 className="text-lg font-medium">Google Sheets Integration</h3>
                               </div>
-                            ))}
-                          </div>
+                              
+                              <GoogleSheetsConnector 
+                                initialSpreadsheetId={credentials['spreadsheet_id'] || ''} 
+                                initialSheetName={credentials['sheet_name'] || ''}
+                                initialAction={Object.keys(credentials).some(key => key.includes('append')) ? 'append_row' : 'get_values'}
+                                onConfigurationComplete={(config) => {
+                                  // Update all Google Sheets related credentials
+                                  handleCredentialChange('spreadsheet_id', config.spreadsheetId);
+                                  handleCredentialChange('sheet_name', config.sheetName);
+                                  
+                                  if (config.range) {
+                                    handleCredentialChange('range', config.range);
+                                  }
+                                }}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Facebook specific connection UI */}
+                          {templateNodes.some(node => 
+                            node.data?.service === 'facebook' || 
+                            Object.keys(credentials).some(key => 
+                              key.includes('facebook') || 
+                              key.includes('fb_') || 
+                              key.includes('form_id')
+                            )
+                          ) && (
+                            <div className="mb-6 p-4 border rounded-md bg-blue-50/30">
+                              <div className="flex items-center mb-4">
+                                <SiFacebook className="h-5 w-5 text-blue-600 mr-2" />
+                                <h3 className="text-lg font-medium">Facebook Integration</h3>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <ConnectionManager 
+                                  service="facebook"
+                                  requiredFields={{
+                                    app_id: '',
+                                    app_secret: '',
+                                    access_token: ''
+                                  }}
+                                  enableCreate={true}
+                                />
+                                
+                                {/* Additional Facebook-specific configuration */}
+                                {Object.entries(credentials).filter(([key]) => 
+                                  key.includes('form_id') || 
+                                  key.includes('page_id') ||
+                                  key.includes('ad_account')
+                                ).map(([key, value]) => (
+                                  <div key={key} className="mt-4">
+                                    <Label htmlFor={`fb-${key}`} className="capitalize flex items-center">
+                                      {key.replace(/_/g, ' ')}
+                                      {key.includes('form_id') && 
+                                        <span className="ml-2 text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">Required</span>
+                                      }
+                                    </Label>
+                                    <Input
+                                      id={`fb-${key}`}
+                                      value={value}
+                                      onChange={(e) => handleCredentialChange(key, e.target.value)}
+                                      placeholder={`Enter your ${key.replace(/_/g, ' ')}`}
+                                      className="mt-1"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {key.includes('form_id') 
+                                        ? "The ID of your Facebook Lead Form" 
+                                        : key.includes('page_id')
+                                        ? "The ID of your Facebook Page"
+                                        : "Required to connect to this Facebook resource"}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* HubSpot specific connection UI */}
+                          {templateNodes.some(node => 
+                            node.data?.service === 'hubspot' || 
+                            Object.keys(credentials).some(key => 
+                              key.includes('hubspot') || 
+                              key.includes('deal_id') ||
+                              key.includes('contact_id')
+                            )
+                          ) && (
+                            <div className="mb-6 p-4 border rounded-md bg-orange-50/30">
+                              <div className="flex items-center mb-4">
+                                <SiHubspot className="h-5 w-5 text-orange-600 mr-2" />
+                                <h3 className="text-lg font-medium">HubSpot Integration</h3>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <ConnectionManager 
+                                  service="hubspot"
+                                  requiredFields={{
+                                    api_key: ''
+                                  }}
+                                  enableCreate={true}
+                                />
+                                
+                                {/* Additional HubSpot-specific configuration */}
+                                {Object.entries(credentials).filter(([key]) => 
+                                  key.includes('deal_id') || 
+                                  key.includes('contact_id') ||
+                                  key.includes('form_id') ||
+                                  key.includes('hubspot_')
+                                ).map(([key, value]) => (
+                                  <div key={key} className="mt-4">
+                                    <Label htmlFor={`hubspot-${key}`} className="capitalize flex items-center">
+                                      {key.replace(/_/g, ' ')}
+                                    </Label>
+                                    <Input
+                                      id={`hubspot-${key}`}
+                                      value={value}
+                                      onChange={(e) => handleCredentialChange(key, e.target.value)}
+                                      placeholder={`Enter your ${key.replace(/_/g, ' ')}`}
+                                      className="mt-1"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {key.includes('deal_id') 
+                                        ? "The HubSpot Deal ID to monitor or update" 
+                                        : key.includes('contact_id')
+                                        ? "The HubSpot Contact ID to use"
+                                        : key.includes('form_id')
+                                        ? "The ID of your HubSpot form"
+                                        : "Required for the HubSpot integration"}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Slack specific connection UI */}
+                          {templateNodes.some(node => 
+                            node.data?.service === 'slack' || 
+                            Object.keys(credentials).some(key => 
+                              key.includes('slack')
+                            )
+                          ) && (
+                            <div className="mb-6 p-4 border rounded-md bg-purple-50/30">
+                              <div className="flex items-center mb-4">
+                                <SiSlack className="h-5 w-5 text-purple-600 mr-2" />
+                                <h3 className="text-lg font-medium">Slack Integration</h3>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <ConnectionManager 
+                                  service="slack"
+                                  requiredFields={{
+                                    webhook_url: '',
+                                    bot_token: ''
+                                  }}
+                                  enableCreate={true}
+                                />
+                                
+                                {/* Additional Slack-specific configuration */}
+                                {Object.entries(credentials).filter(([key]) => 
+                                  key.includes('channel') || 
+                                  key.includes('slack_')
+                                ).map(([key, value]) => (
+                                  <div key={key} className="mt-4">
+                                    <Label htmlFor={`slack-${key}`} className="capitalize flex items-center">
+                                      {key.replace(/_/g, ' ')}
+                                    </Label>
+                                    <Input
+                                      id={`slack-${key}`}
+                                      value={value}
+                                      onChange={(e) => handleCredentialChange(key, e.target.value)}
+                                      placeholder={`Enter your ${key.replace(/_/g, ' ')}`}
+                                      className="mt-1"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {key.includes('channel') 
+                                        ? "The Slack channel to send messages to (e.g. #general)" 
+                                        : "Required for the Slack integration"}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Pipedrive specific connection UI */}
+                          {templateNodes.some(node => 
+                            node.data?.service === 'pipedrive' || 
+                            Object.keys(credentials).some(key => 
+                              key.includes('pipedrive') || 
+                              key.includes('deal_id')
+                            )
+                          ) && (
+                            <div className="mb-6 p-4 border rounded-md bg-green-50/30">
+                              <div className="flex items-center mb-4">
+                                <SiPipedrive className="h-5 w-5 text-green-600 mr-2" />
+                                <h3 className="text-lg font-medium">Pipedrive Integration</h3>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <ConnectionManager 
+                                  service="pipedrive"
+                                  requiredFields={{
+                                    api_token: ''
+                                  }}
+                                  enableCreate={true}
+                                />
+                                
+                                {/* Additional Pipedrive-specific configuration */}
+                                {Object.entries(credentials).filter(([key]) => 
+                                  key.includes('pipedrive_') || 
+                                  key.includes('deal_id') ||
+                                  key.includes('person_id') ||
+                                  key.includes('org_id')
+                                ).map(([key, value]) => (
+                                  <div key={key} className="mt-4">
+                                    <Label htmlFor={`pipedrive-${key}`} className="capitalize flex items-center">
+                                      {key.replace(/_/g, ' ')}
+                                    </Label>
+                                    <Input
+                                      id={`pipedrive-${key}`}
+                                      value={value}
+                                      onChange={(e) => handleCredentialChange(key, e.target.value)}
+                                      placeholder={`Enter your ${key.replace(/_/g, ' ')}`}
+                                      className="mt-1"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {key.includes('deal_id') 
+                                        ? "The Pipedrive Deal ID to use" 
+                                        : key.includes('person_id')
+                                        ? "The Pipedrive Person ID to use"
+                                        : "Required for the Pipedrive integration"}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Generic credentials */}
+                          {Object.entries(credentials).filter(([key]) => 
+                            !key.includes('spreadsheet') && 
+                            !key.includes('sheet_') && 
+                            !key.includes('facebook') && 
+                            !key.includes('fb_') && 
+                            !key.includes('form_id') &&
+                            !key.includes('hubspot') && 
+                            !key.includes('slack') &&
+                            !key.includes('pipedrive') &&
+                            !key.includes('deal_id') &&
+                            !key.includes('contact_id') &&
+                            !key.includes('channel') &&
+                            !key.includes('person_id') &&
+                            !key.includes('org_id')
+                          ).length > 0 && (
+                            <div className="space-y-6 p-4 border rounded-md">
+                              <h3 className="text-lg font-medium flex items-center">
+                                <Cog className="h-5 w-5 mr-2 text-gray-600" /> 
+                                Additional Configuration
+                              </h3>
+                              
+                              {Object.entries(credentials).filter(([key]) => 
+                                !key.includes('spreadsheet') && 
+                                !key.includes('sheet_') && 
+                                !key.includes('facebook') && 
+                                !key.includes('fb_') && 
+                                !key.includes('form_id') &&
+                                !key.includes('hubspot') && 
+                                !key.includes('slack') &&
+                                !key.includes('pipedrive') &&
+                                !key.includes('deal_id') &&
+                                !key.includes('contact_id') &&
+                                !key.includes('channel') &&
+                                !key.includes('person_id') &&
+                                !key.includes('org_id')
+                              ).map(([key, value]) => (
+                                <div key={key}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <Label htmlFor={`credential-${key}`} className="text-gray-700 capitalize flex items-center">
+                                      {key.replace(/_/g, ' ')}
+                                    </Label>
+                                    {value.trim() !== '' ? (
+                                      <Badge className="bg-green-100 text-green-800 flex items-center">
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Provided
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-amber-100 text-amber-800">Required</Badge>
+                                    )}
+                                  </div>
+                                  <Input
+                                    id={`credential-${key}`}
+                                    value={value}
+                                    onChange={(e) => handleCredentialChange(key, e.target.value)}
+                                    placeholder={`Enter ${key.replace(/_/g, ' ')}`}
+                                    type={key.toLowerCase().includes('key') || key.toLowerCase().includes('secret') || key.toLowerCase().includes('password') ? 'password' : 'text'}
+                                    className={`border-gray-300 ${value.trim() !== '' ? 'border-green-300 bg-green-50' : ''}`}
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {key.toLowerCase().includes('api') ? 
+                                      "API key from your account settings" : 
+                                      key.toLowerCase().includes('token') ? 
+                                        "Authentication token for secure access" : 
+                                        "Required for connection"}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
@@ -586,7 +893,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                             Ready to Go
                           </h3>
                           <p className="text-sm text-green-700">
-                            This workflow is ready to use without any additional credentials.
+                            This workflow is ready to use without any additional connections.
                           </p>
                         </div>
                       )}

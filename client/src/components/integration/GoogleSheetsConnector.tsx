@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RefreshCw, Database, ExternalLink, Copy, Check, ChevronsUpDown, ListFilter, Table } from 'lucide-react';
-import { SiGooglesheets } from 'react-icons/si';
+import { AlertCircle, CheckCircle2, RefreshCw, Clipboard, ExternalLink, Table, FileSpreadsheet, Search } from 'lucide-react';
 import { ConnectionManager, UserCredential } from './ConnectionManager';
-import { apiRequest } from '@/lib/queryClient';
+import { SiGooglesheets } from 'react-icons/si';
+import { motion } from 'framer-motion';
 
-// Define the interfaces for Google Sheets data
+// Types for Google Sheets resources
 interface GoogleSpreadsheet {
   id: string;
   name: string;
@@ -30,6 +33,7 @@ interface GoogleSheet {
   columnCount: number;
 }
 
+// Component props
 interface GoogleSheetsConnectorProps {
   initialSpreadsheetId?: string;
   initialSheetName?: string;
@@ -38,6 +42,7 @@ interface GoogleSheetsConnectorProps {
   readOnly?: boolean;
 }
 
+// Google Sheets configuration data
 interface GoogleSheetsConfig {
   credentialId: number;
   spreadsheetId: string;
@@ -51,594 +56,763 @@ interface GoogleSheetsConfig {
 }
 
 export function GoogleSheetsConnector({
-  initialSpreadsheetId,
-  initialSheetName,
+  initialSpreadsheetId = '',
+  initialSheetName = '',
   initialAction = 'get_values',
   onConfigurationComplete,
   readOnly = false
 }: GoogleSheetsConnectorProps) {
   const { toast } = useToast();
   const [selectedCredentialId, setSelectedCredentialId] = useState<number | null>(null);
-  const [spreadsheetId, setSpreadsheetId] = useState(initialSpreadsheetId || '');
-  const [customSpreadsheetId, setCustomSpreadsheetId] = useState('');
-  const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<GoogleSpreadsheet | null>(null);
-  const [selectedSheetName, setSelectedSheetName] = useState(initialSheetName || '');
-  const [selectedAction, setSelectedAction] = useState(initialAction);
-  const [valueInputOption, setValueInputOption] = useState('USER_ENTERED');
-  const [range, setRange] = useState('');
-  const [headerRow, setHeaderRow] = useState(true);
-  const [fields, setFields] = useState<string[]>([]);
-  const [fieldsInput, setFieldsInput] = useState('');
-  const [isConfigComplete, setIsConfigComplete] = useState(false);
-
-  // Fetch spreadsheets when credential is selected
-  const { data: spreadsheets, isLoading: spreadsheetsLoading, refetch: refetchSpreadsheets } = useQuery({
-    queryKey: ['/api/google-sheets/spreadsheets', selectedCredentialId],
+  const [step, setStep] = useState<'credential' | 'spreadsheet' | 'sheet' | 'action'>('credential');
+  const [formState, setFormState] = useState<GoogleSheetsConfig>({
+    credentialId: 0,
+    spreadsheetId: initialSpreadsheetId,
+    sheetName: initialSheetName,
+    action: initialAction,
+    valueInputOption: 'USER_ENTERED',
+    headerRow: true,
+    range: '',
+    fields: []
+  });
+  
+  // Track sheet columns derived from sheet data or manually specified
+  const [sheetColumns, setSheetColumns] = useState<string[]>([]);
+  const [manualRange, setManualRange] = useState(false);
+  
+  // Handle direct spreadsheet ID input
+  const [directSpreadsheetId, setDirectSpreadsheetId] = useState(initialSpreadsheetId);
+  const [isLoadingSpreadsheet, setIsLoadingSpreadsheet] = useState(false);
+  
+  // Queries
+  const { data: spreadsheets, isLoading: spreadsheetsLoading } = useQuery({
+    queryKey: ['/api/spreadsheets', selectedCredentialId],
     queryFn: async () => {
-      if (!selectedCredentialId) return [];
-      
       try {
-        // This is a mock implementation - in a real app, this would call a real API
-        const mockSpreadsheets: GoogleSpreadsheet[] = [
-          { id: '1D2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6T7U', name: 'Customer Data', modifiedTime: '2025-05-10T12:00:00Z', url: 'https://docs.google.com/spreadsheets/d/1D2F3G4H/edit' },
-          { id: '2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U', name: 'Sales Pipeline', modifiedTime: '2025-05-11T14:30:00Z', url: 'https://docs.google.com/spreadsheets/d/2E3F4G5/edit' },
-          { id: '3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V', name: 'Marketing Campaigns', modifiedTime: '2025-05-12T09:15:00Z', url: 'https://docs.google.com/spreadsheets/d/3F4G5H6/edit' },
-        ];
-        
-        // In a real implementation, return data from the API
-        return mockSpreadsheets;
+        // In a real implementation, this would call the actual Google Sheets API
+        // For demo, we'll return some mock data
+        return [
+          {
+            id: 'mock-spreadsheet-1',
+            name: 'Customer Data',
+            modifiedTime: new Date().toISOString(),
+            url: 'https://docs.google.com/spreadsheets/d/mock-spreadsheet-1'
+          },
+          {
+            id: 'mock-spreadsheet-2',
+            name: 'Sales Tracking',
+            modifiedTime: new Date().toISOString(),
+            url: 'https://docs.google.com/spreadsheets/d/mock-spreadsheet-2'
+          },
+          {
+            id: 'mock-spreadsheet-3',
+            name: 'Marketing Campaigns',
+            modifiedTime: new Date().toISOString(),
+            url: 'https://docs.google.com/spreadsheets/d/mock-spreadsheet-3'
+          }
+        ] as GoogleSpreadsheet[];
       } catch (error) {
         console.error('Error fetching spreadsheets:', error);
         return [];
       }
     },
-    enabled: !!selectedCredentialId,
+    enabled: !!selectedCredentialId
   });
-
-  // Fetch sheets in a spreadsheet
-  const { data: sheets, isLoading: sheetsLoading, refetch: refetchSheets } = useQuery({
-    queryKey: ['/api/google-sheets/sheets', selectedCredentialId, spreadsheetId],
+  
+  const { data: sheets, isLoading: sheetsLoading } = useQuery({
+    queryKey: ['/api/sheets', formState.spreadsheetId, selectedCredentialId],
     queryFn: async () => {
-      if (!selectedCredentialId || !spreadsheetId) return [];
-      
       try {
-        // Mock implementation
-        const mockSheets: GoogleSheet[] = [
-          { id: 0, title: 'Sheet1', index: 0, rowCount: 100, columnCount: 10 },
-          { id: 1, title: 'Sheet2', index: 1, rowCount: 50, columnCount: 8 },
-          { id: 2, title: 'Data', index: 2, rowCount: 200, columnCount: 15 },
-        ];
-        
-        return mockSheets;
+        // In a real implementation, this would call the actual Google Sheets API
+        // For demo, we'll return some mock data
+        return [
+          {
+            id: 1,
+            title: 'Leads',
+            index: 0,
+            rowCount: 100,
+            columnCount: 10
+          },
+          {
+            id: 2,
+            title: 'Customers',
+            index: 1,
+            rowCount: 250,
+            columnCount: 15
+          },
+          {
+            id: 3,
+            title: 'Invoices',
+            index: 2,
+            rowCount: 75,
+            columnCount: 8
+          }
+        ] as GoogleSheet[];
       } catch (error) {
         console.error('Error fetching sheets:', error);
         return [];
       }
     },
-    enabled: !!selectedCredentialId && !!spreadsheetId,
+    enabled: !!formState.spreadsheetId && !!selectedCredentialId
   });
-
-  // Fetch sample data to extract headers
-  const { data: sampleData, isLoading: sampleDataLoading, refetch: refetchSampleData } = useQuery({
-    queryKey: ['/api/google-sheets/sample-data', selectedCredentialId, spreadsheetId, selectedSheetName],
+  
+  const { data: sheetData, isLoading: sheetDataLoading } = useQuery({
+    queryKey: ['/api/sheet-data', formState.spreadsheetId, formState.sheetName, selectedCredentialId],
     queryFn: async () => {
-      if (!selectedCredentialId || !spreadsheetId || !selectedSheetName) return null;
-      
       try {
-        // Mock implementation
-        const mockHeaders = ['Name', 'Email', 'Phone', 'Company', 'Deal Value', 'Status'];
-        const mockRows = [
-          ['John Doe', 'john@example.com', '555-1234', 'Acme Inc', '$5000', 'Open'],
-          ['Jane Smith', 'jane@example.com', '555-5678', 'XYZ Corp', '$7500', 'Negotiation'],
-        ];
+        // In a real implementation, this would call the actual Google Sheets API
+        // For demo, we'll return some mock data
         
-        return { headers: mockHeaders, rows: mockRows };
+        // Mock headers based on selected sheet
+        let headers: string[] = [];
+        
+        if (formState.sheetName === 'Leads') {
+          headers = ['Name', 'Email', 'Phone', 'Source', 'Status', 'Created Date', 'Last Contact', 'Notes'];
+        } else if (formState.sheetName === 'Customers') {
+          headers = ['Customer ID', 'Company', 'Contact', 'Email', 'Phone', 'Address', 'City', 'State', 'ZIP', 'Country', 'First Purchase', 'Last Purchase', 'Lifetime Value'];
+        } else if (formState.sheetName === 'Invoices') {
+          headers = ['Invoice #', 'Customer', 'Amount', 'Issue Date', 'Due Date', 'Status', 'Payment Method'];
+        } else {
+          // Generate generic column names
+          headers = Array.from({ length: 10 }, (_, i) => `Column ${String.fromCharCode(65 + i)}`);
+        }
+        
+        // Mock data rows
+        const rows = Array.from({ length: 5 }, (_, rowIndex) => {
+          return headers.reduce((row, header, colIndex) => {
+            if (header.includes('Date')) {
+              row[header] = new Date(Date.now() - rowIndex * 86400000).toLocaleDateString();
+            } else if (header.includes('Amount') || header.includes('Value')) {
+              row[header] = `$${Math.floor(Math.random() * 10000) / 100}`;
+            } else if (header.includes('Email')) {
+              row[header] = `user${rowIndex}@example.com`;
+            } else if (header.includes('Phone')) {
+              row[header] = `(555) 123-${1000 + rowIndex}`;
+            } else if (header.includes('Status')) {
+              const statuses = ['Active', 'Pending', 'Completed', 'Cancelled'];
+              row[header] = statuses[rowIndex % statuses.length];
+            } else {
+              row[header] = `${header} Value ${rowIndex + 1}`;
+            }
+            return row;
+          }, {} as Record<string, string>);
+        });
+        
+        return {
+          headers,
+          rows
+        };
       } catch (error) {
-        console.error('Error fetching sample data:', error);
-        return null;
+        console.error('Error fetching sheet data:', error);
+        return { headers: [], rows: [] };
       }
     },
-    enabled: !!selectedCredentialId && !!spreadsheetId && !!selectedSheetName,
+    enabled: !!formState.spreadsheetId && !!formState.sheetName && !!selectedCredentialId
   });
-
-  // Test connection mutation
-  const testConnectionMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedCredentialId) throw new Error('No credential selected');
-      
-      // In a real implementation, this would call an actual API
-      return { success: true, message: 'Connection successful' };
+  
+  // Load spreadsheet by ID mutation
+  const loadSpreadsheetMutation = useMutation({
+    mutationFn: async (spreadsheetId: string) => {
+      // In a real implementation, this would validate the ID with Google Sheets API
+      // For demo, just return a mock result
+      return {
+        id: spreadsheetId,
+        name: 'Manually Entered Spreadsheet',
+        modifiedTime: new Date().toISOString(),
+        url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}`
+      };
     },
     onSuccess: (data) => {
+      setFormState(prev => ({
+        ...prev,
+        spreadsheetId: data.id,
+        spreadsheetName: data.name
+      }));
+      
       toast({
-        title: 'Connection successful',
-        description: 'Successfully connected to Google Sheets',
+        title: 'Spreadsheet found',
+        description: `Successfully connected to "${data.name}"`,
       });
+      
+      setStep('sheet');
     },
     onError: (error: any) => {
       toast({
-        title: 'Connection test failed',
-        description: error.message || 'Failed to connect to Google Sheets',
+        title: 'Spreadsheet not found',
+        description: error.message || 'Unable to find spreadsheet with this ID',
         variant: 'destructive',
       });
     }
   });
-
-  // Handle credential selection
+  
+  // Credential selection handler
   const handleCredentialSelected = (credential: UserCredential) => {
     setSelectedCredentialId(credential.id);
-    toast({
-      title: 'Credential selected',
-      description: `Using ${credential.name} for Google Sheets`,
-    });
+    setFormState(prev => ({
+      ...prev,
+      credentialId: credential.id
+    }));
+    setStep('spreadsheet');
   };
-
-  // Handle spreadsheet selection
-  const handleSpreadsheetSelected = (spreadsheet: GoogleSpreadsheet | null) => {
-    if (!spreadsheet && !customSpreadsheetId) {
+  
+  // Select spreadsheet handler
+  const handleSelectSpreadsheet = (spreadsheet: GoogleSpreadsheet) => {
+    setFormState(prev => ({
+      ...prev,
+      spreadsheetId: spreadsheet.id,
+      spreadsheetName: spreadsheet.name
+    }));
+    setStep('sheet');
+  };
+  
+  // Load spreadsheet by ID
+  const handleLoadSpreadsheet = () => {
+    if (!directSpreadsheetId) {
       toast({
-        title: 'No spreadsheet selected',
-        description: 'Please select a spreadsheet or enter a spreadsheet ID',
+        title: 'Invalid spreadsheet ID',
+        description: 'Please enter a valid Google Sheets ID',
         variant: 'destructive',
       });
       return;
     }
     
-    if (spreadsheet) {
-      setSpreadsheetId(spreadsheet.id);
-      setSelectedSpreadsheet(spreadsheet);
-    } else if (customSpreadsheetId) {
-      // Validate spreadsheet ID format first
-      if (!/^[a-zA-Z0-9-_]{10,100}$/.test(customSpreadsheetId)) {
-        toast({
-          title: 'Invalid spreadsheet ID',
-          description: 'Please enter a valid Google Sheets spreadsheet ID',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      setSpreadsheetId(customSpreadsheetId);
-      setSelectedSpreadsheet({
-        id: customSpreadsheetId,
-        name: 'Custom Spreadsheet',
-        modifiedTime: new Date().toISOString(),
-        url: `https://docs.google.com/spreadsheets/d/${customSpreadsheetId}/edit`,
-      });
+    setIsLoadingSpreadsheet(true);
+    loadSpreadsheetMutation.mutate(directSpreadsheetId);
+  };
+  
+  // Select sheet handler
+  const handleSelectSheet = (sheet: GoogleSheet) => {
+    setFormState(prev => ({
+      ...prev,
+      sheetName: sheet.title
+    }));
+    setStep('action');
+  };
+  
+  // Directly set sheet name
+  const handleSetSheetName = (name: string) => {
+    setFormState(prev => ({
+      ...prev,
+      sheetName: name
+    }));
+    setStep('action');
+  };
+  
+  // Action selection handler
+  const handleActionChange = (action: string) => {
+    setFormState(prev => ({
+      ...prev,
+      action
+    }));
+  };
+  
+  // Range change handler
+  const handleRangeChange = (range: string) => {
+    setFormState(prev => ({
+      ...prev,
+      range
+    }));
+  };
+  
+  // Value input option change handler
+  const handleValueInputOptionChange = (option: string) => {
+    setFormState(prev => ({
+      ...prev,
+      valueInputOption: option
+    }));
+  };
+  
+  // Header row toggle handler
+  const handleHeaderRowChange = (hasHeader: boolean) => {
+    setFormState(prev => ({
+      ...prev,
+      headerRow: hasHeader
+    }));
+  };
+  
+  // Complete configuration
+  const handleComplete = () => {
+    if (onConfigurationComplete) {
+      onConfigurationComplete(formState);
     }
-    
-    // Reset sheet selection
-    setSelectedSheetName('');
   };
-
-  // Handle sheet selection
-  const handleSheetSelected = (sheetName: string) => {
-    setSelectedSheetName(sheetName);
-    
-    // Reset fields based on selected sheet
-    if (sampleData?.headers && headerRow) {
-      setFields(sampleData.headers);
-      setFieldsInput(sampleData.headers.join(', '));
-    } else {
-      setFields([]);
-      setFieldsInput('');
-    }
-  };
-
-  // Handle parsing fields from input
-  const handleFieldsInputChange = (input: string) => {
-    setFieldsInput(input);
-    setFields(input.split(',').map(field => field.trim()).filter(Boolean));
-  };
-
-  // Check if configuration is complete
+  
+  // Effect to set sheet columns when sheet data is loaded
   useEffect(() => {
-    const isComplete = !!selectedCredentialId && 
-      !!spreadsheetId && 
-      !!selectedSheetName && 
-      !!selectedAction;
-    
-    setIsConfigComplete(isComplete);
+    if (sheetData?.headers) {
+      setSheetColumns(sheetData.headers);
+    }
+  }, [sheetData]);
+  
+  // Effect to mark configuration as complete when all required data is available
+  useEffect(() => {
+    const isComplete = 
+      !!formState.credentialId && 
+      !!formState.spreadsheetId && 
+      !!formState.sheetName && 
+      !!formState.action;
     
     if (isComplete && onConfigurationComplete) {
-      onConfigurationComplete({
-        credentialId: selectedCredentialId!,
-        spreadsheetId,
-        spreadsheetName: selectedSpreadsheet?.name,
-        sheetName: selectedSheetName,
-        action: selectedAction,
-        valueInputOption,
-        range: range || `${selectedSheetName}!A1:Z1000`,
-        headerRow,
-        fields
-      });
+      onConfigurationComplete(formState);
     }
-  }, [
-    selectedCredentialId, 
-    spreadsheetId, 
-    selectedSpreadsheet,
-    selectedSheetName, 
-    selectedAction,
-    valueInputOption,
-    range,
-    headerRow,
-    fields,
-    onConfigurationComplete
-  ]);
-
-  return (
-    <div className="space-y-6">
-      {/* Connection Management Section */}
+  }, [formState, onConfigurationComplete]);
+  
+  // If read-only mode, render a simplified view
+  if (readOnly) {
+    return (
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center">
-            <SiGooglesheets className="h-6 w-6 text-green-600 mr-2" />
-            <div>
-              <CardTitle>Google Sheets Connection</CardTitle>
-              <CardDescription>Connect to Google Sheets to access your spreadsheets</CardDescription>
-            </div>
+            <SiGooglesheets className="h-5 w-5 text-green-600 mr-2" />
+            <CardTitle>Google Sheets Configuration</CardTitle>
           </div>
-        </CardHeader>
-        <CardContent>
-          <ConnectionManager 
-            service="google-sheets"
-            requiredFields={{ 
-              api_key: '',
-              client_email: '',
-              private_key: '' 
-            }}
-            onCredentialSelected={handleCredentialSelected}
-            enableCreate={!readOnly}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Spreadsheet Selection Section */}
-      <Card className={selectedCredentialId ? 'opacity-100' : 'opacity-50 pointer-events-none'}>
-        <CardHeader className="pb-3">
-          <CardTitle>Select Spreadsheet</CardTitle>
-          <CardDescription>Choose a spreadsheet or enter a spreadsheet ID</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {spreadsheetsLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : spreadsheets && spreadsheets.length > 0 ? (
-            <div className="space-y-4">
-              <div>
-                <Label>Your Spreadsheets</Label>
-                <Select 
-                  onValueChange={(value) => {
-                    const selected = spreadsheets.find(s => s.id === value);
-                    handleSpreadsheetSelected(selected || null);
-                  }}
-                  value={spreadsheetId}
-                  disabled={readOnly}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a spreadsheet" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {spreadsheets.map((sheet) => (
-                      <SelectItem key={sheet.id} value={sheet.id}>
-                        {sheet.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="text-center text-sm text-muted-foreground">
-                OR
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="spreadsheet-id">Enter Spreadsheet ID</Label>
-                <div className="flex space-x-2">
-                  <Input
-                    id="spreadsheet-id"
-                    placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                    value={customSpreadsheetId}
-                    onChange={(e) => setCustomSpreadsheetId(e.target.value)}
-                    disabled={readOnly}
-                  />
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleSpreadsheetSelected(null)}
-                    disabled={!customSpreadsheetId || readOnly}
-                  >
-                    Use ID
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  The spreadsheet ID is found in the URL between /d/ and /edit
-                </p>
-              </div>
-            </div>
-          ) : (
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertTitle className="text-amber-800">No spreadsheets found</AlertTitle>
-              <AlertDescription className="text-amber-700">
-                {spreadsheets?.length === 0 
-                  ? "You don't have any spreadsheets accessible with this connection."
-                  : "An error occurred while fetching your spreadsheets."}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-
-        {selectedSpreadsheet && (
-          <CardFooter className="bg-muted/30 border-t flex justify-between p-4">
-            <div className="flex items-center text-sm">
-              <span className="font-medium mr-2">Selected:</span> 
-              {selectedSpreadsheet.name}
-            </div>
-            {!readOnly && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.open(selectedSpreadsheet.url, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open in Google Sheets
-              </Button>
-            )}
-          </CardFooter>
-        )}
-      </Card>
-
-      {/* Sheet Selection Section */}
-      <Card className={selectedCredentialId && spreadsheetId ? 'opacity-100' : 'opacity-50 pointer-events-none'}>
-        <CardHeader className="pb-3">
-          <CardTitle>Select Sheet</CardTitle>
-          <CardDescription>Choose which sheet to work with</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {sheetsLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : sheets && sheets.length > 0 ? (
-            <div className="space-y-4">
-              <div>
-                <Label>Available Sheets</Label>
-                <Select 
-                  onValueChange={handleSheetSelected} 
-                  value={selectedSheetName}
-                  disabled={readOnly}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a sheet" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sheets.map((sheet) => (
-                      <SelectItem key={sheet.id} value={sheet.title}>
-                        {sheet.title} ({sheet.rowCount} rows)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {selectedSheetName && sampleData && (
-                <div className="border rounded-md p-4 bg-muted/30">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium">Sheet Preview</h4>
-                    <Badge className="bg-green-100 text-green-800">
-                      {sampleData.rows.length} rows
-                    </Badge>
-                  </div>
-                  
-                  <div className="overflow-x-auto max-h-40 border rounded">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {sampleData.headers.map((header, i) => (
-                            <th
-                              key={i}
-                              className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              {header}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {sampleData.rows.map((row, i) => (
-                          <tr key={i}>
-                            {row.map((cell, j) => (
-                              <td key={j} className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                {cell}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertTitle className="text-amber-800">No sheets found</AlertTitle>
-              <AlertDescription className="text-amber-700">
-                {sheets?.length === 0 
-                  ? "No sheets found in this spreadsheet."
-                  : "An error occurred while fetching sheets."}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Operation Selection Section */}
-      <Card className={selectedCredentialId && spreadsheetId && selectedSheetName ? 'opacity-100' : 'opacity-50 pointer-events-none'}>
-        <CardHeader className="pb-3">
-          <CardTitle>Configure Operation</CardTitle>
-          <CardDescription>Choose what you want to do with this sheet</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div>
-              <Label>Operation</Label>
-              <Select 
-                onValueChange={setSelectedAction} 
-                value={selectedAction}
-                disabled={readOnly}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an operation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="get_values">Get Values</SelectItem>
-                  <SelectItem value="append_row">Append Row</SelectItem>
-                  <SelectItem value="update_values">Update Values</SelectItem>
-                  <SelectItem value="clear_values">Clear Values</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Spreadsheet:</span>
+              <span className="text-sm">{formState.spreadsheetName || formState.spreadsheetId || 'Not set'}</span>
             </div>
-            
-            <Accordion type="single" collapsible>
-              <AccordionItem value="advanced-options">
-                <AccordionTrigger>
-                  <div className="flex items-center">
-                    <ChevronsUpDown className="h-4 w-4 mr-2" />
-                    Advanced Options
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4 p-4 border rounded-md bg-muted/20">
-                    {/* Range option */}
-                    <div className="space-y-2">
-                      <Label htmlFor="range">Range (Optional)</Label>
-                      <Input
-                        id="range"
-                        placeholder={`${selectedSheetName}!A1:Z1000`}
-                        value={range}
-                        onChange={(e) => setRange(e.target.value)}
-                        disabled={readOnly}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Specify a range like "A1:D10" or leave empty for entire sheet
-                      </p>
-                    </div>
-                    
-                    {/* Value input option for writes */}
-                    {['append_row', 'update_values'].includes(selectedAction) && (
-                      <div className="space-y-2">
-                        <Label>Value Input Option</Label>
-                        <Select 
-                          onValueChange={setValueInputOption} 
-                          value={valueInputOption}
-                          disabled={readOnly}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select input behavior" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="RAW">Raw (No Formatting)</SelectItem>
-                            <SelectItem value="USER_ENTERED">User Entered (With Formatting)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Determines if values should be parsed as formulas, dates, etc.
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Header row option */}
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="header-row"
-                        checked={headerRow}
-                        onChange={(e) => setHeaderRow(e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/20"
-                        disabled={readOnly}
-                      />
-                      <Label htmlFor="header-row" className="text-sm font-normal cursor-pointer">
-                        First row contains headers
-                      </Label>
-                    </div>
-                    
-                    {/* Field mapping for append operations */}
-                    {['append_row', 'update_values'].includes(selectedAction) && (
-                      <div className="space-y-2">
-                        <Label htmlFor="fields">Fields</Label>
-                        <Input
-                          id="fields"
-                          placeholder="name, email, phone, status"
-                          value={fieldsInput}
-                          onChange={(e) => handleFieldsInputChange(e.target.value)}
-                          disabled={readOnly}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Comma-separated list of fields to use for this operation
-                        </p>
-                        
-                        {fields.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {fields.map((field, index) => (
-                              <Badge key={index} className="bg-blue-100 text-blue-800">
-                                {field}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        </CardContent>
-        <CardFooter className="border-t bg-muted/20 px-6 py-4">
-          <div className="w-full">
-            <Alert className={isConfigComplete ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
-              {isConfigComplete ? (
-                <Check className="h-4 w-4 text-green-600" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-              )}
-              <AlertTitle className={isConfigComplete ? "text-green-800" : "text-amber-800"}>
-                {isConfigComplete ? "Configuration Complete" : "Configuration Incomplete"}
-              </AlertTitle>
-              <AlertDescription className={isConfigComplete ? "text-green-700" : "text-amber-700"}>
-                {isConfigComplete 
-                  ? `Ready to ${selectedAction.replace('_', ' ')} ${fields.length ? `with fields: ${fields.join(', ')}` : ''}`
-                  : "Please complete all required configuration steps"}
-              </AlertDescription>
-            </Alert>
-            
-            {!readOnly && isConfigComplete && (
-              <div className="flex justify-end mt-4">
-                <Button 
-                  onClick={() => testConnectionMutation.mutate()} 
-                  variant="outline" 
-                  disabled={testConnectionMutation.isPending}
-                >
-                  {testConnectionMutation.isPending ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Testing...
-                    </>
-                  ) : (
-                    <>Test Connection</>
-                  )}
-                </Button>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Sheet:</span>
+              <span className="text-sm">{formState.sheetName || 'Not set'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Action:</span>
+              <Badge>
+                {formState.action === 'get_values' ? 'Read Data' : 
+                 formState.action === 'append_row' ? 'Append Row' : 
+                 formState.action === 'update_row' ? 'Update Row' :
+                 formState.action}
+              </Badge>
+            </div>
+            {formState.range && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Range:</span>
+                <span className="text-sm font-mono">{formState.range}</span>
               </div>
             )}
           </div>
-        </CardFooter>
+        </CardContent>
       </Card>
+    );
+  }
+  
+  return (
+    <div className="space-y-4">
+      {/* Step 1: Select Google Sheets credential */}
+      {step === 'credential' && (
+        <div className="space-y-4">
+          <Alert className="bg-blue-50 border-blue-200">
+            <SiGooglesheets className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-700">Connect to Google Sheets</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              Select or create a Google Sheets connection to continue
+            </AlertDescription>
+          </Alert>
+          
+          <ConnectionManager 
+            service="google-sheets"
+            requiredFields={{
+              api_key: '',
+              client_email: '',
+              private_key: ''
+            }}
+            onCredentialSelected={handleCredentialSelected}
+            enableCreate={true}
+          />
+        </div>
+      )}
+      
+      {/* Step 2: Select spreadsheet */}
+      {step === 'spreadsheet' && (
+        <div className="space-y-4">
+          <Alert className="bg-green-50 border-green-200">
+            <FileSpreadsheet className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-700">Select a Spreadsheet</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Choose a Google Sheets document to connect to, or enter a spreadsheet ID directly
+            </AlertDescription>
+          </Alert>
+          
+          <Tabs defaultValue="browse">
+            <TabsList className="mb-4">
+              <TabsTrigger value="browse">Browse Spreadsheets</TabsTrigger>
+              <TabsTrigger value="direct">Direct ID</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="browse">
+              {spreadsheetsLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin" />
+                  <span className="ml-3 text-muted-foreground">Loading your spreadsheets...</span>
+                </div>
+              ) : spreadsheets && spreadsheets.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {spreadsheets.map((spreadsheet) => (
+                    <div 
+                      key={spreadsheet.id}
+                      className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all"
+                      onClick={() => handleSelectSpreadsheet(spreadsheet)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <FileSpreadsheet className="h-5 w-5 text-green-600 mr-3" />
+                          <div>
+                            <h3 className="font-medium">{spreadsheet.name}</h3>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Modified: {new Date(spreadsheet.modifiedTime).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs text-blue-600 hover:underline">
+                          Select
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-muted-foreground">No spreadsheets found</div>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setStep('credential')}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="direct">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="spreadsheet-id">Spreadsheet ID</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="spreadsheet-id"
+                      placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                      value={directSpreadsheetId}
+                      onChange={(e) => setDirectSpreadsheetId(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleLoadSpreadsheet}
+                      disabled={isLoadingSpreadsheet}
+                    >
+                      {isLoadingSpreadsheet ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Load</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The Spreadsheet ID can be found in the URL of your Google Sheet:
+                    <br />
+                    <span className="font-mono">https://docs.google.com/spreadsheets/d/<span className="text-primary font-bold">spreadsheetId</span>/edit</span>
+                  </p>
+                </div>
+                
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-amber-700">Permissions Required</AlertTitle>
+                  <AlertDescription className="text-amber-700">
+                    Make sure you've shared the spreadsheet with the service account email associated with this credential.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-between pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setStep('credential')}
+            >
+              Back to Credentials
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Step 3: Select sheet */}
+      {step === 'sheet' && (
+        <div className="space-y-4">
+          <Alert className="bg-green-50 border-green-200">
+            <Table className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-700">Select a Sheet</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Choose a sheet from the spreadsheet "{formState.spreadsheetName || formState.spreadsheetId}"
+            </AlertDescription>
+          </Alert>
+          
+          <Tabs defaultValue="browse">
+            <TabsList className="mb-4">
+              <TabsTrigger value="browse">Browse Sheets</TabsTrigger>
+              <TabsTrigger value="direct">Direct Name</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="browse">
+              {sheetsLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin" />
+                  <span className="ml-3 text-muted-foreground">Loading sheets...</span>
+                </div>
+              ) : sheets && sheets.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {sheets.map((sheet) => (
+                    <div 
+                      key={sheet.id}
+                      className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all"
+                      onClick={() => handleSelectSheet(sheet)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Table className="h-5 w-5 text-green-600 mr-3" />
+                          <div>
+                            <h3 className="font-medium">{sheet.title}</h3>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {sheet.rowCount} rows × {sheet.columnCount} columns
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs text-blue-600 hover:underline">
+                          Select
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-muted-foreground">No sheets found</div>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setStep('spreadsheet')}
+                  >
+                    Back to Spreadsheet Selection
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="direct">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sheet-name">Sheet Name</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="sheet-name"
+                      placeholder="e.g. Sheet1"
+                      value={formState.sheetName}
+                      onChange={(e) => setFormState(prev => ({ ...prev, sheetName: e.target.value }))}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={() => handleSetSheetName(formState.sheetName)}
+                      disabled={!formState.sheetName}
+                    >
+                      <span>Continue</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Enter the exact name of the sheet tab you want to use
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-between pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setStep('spreadsheet')}
+            >
+              Back to Spreadsheet
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Step 4: Configure action */}
+      {step === 'action' && (
+        <div className="space-y-4">
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-700">Configure Google Sheets Action</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Set up how you want to interact with the sheet "{formState.sheetName}"
+            </AlertDescription>
+          </Alert>
+          
+          <div className="space-y-6 p-4 border rounded-lg">
+            <div className="space-y-3">
+              <Label>Action</Label>
+              <RadioGroup 
+                value={formState.action} 
+                onValueChange={handleActionChange}
+                className="flex flex-col space-y-3"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="get_values" id="get_values" />
+                  <Label htmlFor="get_values" className="font-normal">Read Data</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="append_row" id="append_row" />
+                  <Label htmlFor="append_row" className="font-normal">Append Row</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="update_row" id="update_row" />
+                  <Label htmlFor="update_row" className="font-normal">Update Row</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <Separator />
+            
+            {/* Range selection */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="range">Data Range</Label>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-muted-foreground">Manual Range</span>
+                  <Switch 
+                    checked={manualRange} 
+                    onCheckedChange={setManualRange}
+                  />
+                </div>
+              </div>
+              
+              {manualRange ? (
+                <Input
+                  id="range"
+                  placeholder="e.g. A1:D10"
+                  value={formState.range || ''}
+                  onChange={(e) => handleRangeChange(e.target.value)}
+                />
+              ) : (
+                <Select
+                  value={formState.range || 'all'}
+                  onValueChange={(value) => handleRangeChange(value === 'all' ? '' : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All data (entire sheet)</SelectItem>
+                    <SelectItem value="A:Z">All columns (A:Z)</SelectItem>
+                    <SelectItem value="1:1000">All rows (1:1000)</SelectItem>
+                    <SelectItem value="A1:D10">Fixed range (A1:D10)</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              
+              <p className="text-xs text-muted-foreground">
+                Specify which cells to read from or write to. Leave empty to use all data.
+              </p>
+            </div>
+            
+            {formState.action === 'append_row' && (
+              <>
+                <Separator />
+                
+                {/* Value input option */}
+                <div className="space-y-3">
+                  <Label htmlFor="value-input-option">Input Processing</Label>
+                  <Select
+                    value={formState.valueInputOption}
+                    onValueChange={handleValueInputOptionChange}
+                  >
+                    <SelectTrigger id="value-input-option">
+                      <SelectValue placeholder="Select input processing" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RAW">Raw (no formula processing)</SelectItem>
+                      <SelectItem value="USER_ENTERED">User Entered (process formulas)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Controls how values are processed. "User Entered" will process formulas, while "Raw" will not.
+                  </p>
+                </div>
+              </>
+            )}
+            
+            <Separator />
+            
+            {/* Header row toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="header-row" className="block mb-1">Header Row</Label>
+                <p className="text-xs text-muted-foreground">
+                  First row contains column headers
+                </p>
+              </div>
+              <Switch 
+                id="header-row"
+                checked={formState.headerRow} 
+                onCheckedChange={handleHeaderRowChange}
+              />
+            </div>
+            
+            {sheetDataLoading ? (
+              <div className="py-4 flex justify-center">
+                <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading sheet data...</span>
+              </div>
+            ) : sheetData?.headers && sheetData.headers.length > 0 ? (
+              <>
+                <Separator />
+                
+                {/* Preview of sheet structure */}
+                <div className="space-y-3">
+                  <Label>Sheet Structure Preview</Label>
+                  <div className="overflow-x-auto">
+                    <div className="border rounded-md">
+                      <div className="grid grid-cols-4 gap-2 p-2 bg-muted/50 font-medium border-b">
+                        {sheetData.headers.slice(0, 4).map((header, index) => (
+                          <div key={index} className="text-xs truncate">
+                            {header}
+                          </div>
+                        ))}
+                        {sheetData.headers.length > 4 && (
+                          <div className="text-xs text-muted-foreground">
+                            +{sheetData.headers.length - 4} more columns
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2 text-xs text-muted-foreground text-center">
+                        {sheetData.rows.length} rows detected
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
+          
+          <div className="flex justify-between pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setStep('sheet')}
+            >
+              Back to Sheet Selection
+            </Button>
+            
+            <Button 
+              onClick={handleComplete}
+            >
+              Complete Configuration
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
