@@ -443,8 +443,22 @@ async function seedTemplates() {
         .where(eq(workflowTemplates.name, template.name));
         
       if (existing.length === 0) {
-        const parsedTemplate = insertWorkflowTemplateSchema.parse(template);
-        await db.insert(workflowTemplates).values(parsedTemplate);
+        // Correctly format the data for the database schema
+        const templateData = {
+          name: template.name,
+          description: template.description,
+          category: template.category,
+          tags: template.tags,
+          difficulty: template.difficulty,
+          workflow_data: template.workflowData, // This is the key change
+          image_url: template.imageUrl,
+          popularity: template.popularity,
+          created_by: template.createdBy,
+          is_published: template.isPublished,
+          is_official: template.isOfficial
+        };
+        
+        await db.insert(workflowTemplates).values(templateData);
         console.log(`Added template: ${template.name}`);
         
         // Update category count

@@ -108,6 +108,7 @@ export const ROUTES = {
   dashboard: '/dashboard',
   createWorkflow: '/create',
   templates: '/templates',
+  inspirationGallery: '/inspiration-gallery',
   connections: '/connections',
   workflowAnimations: '/workflow-animations',
   loadingAnimations: '/loading-animations',
