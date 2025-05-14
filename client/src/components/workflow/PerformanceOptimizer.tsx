@@ -7,8 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Zap as ZapIcon } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { API_ENDPOINTS } from '@shared/config';
 
 // Types for optimization suggestions and performance reporting
 interface OptimizationSuggestion {
@@ -63,7 +64,7 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
     error: reportError,
     refetch: refetchReport
   } = useQuery<PerformanceReport>({
-    queryKey: [`/api/workflows/${workflowId}/optimization-suggestions`],
+    queryKey: [API_ENDPOINTS.workflows.suggestions(workflowId || 0)],
     enabled: !!workflowId
   });
 
@@ -87,16 +88,13 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
       const optimizationIds = isAutoOptimize 
         ? performanceReport?.optimizationSuggestions?.map(s => s.id) || []
         : selectedOptimizations;
-        
-      // Create a proper body string
-      const bodyString = JSON.stringify({ optimizationIds });
-        
-      const response = await fetch(`/api/workflows/${workflowId}/optimize`, {
+      
+      const response = await fetch(API_ENDPOINTS.workflows.optimize(workflowId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: bodyString,
+        body: JSON.stringify({ optimizationIds }),
         credentials: 'include'
       });
       
@@ -134,8 +132,9 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
       setAppliedOptimizations(prev => [...prev, ...newOptimizations]);
       setSelectedOptimizations([]);
       
-      // Update the suggestions after optimization
-      refetchReport();
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.workflows.suggestions(workflowId || 0)] });
+      queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.workflows.get(workflowId || 0)] });
       
       toast({
         title: "Workflow optimized successfully",

@@ -167,6 +167,8 @@ export const API_ENDPOINTS = {
     delete: (id: number) => `/api/workflows/${id}`,
     execute: (id: number) => `/api/workflows/${id}/execute`,
     status: (id: number) => `/api/workflows/${id}/status`,
+    optimize: (id: number) => `/api/workflows/${id}/optimize`,
+    suggestions: (id: number) => `/api/workflows/${id}/optimization-suggestions`,
   },
 }
 
