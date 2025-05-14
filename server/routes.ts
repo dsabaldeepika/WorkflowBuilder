@@ -14,6 +14,7 @@ import emailRoutes from "./routes/emailRoutes";
 import contactRoutes from "./routes/contactRoutes";
 import demoRequestRoutes from "./routes/demoRequestRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
+import templateRoutes from "./routes/templateRoutes";
 // import { setupAuth, isAuthenticated } from "./replitAuth"; 
 // Authentication bypass instead of Replit Auth
 import { pool } from "./db";
@@ -102,6 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api', contactRoutes); // Contact forms and template request
   app.use('/api', demoRequestRoutes); // Demo scheduling requests
   app.use('/api/subscriptions', subscriptionRoutes); // Subscription and billing management
+  app.use('/api', templateRoutes); // Workflow template gallery and categories
   
   // API Routes
 

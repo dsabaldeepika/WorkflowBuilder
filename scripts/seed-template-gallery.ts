@@ -1,0 +1,500 @@
+/**
+ * Seed script for populating the workflow template gallery with categories and templates
+ */
+import { PgTable } from 'drizzle-orm/pg-core';
+import { db } from '../server/db';
+import { 
+  workflowTemplateCategories, 
+  workflowTemplates, 
+  insertWorkflowTemplateCategorySchema, 
+  insertWorkflowTemplateSchema 
+} from '../shared/schema';
+import { eq } from 'drizzle-orm';
+
+async function seedTemplateCategories() {
+  console.log('Seeding template categories...');
+  
+  const categories = [
+    {
+      name: 'crm',
+      displayName: 'CRM',
+      description: 'Customer Relationship Management automation templates',
+      icon: 'users',
+      count: 0,
+      isActive: true,
+      sortOrder: 10
+    },
+    {
+      name: 'marketing',
+      displayName: 'Marketing',
+      description: 'Marketing automation templates for campaigns and analytics',
+      icon: 'megaphone',
+      count: 0,
+      isActive: true,
+      sortOrder: 20
+    },
+    {
+      name: 'sales',
+      displayName: 'Sales',
+      description: 'Sales process automation for lead tracking and conversions',
+      icon: 'trending-up',
+      count: 0,
+      isActive: true,
+      sortOrder: 30
+    },
+    {
+      name: 'data-processing',
+      displayName: 'Data Processing',
+      description: 'Templates for data transformation, enrichment, and analysis',
+      icon: 'database',
+      count: 0,
+      isActive: true,
+      sortOrder: 40
+    },
+    {
+      name: 'social-media',
+      displayName: 'Social Media',
+      description: 'Social media integration and content management templates',
+      icon: 'share',
+      count: 0,
+      isActive: true,
+      sortOrder: 50
+    },
+    {
+      name: 'productivity',
+      displayName: 'Productivity',
+      description: 'Productivity and task management automation templates',
+      icon: 'clock',
+      count: 0,
+      isActive: true,
+      sortOrder: 60
+    }
+  ];
+
+  // Insert categories one by one to avoid conflicts
+  for (const category of categories) {
+    try {
+      // Check if category exists already
+      const existing = await db.select().from(workflowTemplateCategories)
+        .where(eq(workflowTemplateCategories.name, category.name));
+        
+      if (existing.length === 0) {
+        const parsedCategory = insertWorkflowTemplateCategorySchema.parse(category);
+        await db.insert(workflowTemplateCategories).values(parsedCategory);
+        console.log(`Added category: ${category.displayName}`);
+      } else {
+        console.log(`Category already exists: ${category.displayName}`);
+      }
+    } catch (error) {
+      console.error(`Error adding category ${category.displayName}:`, error);
+    }
+  }
+}
+
+async function seedTemplates() {
+  console.log('Seeding workflow templates...');
+  
+  const templates = [
+    {
+      name: 'Customer Onboarding',
+      description: 'Automate the process of welcoming and onboarding new customers with personalized emails and tasks',
+      category: 'crm',
+      tags: ['onboarding', 'email', 'customer-success'],
+      difficulty: 'beginner',
+      workflowData: {
+        nodes: [
+          {
+            id: 'trigger-1',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { name: 'New Customer' }
+          },
+          {
+            id: 'email-1',
+            type: 'action',
+            position: { x: 400, y: 100 },
+            data: { name: 'Send Welcome Email' }
+          },
+          {
+            id: 'delay-1',
+            type: 'action',
+            position: { x: 700, y: 100 },
+            data: { name: 'Wait 3 Days' }
+          },
+          {
+            id: 'email-2',
+            type: 'action',
+            position: { x: 1000, y: 100 },
+            data: { name: 'Send Follow-up Email' }
+          }
+        ],
+        edges: [
+          { id: 'e1-2', source: 'trigger-1', target: 'email-1' },
+          { id: 'e2-3', source: 'email-1', target: 'delay-1' },
+          { id: 'e3-4', source: 'delay-1', target: 'email-2' }
+        ]
+      },
+      imageUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=800&q=80',
+      popularity: 45,
+      createdBy: 'PumpFlux Team',
+      isPublished: true,
+      isOfficial: true
+    },
+    {
+      name: 'Lead Scoring',
+      description: 'Automatically score and prioritize leads based on their engagement and behavior',
+      category: 'sales',
+      tags: ['leads', 'scoring', 'prioritization'],
+      difficulty: 'intermediate',
+      workflowData: {
+        nodes: [
+          {
+            id: 'trigger-1',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { name: 'New Lead Activity' }
+          },
+          {
+            id: 'router-1',
+            type: 'router',
+            position: { x: 400, y: 100 },
+            data: { name: 'Evaluate Activity Type' }
+          },
+          {
+            id: 'score-1',
+            type: 'action',
+            position: { x: 700, y: 0 },
+            data: { name: 'High Value (10 pts)' }
+          },
+          {
+            id: 'score-2',
+            type: 'action',
+            position: { x: 700, y: 200 },
+            data: { name: 'Medium Value (5 pts)' }
+          },
+          {
+            id: 'notification',
+            type: 'action',
+            position: { x: 1000, y: 100 },
+            data: { name: 'Notify Sales Rep' }
+          }
+        ],
+        edges: [
+          { id: 'e1-2', source: 'trigger-1', target: 'router-1' },
+          { id: 'e2-3', source: 'router-1', target: 'score-1' },
+          { id: 'e2-4', source: 'router-1', target: 'score-2' },
+          { id: 'e3-5', source: 'score-1', target: 'notification' },
+          { id: 'e4-5', source: 'score-2', target: 'notification' }
+        ]
+      },
+      imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+      popularity: 38,
+      createdBy: 'PumpFlux Team',
+      isPublished: true,
+      isOfficial: true
+    },
+    {
+      name: 'Social Media Content Calendar',
+      description: 'Create and schedule social media posts across multiple platforms',
+      category: 'social-media',
+      tags: ['scheduling', 'content', 'marketing'],
+      difficulty: 'beginner',
+      workflowData: {
+        nodes: [
+          {
+            id: 'trigger-1',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { name: 'New Content Created' }
+          },
+          {
+            id: 'format-1',
+            type: 'action',
+            position: { x: 400, y: 100 },
+            data: { name: 'Format for Twitter' }
+          },
+          {
+            id: 'format-2',
+            type: 'action',
+            position: { x: 400, y: 250 },
+            data: { name: 'Format for LinkedIn' }
+          },
+          {
+            id: 'format-3',
+            type: 'action',
+            position: { x: 400, y: 400 },
+            data: { name: 'Format for Instagram' }
+          },
+          {
+            id: 'schedule',
+            type: 'action',
+            position: { x: 700, y: 250 },
+            data: { name: 'Schedule Posts' }
+          }
+        ],
+        edges: [
+          { id: 'e1-2', source: 'trigger-1', target: 'format-1' },
+          { id: 'e1-3', source: 'trigger-1', target: 'format-2' },
+          { id: 'e1-4', source: 'trigger-1', target: 'format-3' },
+          { id: 'e2-5', source: 'format-1', target: 'schedule' },
+          { id: 'e3-5', source: 'format-2', target: 'schedule' },
+          { id: 'e4-5', source: 'format-3', target: 'schedule' }
+        ]
+      },
+      imageUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80',
+      popularity: 32,
+      createdBy: 'PumpFlux Team',
+      isPublished: true,
+      isOfficial: true
+    },
+    {
+      name: 'Data Enrichment Pipeline',
+      description: 'Enhance your data by automatically enriching it with information from external APIs',
+      category: 'data-processing',
+      tags: ['data', 'api', 'enrichment'],
+      difficulty: 'advanced',
+      workflowData: {
+        nodes: [
+          {
+            id: 'trigger-1',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { name: 'New Data Record' }
+          },
+          {
+            id: 'validate',
+            type: 'action',
+            position: { x: 400, y: 100 },
+            data: { name: 'Validate Data' }
+          },
+          {
+            id: 'enrich-1',
+            type: 'action',
+            position: { x: 700, y: 0 },
+            data: { name: 'Enrich with API 1' }
+          },
+          {
+            id: 'enrich-2',
+            type: 'action',
+            position: { x: 700, y: 200 },
+            data: { name: 'Enrich with API 2' }
+          },
+          {
+            id: 'merge',
+            type: 'action',
+            position: { x: 1000, y: 100 },
+            data: { name: 'Merge Data' }
+          },
+          {
+            id: 'store',
+            type: 'action',
+            position: { x: 1300, y: 100 },
+            data: { name: 'Store in Database' }
+          }
+        ],
+        edges: [
+          { id: 'e1-2', source: 'trigger-1', target: 'validate' },
+          { id: 'e2-3', source: 'validate', target: 'enrich-1' },
+          { id: 'e2-4', source: 'validate', target: 'enrich-2' },
+          { id: 'e3-5', source: 'enrich-1', target: 'merge' },
+          { id: 'e4-5', source: 'enrich-2', target: 'merge' },
+          { id: 'e5-6', source: 'merge', target: 'store' }
+        ]
+      },
+      imageUrl: 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=800&q=80',
+      popularity: 27,
+      createdBy: 'PumpFlux Team',
+      isPublished: true,
+      isOfficial: true
+    },
+    {
+      name: 'Email Marketing Campaign',
+      description: 'Design and execute multi-stage email marketing campaigns with analytics tracking',
+      category: 'marketing',
+      tags: ['email', 'campaign', 'analytics'],
+      difficulty: 'intermediate',
+      workflowData: {
+        nodes: [
+          {
+            id: 'trigger-1',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { name: 'Start Campaign' }
+          },
+          {
+            id: 'segment',
+            type: 'action',
+            position: { x: 400, y: 100 },
+            data: { name: 'Segment Audience' }
+          },
+          {
+            id: 'email-1',
+            type: 'action',
+            position: { x: 700, y: 100 },
+            data: { name: 'Send Initial Email' }
+          },
+          {
+            id: 'wait',
+            type: 'action',
+            position: { x: 1000, y: 100 },
+            data: { name: 'Wait 5 Days' }
+          },
+          {
+            id: 'condition',
+            type: 'router',
+            position: { x: 1300, y: 100 },
+            data: { name: 'Opened First Email?' }
+          },
+          {
+            id: 'email-2a',
+            type: 'action',
+            position: { x: 1600, y: 0 },
+            data: { name: 'Send Follow-up A' }
+          },
+          {
+            id: 'email-2b',
+            type: 'action',
+            position: { x: 1600, y: 200 },
+            data: { name: 'Send Follow-up B' }
+          },
+          {
+            id: 'analytics',
+            type: 'action',
+            position: { x: 1900, y: 100 },
+            data: { name: 'Track Results' }
+          }
+        ],
+        edges: [
+          { id: 'e1-2', source: 'trigger-1', target: 'segment' },
+          { id: 'e2-3', source: 'segment', target: 'email-1' },
+          { id: 'e3-4', source: 'email-1', target: 'wait' },
+          { id: 'e4-5', source: 'wait', target: 'condition' },
+          { id: 'e5-6', source: 'condition', target: 'email-2a' },
+          { id: 'e5-7', source: 'condition', target: 'email-2b' },
+          { id: 'e6-8', source: 'email-2a', target: 'analytics' },
+          { id: 'e7-8', source: 'email-2b', target: 'analytics' }
+        ]
+      },
+      imageUrl: 'https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?auto=format&fit=crop&w=800&q=80',
+      popularity: 42,
+      createdBy: 'PumpFlux Team',
+      isPublished: true,
+      isOfficial: true
+    },
+    {
+      name: 'Task Manager Automation',
+      description: 'Automate task creation, assignment, and deadline tracking across your team',
+      category: 'productivity',
+      tags: ['tasks', 'team', 'management'],
+      difficulty: 'beginner',
+      workflowData: {
+        nodes: [
+          {
+            id: 'trigger-1',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { name: 'Project Milestone' }
+          },
+          {
+            id: 'tasks',
+            type: 'action',
+            position: { x: 400, y: 100 },
+            data: { name: 'Generate Tasks' }
+          },
+          {
+            id: 'assign',
+            type: 'action',
+            position: { x: 700, y: 100 },
+            data: { name: 'Assign to Team Members' }
+          },
+          {
+            id: 'notify',
+            type: 'action',
+            position: { x: 1000, y: 100 },
+            data: { name: 'Send Notifications' }
+          },
+          {
+            id: 'schedule',
+            type: 'action',
+            position: { x: 1300, y: 100 },
+            data: { name: 'Set Reminder Schedule' }
+          }
+        ],
+        edges: [
+          { id: 'e1-2', source: 'trigger-1', target: 'tasks' },
+          { id: 'e2-3', source: 'tasks', target: 'assign' },
+          { id: 'e3-4', source: 'assign', target: 'notify' },
+          { id: 'e4-5', source: 'notify', target: 'schedule' }
+        ]
+      },
+      imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80',
+      popularity: 36,
+      createdBy: 'PumpFlux Team',
+      isPublished: true,
+      isOfficial: true
+    }
+  ];
+
+  // Insert templates one by one to avoid conflicts
+  for (const template of templates) {
+    try {
+      // Check if template exists already
+      const existing = await db.select().from(workflowTemplates)
+        .where(({ name }) => name.equals(template.name));
+        
+      if (existing.length === 0) {
+        const parsedTemplate = insertWorkflowTemplateSchema.parse(template);
+        await db.insert(workflowTemplates).values(parsedTemplate);
+        console.log(`Added template: ${template.name}`);
+        
+        // Update category count
+        await db.execute(
+          `UPDATE workflow_template_categories 
+           SET count = count + 1 
+           WHERE name = $1`,
+          [template.category]
+        );
+      } else {
+        console.log(`Template already exists: ${template.name}`);
+      }
+    } catch (error) {
+      console.error(`Error adding template ${template.name}:`, error);
+    }
+  }
+}
+
+async function clearExistingData() {
+  console.log('Clearing existing template data...');
+  
+  try {
+    // Delete all templates first to maintain referential integrity
+    await db.delete(workflowTemplates);
+    console.log('Deleted existing templates');
+    
+    // Reset category counts
+    await db.execute(`UPDATE workflow_template_categories SET count = 0`);
+    console.log('Reset category counts');
+  } catch (error) {
+    console.error('Error clearing existing data:', error);
+  }
+}
+
+async function main() {
+  console.log('Starting template gallery seed script...');
+  
+  try {
+    // Comment this line out if you want to keep existing data
+    // await clearExistingData();
+    
+    await seedTemplateCategories();
+    await seedTemplates();
+    
+    console.log('Template gallery seeding completed successfully!');
+  } catch (error) {
+    console.error('Error seeding template gallery:', error);
+  } finally {
+    process.exit(0);
+  }
+}
+
+main();
