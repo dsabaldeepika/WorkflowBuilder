@@ -331,6 +331,29 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Workflow Optimizer Feature Highlight */}
+        <Card className="mb-8 bg-gradient-to-r from-purple-50 to-fuchsia-50 border border-purple-100">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+              <div className="mb-4 md:mb-0">
+                <h2 className="text-xl font-bold text-purple-800 flex items-center">
+                  <Zap className="mr-2 h-5 w-5 text-purple-600" />
+                  New Feature: One-Click Performance Optimization
+                </h2>
+                <p className="text-purple-600 mt-1">
+                  Automatically detect performance bottlenecks and optimize your workflows with smart suggestions
+                </p>
+              </div>
+              <Button 
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={() => window.location.href = ROUTES.workflowOptimizer}
+              >
+                Try Workflow Optimizer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Main content tabs */}
         <Tabs defaultValue="workflows" className="w-full">

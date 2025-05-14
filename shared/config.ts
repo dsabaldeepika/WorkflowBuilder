@@ -118,6 +118,7 @@ export const ROUTES = {
   emailSettings: '/settings/email',
   subscriptionUsage: '/account/usage',
   transactionHistory: '/account/transactions',
+  workflowOptimizer: '/workflow-optimizer',
 }
 
 // Path to subscription plans in Stripe dashboard

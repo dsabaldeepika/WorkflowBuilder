@@ -181,6 +181,10 @@ function Router() {
         <LazyRouteComponent Component={EmailSettingsPage} />
       </Route>
       
+      <Route path={ROUTES.workflowOptimizer}>
+        <LazyRouteComponent Component={WorkflowOptimizerPage} />
+      </Route>
+      
       <Route>
         <LazyRouteComponent Component={Dashboard} />
       </Route>
