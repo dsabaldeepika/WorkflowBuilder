@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle2, RefreshCw, Key, ExternalLink, Copy, Database } from 'lucide-react';
+import { AlertCircle, CheckCircle2, RefreshCw, Key, ExternalLink, Copy, Database, Layers } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
@@ -317,6 +317,8 @@ export function ConnectionManager({
         return <SiSlack size={size} className="text-purple-600" />;
       case 'google':
         return <SiGoogle size={size} className="text-blue-500" />;
+      case 'pipedrive':
+        return <Layers size={size} className="text-green-500" />;
       default:
         return <Database size={size} className="text-gray-500" />;
     }
@@ -450,7 +452,7 @@ export function ConnectionManager({
                     <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
                     <span className="ml-2 text-sm text-muted-foreground">Loading connections...</span>
                   </div>
-                ) : credentials?.length > 0 ? (
+                ) : credentials && credentials.length > 0 ? (
                   <div className="space-y-3">
                     {credentials.map((credential: UserCredential) => (
                       <div 

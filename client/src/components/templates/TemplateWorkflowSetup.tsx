@@ -42,16 +42,15 @@ import {
   SiGooglesheets, 
   SiHubspot, 
   SiFacebook, 
-  SiPipedrive, 
   SiClickup, 
   SiTrello, 
   SiSalesforce, 
   SiMailchimp, 
   SiAirtable,
-  SiPandadoc,
   SiSlack,
   SiGmail
 } from 'react-icons/si';
+import { Layers } from 'lucide-react';
 
 interface TemplateWorkflowSetupProps {
   templateId?: string | null;
@@ -771,7 +770,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                           ) && (
                             <div className="mb-6 p-4 border rounded-md bg-green-50/30">
                               <div className="flex items-center mb-4">
-                                <SiPipedrive className="h-5 w-5 text-green-600 mr-2" />
+                                <Layers className="h-5 w-5 text-green-600 mr-2" />
                                 <h3 className="text-lg font-medium">Pipedrive Integration</h3>
                               </div>
                               
