@@ -33,7 +33,7 @@ async function seedSubscriptionPlans() {
       hasCustomBranding: false,
       hasPrioritySuppport: false,
       features: [
-        "Up to 5 workflows",
+        "Up to 5 workflows (more than competitors)",
         "Basic integrations",
         "Community support",
         "1 workspace",
@@ -49,20 +49,20 @@ async function seedSubscriptionPlans() {
       priceYearly: 199.99,
       stripePriceIdMonthly: "price_basic_monthly", // These would be actual Stripe price IDs in production
       stripePriceIdYearly: "price_basic_yearly",
-      maxWorkflows: 20,
+      maxWorkflows: 25,
       maxWorkspaces: 3,
-      maxExecutionsPerMonth: 5000,
+      maxExecutionsPerMonth: 7500,
       maxTeamMembers: 3,
       hasAdvancedIntegrations: true,
       hasAiFeatures: false,
       hasCustomBranding: false,
       hasPrioritySuppport: false,
       features: [
-        "Up to 20 workflows",
+        "Up to 25 workflows",
         "Advanced integrations",
         "Email support",
         "3 workspaces",
-        "5,000 executions per month",
+        "7,500 executions per month",
         "Team collaboration (up to 3 members)"
       ],
       isActive: true,
