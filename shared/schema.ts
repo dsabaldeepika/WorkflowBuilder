@@ -252,15 +252,15 @@ export const workflowTemplates = pgTable("workflow_templates", {
   category: text("category").notNull(),
   tags: text("tags").array(),
   difficulty: text("difficulty").notNull().default('beginner'), // beginner, intermediate, advanced
-  workflowData: jsonb("workflow_data").notNull(),
-  imageUrl: text("image_url"),
+  workflowData: jsonb("workflowData").notNull(),
+  imageUrl: text("imageUrl"),
   popularity: integer("popularity").notNull().default(0),
-  createdBy: text("created_by"),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
-  isPublished: boolean("is_published").notNull().default(false),
-  isOfficial: boolean("is_official").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: text("createdBy"),
+  createdByUserId: integer("createdByUserId").references(() => users.id),
+  isPublished: boolean("isPublished").notNull().default(false),
+  isOfficial: boolean("isOfficial").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 // Node types table for workflow nodes
