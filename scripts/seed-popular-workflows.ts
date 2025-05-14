@@ -278,12 +278,12 @@ async function seedPopularWorkflows() {
           category: template.category,
           tags: template.tags,
           difficulty: template.difficulty,
-          workflow_data: template.workflowData,
-          image_url: template.imageUrl,
+          workflowData: template.workflowData, // This matches the schema property
+          imageUrl: template.imageUrl,
           popularity: template.popularity,
-          created_by: template.createdBy,
-          is_published: template.isPublished,
-          is_official: template.isOfficial
+          createdBy: template.createdBy,
+          isPublished: template.isPublished,
+          isOfficial: template.isOfficial
         };
         
         await db.insert(workflowTemplates).values(templateData);

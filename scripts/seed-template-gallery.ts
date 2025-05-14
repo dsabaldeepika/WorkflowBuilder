@@ -450,12 +450,12 @@ async function seedTemplates() {
           category: template.category,
           tags: template.tags,
           difficulty: template.difficulty,
-          workflow_data: template.workflowData, // This is the key change
-          image_url: template.imageUrl,
+          workflowData: template.workflowData, // Use camelCase to match the schema
+          imageUrl: template.imageUrl,
           popularity: template.popularity,
-          created_by: template.createdBy,
-          is_published: template.isPublished,
-          is_official: template.isOfficial
+          createdBy: template.createdBy,
+          isPublished: template.isPublished,
+          isOfficial: template.isOfficial
         };
         
         await db.insert(workflowTemplates).values(templateData);
