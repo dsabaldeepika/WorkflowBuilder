@@ -326,22 +326,29 @@ const InspirationGallery = () => {
                     <Button variant="outline" size="sm" onClick={() => handlePreview(template)}>
                       Preview
                     </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleImport(template.id)}
-                      disabled={importMutation.isPending}
-                    >
-                      {importMutation.isPending && importMutation.variables === template.id ? (
-                        <div className="flex items-center">
-                          <span className="mr-2">Importing</span>
-                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      ) : (
-                        <>
-                          Use Template <ArrowRight className="ml-2 h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Link href={`/templates/${template.id}`}>
+                        <Button variant="outline" size="sm">
+                          Details
+                        </Button>
+                      </Link>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleImport(template.id)}
+                        disabled={importMutation.isPending}
+                      >
+                        {importMutation.isPending && importMutation.variables === template.id ? (
+                          <div className="flex items-center">
+                            <span className="mr-2">Importing</span>
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        ) : (
+                          <>
+                            Use Template <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </CardFooter>
                 </Card>
               ))}

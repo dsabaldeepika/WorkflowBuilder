@@ -24,6 +24,7 @@ const WorkflowMonitoring = lazy(() => import("@/pages/workflow-monitoring"));
 const HealthDashboardPage = lazy(() => import("@/pages/health-dashboard-page"));
 const TemplatesPage = lazy(() => import("@/pages/templates-page"));
 const TemplateSetupPage = lazy(() => import("@/pages/template-setup-page"));
+const TemplateDetailPage = lazy(() => import("@/pages/template-detail-page"));
 const PricingPage = lazy(() => import("@/pages/pricing-page"));
 const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
 const AccountUsagePage = lazy(() => import("@/pages/account-usage-page"));
@@ -140,6 +141,10 @@ function Router() {
       
       <Route path={ROUTES.inspirationGallery}>
         <LazyRouteComponent Component={InspirationGalleryPage} />
+      </Route>
+      
+      <Route path="/templates/:id">
+        <LazyRouteComponent Component={TemplateDetailPage} />
       </Route>
       
       <Route path="/template-setup/:id">

@@ -18,10 +18,10 @@ const TemplateDetailPage: React.FC = () => {
     isLoading, 
     error 
   } = useQuery({
-    queryKey: ['/api/workflow-templates', templateId],
+    queryKey: ['/api/templates', templateId],
     queryFn: async () => {
       if (!templateId) return null;
-      const res = await fetch(`/api/workflow-templates/${templateId}`);
+      const res = await fetch(`/api/templates/${templateId}`);
       if (!res.ok) {
         throw new Error('Failed to fetch template details');
       }
@@ -32,7 +32,7 @@ const TemplateDetailPage: React.FC = () => {
   
   const importMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest('POST', `/api/workflow-templates/${id}/import`);
+      const res = await apiRequest('POST', `/api/workflow-templates/${id}/import`, {});
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || 'Failed to import template');
