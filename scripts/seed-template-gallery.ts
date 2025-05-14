@@ -9,7 +9,7 @@ import {
   insertWorkflowTemplateCategorySchema, 
   insertWorkflowTemplateSchema 
 } from '../shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 async function seedTemplateCategories() {
   console.log('Seeding template categories...');
@@ -440,7 +440,7 @@ async function seedTemplates() {
     try {
       // Check if template exists already
       const existing = await db.select().from(workflowTemplates)
-        .where(({ name }) => name.equals(template.name));
+        .where(eq(workflowTemplates.name, template.name));
         
       if (existing.length === 0) {
         const parsedTemplate = insertWorkflowTemplateSchema.parse(template);
@@ -448,12 +448,10 @@ async function seedTemplates() {
         console.log(`Added template: ${template.name}`);
         
         // Update category count
-        await db.execute(
-          `UPDATE workflow_template_categories 
-           SET count = count + 1 
-           WHERE name = $1`,
-          [template.category]
-        );
+        await db
+          .update(workflowTemplateCategories)
+          .set({ count: sql`count + 1` })
+          .where(eq(workflowTemplateCategories.name, template.category));
       } else {
         console.log(`Template already exists: ${template.name}`);
       }
@@ -472,7 +470,7 @@ async function clearExistingData() {
     console.log('Deleted existing templates');
     
     // Reset category counts
-    await db.execute(`UPDATE workflow_template_categories SET count = 0`);
+    await db.update(workflowTemplateCategories).set({ count: 0 });
     console.log('Reset category counts');
   } catch (error) {
     console.error('Error clearing existing data:', error);
