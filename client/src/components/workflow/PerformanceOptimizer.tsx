@@ -85,16 +85,25 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
       if (!workflowId) throw new Error("Workflow ID is required");
       
       const optimizationIds = isAutoOptimize 
-        ? performanceReport?.optimizationSuggestions.map(s => s.id) || []
+        ? performanceReport?.optimizationSuggestions?.map(s => s.id) || []
         : selectedOptimizations;
         
-      const response = await apiRequest(`/api/workflows/${workflowId}/optimize`, {
+      // Create a proper body string
+      const bodyString = JSON.stringify({ optimizationIds });
+        
+      const response = await fetch(`/api/workflows/${workflowId}/optimize`, {
         method: 'POST',
-        body: JSON.stringify({ optimizationIds }),
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: bodyString,
+        credentials: 'include'
       });
+      
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`${response.status}: ${text || response.statusText}`);
+      }
       
       return await response.json();
     },
