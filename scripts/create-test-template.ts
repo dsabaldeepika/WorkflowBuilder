@@ -3,6 +3,7 @@
  */
 import { db } from '../server/db';
 import { workflowTemplates } from '../shared/schema';
+import { eq } from 'drizzle-orm';
 
 async function createTestTemplate() {
   try {
@@ -49,7 +50,7 @@ async function createTestTemplate() {
     
     // Verify it was inserted
     const [template] = await db.select().from(workflowTemplates).where(
-      workflowTemplates => workflowTemplates.name.equals("Test Template")
+      eq(workflowTemplates.name, "Test Template")
     );
     
     console.log("Retrieved template:", template);
