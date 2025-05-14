@@ -51,7 +51,7 @@ async function seedSubscriptionPlans() {
       stripePriceIdYearly: "price_basic_yearly",
       maxWorkflows: 25,
       maxWorkspaces: 3,
-      maxExecutionsPerMonth: 7500,
+      maxExecutionsPerMonth: 2500,
       maxTeamMembers: 3,
       hasAdvancedIntegrations: true,
       hasAiFeatures: false,
@@ -62,7 +62,7 @@ async function seedSubscriptionPlans() {
         "Advanced integrations",
         "Email support",
         "3 workspaces",
-        "7,500 executions per month",
+        "2,500 executions per month",
         "Team collaboration (up to 3 members)"
       ],
       isActive: true,
@@ -129,9 +129,7 @@ async function seedSubscriptionPlans() {
   ];
   
   // Insert the plans into the database
-  for (const plan of plans) {
-    await db.insert(subscriptionPlans).values(plan);
-  }
+  await db.insert(subscriptionPlans).values(plans);
   
   console.log(`Successfully seeded ${plans.length} subscription plans.`);
 }

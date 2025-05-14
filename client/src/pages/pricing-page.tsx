@@ -610,6 +610,10 @@ export default function PricingPage() {
                         </li>
                         <li className="flex items-start">
                           <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
+                          <span className="text-sm">500 executions/month</span>
+                        </li>
+                        <li className="flex items-start">
+                          <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                           <span className="text-sm">Basic integrations</span>
                         </li>
                       </ul>
@@ -767,6 +771,20 @@ export default function PricingPage() {
               </tr>
             </thead>
             <tbody>
+              <tr className="border-b hover:bg-muted/20">
+                <td className="py-4 px-6 font-medium">Max Workflows</td>
+                <td className="text-center py-4 px-6">5 (more than competitors)</td>
+                <td className="text-center py-4 px-6">25</td>
+                <td className="text-center py-4 px-6">100</td>
+                <td className="text-center py-4 px-6">Unlimited</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/20">
+                <td className="py-4 px-6 font-medium">Monthly Executions</td>
+                <td className="text-center py-4 px-6">500</td>
+                <td className="text-center py-4 px-6">2,500</td>
+                <td className="text-center py-4 px-6">25,000</td>
+                <td className="text-center py-4 px-6">Unlimited</td>
+              </tr>
               <tr className="border-b hover:bg-muted/20">
                 <td className="py-4 px-6 font-medium">Templates Access</td>
                 <td className="text-center py-4 px-6">5 templates</td>
