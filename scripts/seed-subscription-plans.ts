@@ -68,8 +68,8 @@ async function seedSubscriptionPlans() {
       isActive: true,
     },
     {
-      name: "Pro",
-      tier: SubscriptionTier.PRO,
+      name: "Professional",
+      tier: SubscriptionTier.PROFESSIONAL,
       description: "For teams that need advanced features and higher limits",
       priceMonthly: 49.99,
       priceYearly: 499.99,

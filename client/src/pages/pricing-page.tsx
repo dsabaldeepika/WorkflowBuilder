@@ -336,7 +336,7 @@ export default function PricingPage() {
                           <span className="text-sm">Templates</span>
                           <span className="font-medium">{plan.tier === SubscriptionTier.FREE ? '5' : 
                                                 plan.tier === SubscriptionTier.BASIC ? '20' : 
-                                                plan.tier === SubscriptionTier.PRO ? 'All' : 'Custom'}</span>
+                                                plan.tier === SubscriptionTier.PROFESSIONAL ? 'All' : 'Custom'}</span>
                         </div>
                         
                         <div className="flex items-center justify-between mb-1">

@@ -40,7 +40,7 @@ export const oauthProviders = pgTable("oauth_providers", {
 export enum SubscriptionTier {
   FREE = 'free',
   BASIC = 'basic',
-  PRO = 'pro',
+  PROFESSIONAL = 'professional',
   ENTERPRISE = 'enterprise'
 }
 
