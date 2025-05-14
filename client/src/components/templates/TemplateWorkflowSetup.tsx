@@ -66,6 +66,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [credentialsComplete, setCredentialsComplete] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   
   const {
     loadWorkflowFromTemplate,
@@ -194,8 +195,35 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     }));
   };
   
+  // Launch the Node Configuration Wizard
+  const handleLaunchWizard = () => {
+    setShowWizard(true);
+  };
+
+  // Handle wizard completion
+  const handleWizardComplete = (configuredNodes: any[]) => {
+    // Save the updated nodes to the store
+    loadWorkflowFromTemplate(configuredNodes, edges);
+    
+    setShowWizard(false);
+    
+    // Show success toast
+    toast({
+      title: "Nodes configured successfully",
+      description: "Your workflow is ready to be activated.",
+    });
+    
+    // Automatically proceed to save the workflow
+    handleSaveWorkflow(configuredNodes);
+  };
+  
+  // Handle wizard cancellation
+  const handleWizardCancel = () => {
+    setShowWizard(false);
+  };
+
   // Handle workflow saving
-  const handleSaveWorkflow = async () => {
+  const handleSaveWorkflow = async (configuredNodes?: any[]) => {
     if (!template) return;
     
     setIsLoading(true);
@@ -203,7 +231,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     try {
       // Save the workflow
       // Prepare nodes with credential values
-      const nodesWithCredentials = nodes.map(node => {
+      const nodesWithCredentials = (configuredNodes || nodes).map(node => {
         if (!node.data?.config) return node;
         
         // Replace credential placeholders with actual values
@@ -238,7 +266,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
       });
       
       toast({
-        title: "Workflow created successfully",
+        title: "Workflow activated successfully",
         description: "Your new workflow is ready to use.",
       });
       
@@ -247,7 +275,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     } catch (error) {
       console.error('Error saving workflow:', error);
       toast({
-        title: "Failed to create workflow",
+        title: "Failed to activate workflow",
         description: "There was an error creating your workflow. Please try again.",
         variant: "destructive",
       });
@@ -283,6 +311,17 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50">
+      {/* Show wizard overlay when active */}
+      {showWizard && nodes.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-auto">
+          <NodeConfigWizard 
+            nodes={nodes}
+            onComplete={handleWizardComplete}
+            onCancel={handleWizardCancel}
+          />
+        </div>
+      )}
+      
       {/* Hero header with template info */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
         <div className="container mx-auto py-10 px-4">
@@ -901,22 +940,43 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                     </div>
                     
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                      <Button 
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md" 
-                        disabled={!credentialsComplete || isLoading}
-                        onClick={handleSaveWorkflow}
-                      >
-                        {isLoading ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                            Creating Workflow...
-                          </>
-                        ) : !credentialsComplete ? (
-                          'Complete Required Fields'
-                        ) : (
-                          'Create & Activate Workflow'
-                        )}
-                      </Button>
+                      <div className="flex flex-col space-y-3">
+                        <Button 
+                          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md" 
+                          disabled={!credentialsComplete || isLoading}
+                          onClick={handleLaunchWizard}
+                        >
+                          {isLoading ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                              Processing...
+                            </>
+                          ) : !credentialsComplete ? (
+                            'Complete Required Fields'
+                          ) : (
+                            <>
+                              <Wand2 className="h-4 w-4 mr-2" />
+                              Setup with Guided Wizard
+                            </>
+                          )}
+                        </Button>
+                        
+                        <Button 
+                          variant="outline"
+                          className="w-full" 
+                          disabled={!credentialsComplete || isLoading}
+                          onClick={() => handleSaveWorkflow(undefined)}
+                        >
+                          {isLoading ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                              Creating Workflow...
+                            </>
+                          ) : (
+                            'Quick Activate (Skip Wizard)'
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   

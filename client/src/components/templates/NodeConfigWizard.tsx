@@ -6,7 +6,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Step, Stepper } from '@/components/ui/stepper';
+// import { Step, Stepper } from '@/components/ui/stepper';
+// Note: We created the stepper component but aren't using it in this wizard yet
 import { Separator } from '@/components/ui/separator';
 import { GoogleSheetsConnector } from '@/components/integration/GoogleSheetsConnector';
 import { ConnectionManager } from '@/components/integration/ConnectionManager';
