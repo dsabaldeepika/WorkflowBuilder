@@ -492,6 +492,262 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   /**
    * @swagger
+   * /api/workflows/{id}/optimize:
+   *   post:
+   *     summary: Apply performance optimizations to a workflow
+   *     description: Analyzes and applies automated performance optimizations to the specified workflow
+   *     tags: [Workflows]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID of the workflow to optimize
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               optimizationIds:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Optional list of specific optimization IDs to apply
+   *     responses:
+   *       200:
+   *         description: Optimizations applied successfully
+   *       404:
+   *         description: Workflow not found
+   *       500:
+   *         description: Server error
+   */
+  app.post("/api/workflows/:id/optimize", async (req, res) => {
+    try {
+      const workflowId = parseInt(req.params.id);
+      const { optimizationIds } = req.body || {};
+      
+      // Fetch the workflow
+      const [workflow] = await db.select().from(workflows).where(eq(workflows.id, workflowId));
+      
+      if (!workflow) {
+        return res.status(404).json({ message: 'Workflow not found' });
+      }
+      
+      // Parse workflow data
+      const nodes = workflow.nodes;
+      const edges = workflow.edges;
+      
+      // Generate optimization suggestions
+      const optimizationSuggestions = [
+        {
+          id: 'timeout-optimization',
+          type: 'timeout',
+          title: 'Increase API timeout thresholds',
+          description: 'Add retry logic with increased timeouts for external API calls',
+          impactLevel: 'high',
+          nodeIds: findApiNodes(nodes)
+        },
+        {
+          id: 'parallel-execution',
+          type: 'execution',
+          title: 'Parallelize API requests',
+          description: 'Convert sequential API calls to parallel execution',
+          impactLevel: 'medium',
+          nodeIds: findApiNodes(nodes)
+        },
+        {
+          id: 'data-transformation',
+          type: 'data_processing',
+          title: 'Optimize data transformations',
+          description: 'Combine multiple transformation steps into fewer operations',
+          impactLevel: 'medium',
+          nodeIds: findTransformNodes(nodes)
+        },
+        {
+          id: 'error-handling',
+          type: 'error_handling',
+          title: 'Improve error handling',
+          description: 'Add comprehensive error handling with fallback options',
+          impactLevel: 'high',
+          nodeIds: nodes.map(node => node.id)
+        }
+      ];
+      
+      // Apply optimizations to the workflow
+      const { optimizedNodes, optimizedEdges, appliedOptimizations } = applyOptimizations(
+        nodes, 
+        edges, 
+        optimizationSuggestions,
+        optimizationIds
+      );
+      
+      // Update the workflow with optimized nodes and edges
+      const [updatedWorkflow] = await db
+        .update(workflows)
+        .set({
+          nodes: optimizedNodes,
+          edges: optimizedEdges,
+          updatedAt: new Date()
+        })
+        .where(eq(workflows.id, workflowId))
+        .returning();
+      
+      res.status(200).json({
+        workflow: updatedWorkflow,
+        appliedOptimizations
+      });
+    } catch (error) {
+      console.error('Error optimizing workflow:', error);
+      res.status(500).json({ 
+        message: 'Failed to optimize workflow',
+        error: error.message 
+      });
+    }
+  });
+  
+  // Helper function to find API-related nodes
+  function findApiNodes(nodes) {
+    return nodes
+      .filter(node => 
+        node.type === 'api' || 
+        node.type === 'action' || 
+        (node.data && (node.data.nodeType === 'api' || node.data.nodeType === 'action'))
+      )
+      .map(node => node.id);
+  }
+  
+  // Helper function to find transformation nodes
+  function findTransformNodes(nodes) {
+    return nodes
+      .filter(node => 
+        node.type === 'transformer' || 
+        (node.data && node.data.nodeType === 'transformer')
+      )
+      .map(node => node.id);
+  }
+  
+  // Helper function to apply optimizations to workflow
+  function applyOptimizations(nodes, edges, suggestions, optimizationIds) {
+    const optimizedNodes = [...nodes];
+    const optimizedEdges = [...edges];
+    const appliedOptimizations = [];
+    
+    // Filter suggestions by provided IDs if specified
+    const suggestionsToApply = optimizationIds 
+      ? suggestions.filter(s => optimizationIds.includes(s.id))
+      : suggestions;
+    
+    for (const suggestion of suggestionsToApply) {
+      switch (suggestion.type) {
+        case 'timeout':
+          // Add timeout configurations to relevant nodes
+          suggestion.nodeIds.forEach(nodeId => {
+            const nodeIndex = optimizedNodes.findIndex(n => n.id === nodeId);
+            if (nodeIndex !== -1) {
+              optimizedNodes[nodeIndex] = {
+                ...optimizedNodes[nodeIndex],
+                data: {
+                  ...optimizedNodes[nodeIndex].data,
+                  optimized: true,
+                  timeoutConfig: {
+                    enabled: true,
+                    duration: 30000, // 30 seconds
+                    retryStrategy: 'exponential',
+                    maxRetries: 3
+                  }
+                }
+              };
+            }
+          });
+          appliedOptimizations.push({
+            id: suggestion.id,
+            title: suggestion.title,
+            appliedTo: suggestion.nodeIds.length,
+            type: suggestion.type
+          });
+          break;
+          
+        case 'execution':
+          // Mark nodes for parallel execution
+          suggestion.nodeIds.forEach(nodeId => {
+            const nodeIndex = optimizedNodes.findIndex(n => n.id === nodeId);
+            if (nodeIndex !== -1) {
+              optimizedNodes[nodeIndex] = {
+                ...optimizedNodes[nodeIndex],
+                data: {
+                  ...optimizedNodes[nodeIndex].data,
+                  optimized: true,
+                  executionStrategy: 'parallel'
+                }
+              };
+            }
+          });
+          appliedOptimizations.push({
+            id: suggestion.id,
+            title: suggestion.title,
+            appliedTo: suggestion.nodeIds.length,
+            type: suggestion.type
+          });
+          break;
+          
+        case 'data_processing':
+          // Optimize data transformation nodes
+          suggestion.nodeIds.forEach(nodeId => {
+            const nodeIndex = optimizedNodes.findIndex(n => n.id === nodeId);
+            if (nodeIndex !== -1) {
+              optimizedNodes[nodeIndex] = {
+                ...optimizedNodes[nodeIndex],
+                data: {
+                  ...optimizedNodes[nodeIndex].data,
+                  optimized: true,
+                  combinedTransformation: true
+                }
+              };
+            }
+          });
+          appliedOptimizations.push({
+            id: suggestion.id,
+            title: suggestion.title,
+            appliedTo: suggestion.nodeIds.length,
+            type: suggestion.type
+          });
+          break;
+          
+        case 'error_handling':
+          // Add error handling to all nodes
+          optimizedNodes.forEach((node, index) => {
+            optimizedNodes[index] = {
+              ...node,
+              data: {
+                ...node.data,
+                optimized: true,
+                errorHandling: {
+                  enabled: true,
+                  retryOnError: true,
+                  maxRetries: 2,
+                  fallbackValue: null
+                }
+              }
+            };
+          });
+          appliedOptimizations.push({
+            id: suggestion.id,
+            title: suggestion.title,
+            appliedTo: optimizedNodes.length,
+            type: suggestion.type
+          });
+          break;
+      }
+    }
+    
+    return { optimizedNodes, optimizedEdges, appliedOptimizations };
+  }
+
+  /**
+   * @swagger
    * /api/health-monitoring-data:
    *   get:
    *     summary: Get workflow health monitoring data
