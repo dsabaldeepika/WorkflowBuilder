@@ -12,54 +12,57 @@ const templates: InsertWorkflowTemplate[] = [
     description: "Automatically save new leads from Facebook Lead Ads as rows in a Google Sheets spreadsheet for easy tracking and analysis.",
     category: "lead-management",
     tags: ["facebook", "google-sheets", "lead-generation", "marketing"],
-    nodes: JSON.stringify([
-      {
-        id: "facebook-trigger",
-        type: "trigger",
-        position: { x: 100, y: 100 },
-        data: { 
-          service: "facebook",
-          event: "new_lead",
-          config: { form_id: "${form_id}" }
-        }
-      },
-      {
-        id: "transform-data",
-        type: "function",
-        position: { x: 400, y: 100 },
-        data: { 
-          function: "transform",
-          config: { 
-            mapping: {
-              "name": "{{lead.name}}",
-              "email": "{{lead.email}}",
-              "phone": "{{lead.phone}}",
-              "created_at": "{{lead.created_time}}"
+    difficulty: "beginner",
+    workflowData: {
+      nodes: [
+        {
+          id: "facebook-trigger",
+          type: "trigger",
+          position: { x: 100, y: 100 },
+          data: { 
+            service: "facebook",
+            event: "new_lead",
+            config: { form_id: "${form_id}" }
+          }
+        },
+        {
+          id: "transform-data",
+          type: "function",
+          position: { x: 400, y: 100 },
+          data: { 
+            function: "transform",
+            config: { 
+              mapping: {
+                "name": "{{lead.name}}",
+                "email": "{{lead.email}}",
+                "phone": "{{lead.phone}}",
+                "created_at": "{{lead.created_time}}"
+              }
+            }
+          }
+        },
+        {
+          id: "sheets-action",
+          type: "action",
+          position: { x: 700, y: 100 },
+          data: { 
+            service: "google-sheets",
+            action: "append_row",
+            config: { 
+              spreadsheet_id: "${spreadsheet_id}",
+              sheet_name: "${sheet_name}"
             }
           }
         }
-      },
-      {
-        id: "sheets-action",
-        type: "action",
-        position: { x: 700, y: 100 },
-        data: { 
-          service: "google-sheets",
-          action: "append_row",
-          config: { 
-            spreadsheet_id: "${spreadsheet_id}",
-            sheet_name: "${sheet_name}"
-          }
-        }
-      }
-    ]),
-    edges: JSON.stringify([
-      { id: "e1-2", source: "facebook-trigger", target: "transform-data" },
-      { id: "e2-3", source: "transform-data", target: "sheets-action" }
-    ]),
-    coverImage: "https://example.com/images/facebook-to-sheets.png",
-    complexity: "simple",
-    estimatedDuration: "5 minutes",
+      ],
+      edges: [
+        { id: "e1-2", source: "facebook-trigger", target: "transform-data" },
+        { id: "e2-3", source: "transform-data", target: "sheets-action" }
+      ]
+    },
+    imageUrl: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&q=80",
+    popularity: 42,
+    createdBy: "PumpFlux Team",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true
@@ -69,50 +72,53 @@ const templates: InsertWorkflowTemplate[] = [
     description: "Automatically send a customized Gmail message to new leads captured through Facebook Lead Ads forms.",
     category: "lead-nurturing",
     tags: ["facebook", "gmail", "email", "lead-generation"],
-    nodes: JSON.stringify([
-      {
-        id: "facebook-trigger",
-        type: "trigger",
-        position: { x: 100, y: 100 },
-        data: { 
-          service: "facebook",
-          event: "new_lead",
-          config: { form_id: "${form_id}" }
-        }
-      },
-      {
-        id: "prepare-email",
-        type: "function",
-        position: { x: 400, y: 100 },
-        data: { 
-          function: "template",
-          config: { 
-            template: "Hi {{lead.name}},\n\nThank you for your interest in our products/services. We received your information and will contact you shortly.\n\nBest regards,\n${company_name}"
+    difficulty: "beginner",
+    workflowData: {
+      nodes: [
+        {
+          id: "facebook-trigger",
+          type: "trigger",
+          position: { x: 100, y: 100 },
+          data: { 
+            service: "facebook",
+            event: "new_lead",
+            config: { form_id: "${form_id}" }
+          }
+        },
+        {
+          id: "prepare-email",
+          type: "function",
+          position: { x: 400, y: 100 },
+          data: { 
+            function: "template",
+            config: { 
+              template: "Hi {{lead.name}},\n\nThank you for your interest in our products/services. We received your information and will contact you shortly.\n\nBest regards,\n${company_name}"
+            }
+          }
+        },
+        {
+          id: "gmail-action",
+          type: "action",
+          position: { x: 700, y: 100 },
+          data: { 
+            service: "gmail",
+            action: "send_email",
+            config: { 
+              to: "{{lead.email}}",
+              subject: "${email_subject}",
+              body_type: "text"
+            }
           }
         }
-      },
-      {
-        id: "gmail-action",
-        type: "action",
-        position: { x: 700, y: 100 },
-        data: { 
-          service: "gmail",
-          action: "send_email",
-          config: { 
-            to: "{{lead.email}}",
-            subject: "${email_subject}",
-            body_type: "text"
-          }
-        }
-      }
-    ]),
-    edges: JSON.stringify([
-      { id: "e1-2", source: "facebook-trigger", target: "prepare-email" },
-      { id: "e2-3", source: "prepare-email", target: "gmail-action" }
-    ]),
-    coverImage: "https://example.com/images/facebook-to-gmail.png",
-    complexity: "simple",
-    estimatedDuration: "5 minutes",
+      ],
+      edges: [
+        { id: "e1-2", source: "facebook-trigger", target: "prepare-email" },
+        { id: "e2-3", source: "prepare-email", target: "gmail-action" }
+      ]
+    },
+    imageUrl: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80",
+    popularity: 38,
+    createdBy: "PumpFlux Team",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true
@@ -1212,7 +1218,44 @@ export async function seedTemplates() {
     let skipCount = 0;
     let errorCount = 0;
     
-    for (const template of templates) {
+    // Create properly formatted templates to insert
+    const templatesForInsert = templates.map(template => {
+      const formattedTemplate = { ...template };
+      
+      // Check if we need to convert the old format to the new format
+      if (formattedTemplate.nodes && typeof formattedTemplate.nodes === 'string') {
+        try {
+          const nodes = JSON.parse(formattedTemplate.nodes);
+          const edges = formattedTemplate.edges ? JSON.parse(formattedTemplate.edges) : [];
+          
+          // Set workflowData to the proper format
+          formattedTemplate.workflowData = { nodes, edges };
+          
+          // Remove the old properties
+          delete formattedTemplate.nodes;
+          delete formattedTemplate.edges;
+        } catch (e) {
+          console.error(`Error parsing nodes/edges for ${formattedTemplate.name}:`, e);
+        }
+      }
+      
+      // Set default values for required fields
+      if (!formattedTemplate.difficulty) formattedTemplate.difficulty = 'beginner';
+      if (!formattedTemplate.imageUrl && formattedTemplate.coverImage) {
+        formattedTemplate.imageUrl = formattedTemplate.coverImage;
+        delete formattedTemplate.coverImage;
+      } else if (!formattedTemplate.imageUrl) {
+        formattedTemplate.imageUrl = "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80";
+      }
+      
+      if (!formattedTemplate.popularity) formattedTemplate.popularity = Math.floor(Math.random() * 50) + 10;
+      if (!formattedTemplate.createdBy) formattedTemplate.createdBy = "PumpFlux Team";
+      
+      return formattedTemplate;
+    });
+    
+    // Insert the templates
+    for (const template of templatesForInsert) {
       try {
         // Skip if template with same name already exists
         if (existingNames.has(template.name)) {
