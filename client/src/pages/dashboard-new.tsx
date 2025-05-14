@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { GradientBackground } from '@/components/ui/gradient-background';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from '@tanstack/react-query';
 import { 
   PlusCircle, 
   ListChecks, 
@@ -21,59 +23,116 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  PauseCircle
+  PauseCircle,
+  Info,
+  LightbulbIcon,
+  BrainCircuit,
+  CircleEllipsis
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Type definitions for workflow data
+interface Workflow {
+  id: number | string;
+  name: string;
+  description: string;
+  state: string;
+  type: string;
+  lastRun?: string;
+  nextRun?: string;
+  runCount: number;
+}
+
+// Type definitions for activity data
+interface WorkflowRun {
+  id: number | string;
+  workflowId: number | string;
+  workflowName: string;
+  state: string;
+  executedAt: string;
+  type?: string;
+  progress?: number;
+  estimatedCompletion?: string;
+}
+
+interface ActivityData {
+  runs: WorkflowRun[];
+  totalRuns: number;
+}
+
+// Type definitions for metrics data
+interface Metrics {
+  avgExecutionTime: string;
+  successRate: number;
+  totalRuns: number;
+  activeWorkflows: number;
+  runningWorkflows: number;
+  performanceChange: number;
+}
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   
-  // Sample workflows for demonstration purposes
-  const [recentWorkflows] = useState([
-    { 
-      id: 1, 
-      name: 'Daily Social Posts Generator', 
-      description: 'Automatically creates and schedules social media posts',
-      lastRun: '2 hours ago', 
-      nextRun: 'Tomorrow at 8:00 AM',
-      state: 'completed',
-      type: 'Social Media',
-      runCount: 145
+  // Fetch real workflow data from the API
+  const { 
+    data: workflows = [], 
+    isLoading: isLoadingWorkflows,
+    error: workflowError
+  } = useQuery<Workflow[]>({
+    queryKey: ['/api/workflows'],
+    enabled: !!user // Only fetch when user is authenticated
+  });
+  
+  // Fetch metrics data for the dashboard
+  const {
+    data: metrics,
+    isLoading: isLoadingMetrics
+  } = useQuery<Metrics>({
+    queryKey: ['/api/workflows/metrics'],
+    enabled: !!user
+  });
+  
+  // Fetch activity data for the dashboard
+  const {
+    data: activityData,
+    isLoading: isLoadingActivity
+  } = useQuery<ActivityData>({
+    queryKey: ['/api/workflows/activity'],
+    enabled: !!user
+  });
+  
+  // Usage ideas for inspiration
+  const usageIdeas = [
+    {
+      title: "Customer Journey Automation",
+      description: "Map and automate your entire customer journey from first contact to repeat business.",
+      icon: <BrainCircuit className="h-5 w-5 text-purple-500" />
     },
-    { 
-      id: 2, 
-      name: 'Customer Data Sync', 
-      description: 'Syncs customer data between CRM and marketing platforms',
-      lastRun: '45 minutes ago', 
-      nextRun: 'Running now',
-      state: 'running',
-      type: 'Data Integration',
-      runCount: 89
+    {
+      title: "Marketing Campaign Orchestration",
+      description: "Schedule and coordinate multi-channel marketing campaigns that respond to customer actions.",
+      icon: <Sparkles className="h-5 w-5 text-amber-500" />
     },
-    { 
-      id: 3, 
-      name: 'Weekly Analytics Report', 
-      description: 'Generates and sends weekly analytics reports',
-      lastRun: 'Just now', 
-      nextRun: 'Next Monday at 6:00 AM',
-      state: 'failed',
-      type: 'Reporting',
-      runCount: 52
+    {
+      title: "Data Synchronization Hub",
+      description: "Keep your business data in sync across all platforms without manual imports/exports.",
+      icon: <ArrowRightLeft className="h-5 w-5 text-blue-500" />
     },
-    { 
-      id: 4, 
-      name: 'Lead Nurturing Campaign', 
-      description: 'Automated email campaign for lead nurturing',
-      lastRun: '1 day ago', 
-      nextRun: 'Paused',
-      state: 'paused',
-      type: 'Marketing',
-      runCount: 27
-    },
-  ]);
+    {
+      title: "Intelligent Lead Scoring",
+      description: "Automatically score and prioritize leads based on engagement and conversion potential.",
+      icon: <LightbulbIcon className="h-5 w-5 text-green-500" />
+    }
+  ];
 
   // Function to get badge variant based on workflow state
   const getStateVariant = (state: string) => {
@@ -211,58 +270,29 @@ export default function Dashboard() {
           </Card>
         </div>
         
-        {/* Secondary features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
-            <CardContent className="p-5 flex items-start">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
-                <ArrowRightLeft className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium mb-1">Integrations Marketplace</h3>
-                <p className="text-muted-foreground text-sm">
-                  Connect with 300+ apps and services to build powerful workflow automations.
-                </p>
-                <Button variant="link" className="p-0 h-auto mt-2" onClick={() => window.location.href = '/integrations'}>
-                  Browse Integrations
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
-            <CardContent className="p-5 flex items-start">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
-                <CreditCard className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium mb-1">Subscription Plans</h3>
-                <p className="text-muted-foreground text-sm">
-                  Find the perfect plan for your automation needs, from free starter to enterprise solutions.
-                </p>
-                <Button variant="link" className="p-0 h-auto mt-2" onClick={() => window.location.href = '/pricing'}>
-                  View Pricing
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
-            <CardContent className="p-5 flex items-start">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
-                <Zap className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium mb-1">Workflow Analytics</h3>
-                <p className="text-muted-foreground text-sm">
-                  Analyze execution patterns and optimize your workflows for maximum efficiency.
-                </p>
-                <Button variant="link" className="p-0 h-auto mt-2" onClick={() => window.location.href = '/analytics'}>
-                  View Analytics
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Workflow use cases and ideas */}
+        <div className="mb-10">
+          <h2 className="text-xl font-bold mb-4">Popular Workflow Ideas</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {usageIdeas.map((idea, index) => (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center mb-3">
+                    <div className="mr-2">
+                      {idea.icon}
+                    </div>
+                    <h3 className="font-medium text-sm">{idea.title}</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {idea.description}
+                  </p>
+                  <Button variant="link" className="p-0 h-auto mt-2 text-xs" onClick={() => window.location.href = '/templates'}>
+                    View Templates
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         {/* Health Monitoring Feature Highlight */}
@@ -315,17 +345,42 @@ export default function Dashboard() {
                 </p>
               </div>
               
-              <Link href="/workflow-animations">
-                <Button variant="outline" size="sm">
-                  <Zap className="h-4 w-4 mr-2" />
-                  View State Animations
+              <Link href="/create">
+                <Button>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Create Workflow
                 </Button>
               </Link>
             </div>
             
-            {recentWorkflows.length > 0 ? (
+            {isLoadingWorkflows ? (
               <div className="grid gap-5 md:grid-cols-2">
-                {recentWorkflows.map((workflow) => (
+                {[1, 2].map((i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <Skeleton className="h-5 w-48" />
+                        <Skeleton className="h-5 w-20" />
+                      </div>
+                      <Skeleton className="h-4 w-full mt-2" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Skeleton className="h-9 w-16" />
+                        <Skeleton className="h-9 w-16" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : workflows && workflows.length > 0 ? (
+              <div className="grid gap-5 md:grid-cols-2">
+                {workflows.map((workflow) => (
                   <Card key={workflow.id} className="overflow-hidden transition-all hover:shadow-md">
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
@@ -413,48 +468,77 @@ export default function Dashboard() {
             
             <div className="space-y-4">
               {/* Recent workflow executions */}
-              {recentWorkflows.map((workflow) => (
-                <Card 
-                  key={workflow.id}
-                  className={`transition-all hover:shadow-md ${
-                    workflow.state === 'running' ? 'border-blue-200 bg-blue-50/30' :
-                    workflow.state === 'completed' ? 'border-green-200 bg-green-50/30' :
-                    workflow.state === 'failed' ? 'border-rose-200 bg-rose-50/30' :
-                    ''
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center">
-                      <div className="mr-4">
-                        {getStateIcon(workflow.state)}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-base">{workflow.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {workflow.lastRun} • {workflow.type}
-                        </p>
-                        {workflow.state === 'running' && (
-                          <div className="mt-2">
-                            <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
-                              <div className="bg-blue-500 h-full rounded-full animate-pulse w-2/3"></div>
-                            </div>
-                            <div className="flex justify-between text-xs text-blue-700 mt-1">
-                              <span>Progress: 67%</span>
-                              <span>Est. completion: 1 min remaining</span>
-                            </div>
+              {isLoadingActivity ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center">
+                          <Skeleton className="h-8 w-8 rounded-full mr-4" />
+                          <div className="flex-1">
+                            <Skeleton className="h-5 w-48 mb-2" />
+                            <Skeleton className="h-4 w-32" />
                           </div>
-                        )}
+                          <Skeleton className="h-9 w-20" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : activityData?.runs && activityData.runs.length > 0 ? (
+                activityData.runs.map((run) => (
+                  <Card 
+                    key={run.id}
+                    className={`transition-all hover:shadow-md ${
+                      run.state === 'running' ? 'border-blue-200 bg-blue-50/30' :
+                      run.state === 'completed' ? 'border-green-200 bg-green-50/30' :
+                      run.state === 'failed' ? 'border-rose-200 bg-rose-50/30' :
+                      ''
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center">
+                        <div className="mr-4">
+                          {getStateIcon(run.state)}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-base">{run.workflowName}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {run.executedAt} • {run.type || 'Workflow Run'}
+                          </p>
+                          {run.state === 'running' && run.progress !== undefined && (
+                            <div className="mt-2">
+                              <Progress value={run.progress} className="h-1.5" />
+                              <div className="flex justify-between text-xs text-blue-700 mt-1">
+                                <span>Progress: {run.progress}%</span>
+                                <span>Est. completion: {run.estimatedCompletion || 'Calculating...'}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Activity className="h-4 w-4 mr-2" />
+                            Details
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Activity className="h-4 w-4 mr-2" />
-                          Details
-                        </Button>
-                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <div className="flex flex-col items-center">
+                      <Activity className="h-10 w-10 text-muted-foreground mb-3" />
+                      <h3 className="text-lg font-medium mb-1">No recent activity</h3>
+                      <p className="text-muted-foreground">
+                        Activity data will appear here once your workflows start running.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
             
             {/* Performance insights section */}
@@ -466,8 +550,17 @@ export default function Dashboard() {
                     <CardTitle className="text-base">Average Execution Time</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">1.7s</div>
-                    <p className="text-sm text-muted-foreground">14% faster than last week</p>
+                    {isLoadingMetrics ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-3xl font-bold">{metrics?.avgExecutionTime || '0s'}</div>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {metrics?.performanceChange !== undefined ? 
+                        `${metrics.performanceChange > 0 ? metrics.performanceChange + '% faster' : Math.abs(metrics.performanceChange) + '% slower'} than last week` : 
+                        'No comparison data available'
+                      }
+                    </p>
                   </CardContent>
                 </Card>
                 
@@ -476,8 +569,12 @@ export default function Dashboard() {
                     <CardTitle className="text-base">Success Rate</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-emerald-600">98.5%</div>
-                    <p className="text-sm text-muted-foreground">Total runs: 342 this week</p>
+                    {isLoadingMetrics ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-3xl font-bold text-emerald-600">{metrics?.successRate ? metrics.successRate.toFixed(1) + '%' : '0%'}</div>
+                    )}
+                    <p className="text-sm text-muted-foreground">Total runs: {metrics?.totalRuns || 0} this week</p>
                   </CardContent>
                 </Card>
                 
@@ -486,8 +583,12 @@ export default function Dashboard() {
                     <CardTitle className="text-base">Active Workflows</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">{recentWorkflows.length}</div>
-                    <p className="text-sm text-muted-foreground">2 running now</p>
+                    {isLoadingMetrics ? (
+                      <Skeleton className="h-8 w-20" />
+                    ) : (
+                      <div className="text-3xl font-bold">{metrics?.activeWorkflows || 0}</div>
+                    )}
+                    <p className="text-sm text-muted-foreground">{metrics?.runningWorkflows || 0} running now</p>
                   </CardContent>
                 </Card>
               </div>
