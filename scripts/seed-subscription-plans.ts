@@ -77,7 +77,7 @@ async function seedSubscriptionPlans() {
       stripePriceIdYearly: "price_pro_yearly",
       maxWorkflows: 100,
       maxWorkspaces: 10,
-      maxExecutionsPerMonth: 20000,
+      maxExecutionsPerMonth: 25000,
       maxTeamMembers: 10,
       hasAdvancedIntegrations: true,
       hasAiFeatures: true,
@@ -89,7 +89,7 @@ async function seedSubscriptionPlans() {
         "AI-powered features",
         "Priority support",
         "10 workspaces",
-        "20,000 executions per month",
+        "25,000 executions per month",
         "Team collaboration (up to 10 members)",
         "Workflow monitoring"
       ],
@@ -103,10 +103,10 @@ async function seedSubscriptionPlans() {
       priceYearly: 1299.99,
       stripePriceIdMonthly: "price_enterprise_monthly",
       stripePriceIdYearly: "price_enterprise_yearly",
-      maxWorkflows: 1000,
-      maxWorkspaces: 100,
-      maxExecutionsPerMonth: 100000,
-      maxTeamMembers: 100,
+      maxWorkflows: -1, // Unlimited
+      maxWorkspaces: -1, // Unlimited
+      maxExecutionsPerMonth: -1, // Unlimited
+      maxTeamMembers: -1, // Unlimited
       hasAdvancedIntegrations: true,
       hasAiFeatures: true,
       hasCustomBranding: true,
@@ -118,8 +118,8 @@ async function seedSubscriptionPlans() {
         "Dedicated support",
         "Custom branding",
         "Unlimited workspaces",
-        "100,000 executions per month",
-        "Team collaboration (up to 100 members)",
+        "Unlimited executions per month",
+        "Unlimited team members",
         "Enterprise security features",
         "Custom reporting",
         "SLA guarantees"

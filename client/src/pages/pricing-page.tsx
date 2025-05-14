@@ -602,7 +602,7 @@ export default function PricingPage() {
                       <ul className="space-y-3">
                         <li className="flex items-start">
                           <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
-                          <span className="text-sm">5 active workflows</span>
+                          <span className="text-sm">5 active workflows (more than competitors)</span>
                         </li>
                         <li className="flex items-start">
                           <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
