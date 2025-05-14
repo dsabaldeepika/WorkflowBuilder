@@ -341,7 +341,7 @@ export default function PricingPage() {
                         
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm">Max workflows</span>
-                          <span className="font-medium">{plan.maxWorkflows}</span>
+                          <span className="font-medium">{plan.maxWorkflows} {plan.tier === SubscriptionTier.FREE ? "(more than competitors)" : ""}</span>
                         </div>
                         
                         <div className="flex items-center justify-between">
