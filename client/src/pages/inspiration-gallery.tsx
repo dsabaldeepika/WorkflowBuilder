@@ -66,6 +66,13 @@ const InspirationGallery = () => {
   // Fetch categories
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ['/api/workflow-template-categories'],
+    // After fetching categories, automatically select the tab if initialCategory is set
+    onSuccess: (fetchedCategories) => {
+      // Keep selectedCategory as is - it was set from URL parameter
+      // Just log for debugging
+      console.log('Categories loaded:', fetchedCategories);
+      console.log('Selected category from URL:', selectedCategory);
+    }
   });
 
   // Create mutation for importing a template
