@@ -120,26 +120,58 @@ router.get('/workflow-template-categories', async (req: Request, res: Response) 
 router.post('/workflow-templates/:id/import', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any)?.claims?.sub;
+    
+    // In development mode, we have a bypass auth middleware that might be used
+    // Let's handle both regular auth and development auth
+    let userId;
+    
+    if (process.env.NODE_ENV === 'development' && !req.user) {
+      // For development, if authentication is bypassed, use a default user ID of 1
+      userId = '1';
+      console.log('Development mode: Using default user ID for template import');
+    } else {
+      // Regular authentication path
+      userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
+    }
 
     if (!userId) {
-      return res.status(401).json({ message: 'User not authenticated' });
+      console.error('Template import error: No user ID found', { user: req.user });
+      return res.status(401).json({ message: 'User not authenticated or user ID not found' });
     }
 
     // Get the template
+    const templateId = parseInt(id);
+    if (isNaN(templateId)) {
+      return res.status(400).json({ message: 'Invalid template ID format' });
+    }
+
     const [template] = await db
       .select()
       .from(workflowTemplates)
-      .where(eq(workflowTemplates.id, parseInt(id)));
+      .where(eq(workflowTemplates.id, templateId));
 
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
 
     // Extract workflow data from the template
-    const workflowData = template.workflowData as any;
+    const workflowData = template.workflow_data || template.workflowData as any;
+    
+    if (!workflowData) {
+      return res.status(500).json({ message: 'Template data is missing or invalid' });
+    }
+    
     const nodes = workflowData?.nodes || [];
     const edges = workflowData?.edges || [];
+
+    // Convert userId to number if it's a string
+    const userIdNumber = typeof userId === 'string' ? parseInt(userId) : userId;
+    
+    if (isNaN(userIdNumber)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    console.log(`Creating workflow from template ${id} for user ${userIdNumber}`);
 
     // Create a new workflow based on the template
     const [workflow] = await db
@@ -149,7 +181,7 @@ router.post('/workflow-templates/:id/import', isAuthenticated, async (req: Reque
         description: template.description,
         nodes: nodes,
         edges: edges,
-        createdByUserId: parseInt(userId),
+        createdByUserId: userIdNumber,
         workspaceId: null, // Default to personal workspace
         isPublished: false, // Start as draft
       })
@@ -161,12 +193,13 @@ router.post('/workflow-templates/:id/import', isAuthenticated, async (req: Reque
       .set({
         popularity: template.popularity + 1,
       })
-      .where(eq(workflowTemplates.id, parseInt(id)));
+      .where(eq(workflowTemplates.id, templateId));
 
     res.status(201).json(workflow);
   } catch (error) {
     console.error('Error importing workflow template:', error);
-    res.status(500).json({ message: 'Failed to import workflow template' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to import workflow template';
+    res.status(500).json({ message: errorMessage });
   }
 });
 

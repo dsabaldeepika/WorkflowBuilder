@@ -75,9 +75,14 @@ const InspirationGallery = () => {
       const response = await fetch(`/api/workflow-templates/${templateId}/import`, {
         method: 'POST',
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to import template');
+        // Get detailed error message from response if available
+        const errorData = await response.json().catch(() => ({ message: 'Failed to import template' }));
+        console.error('Template import error:', errorData);
+        throw new Error(errorData.message || 'Failed to import template');
       }
+      
       return await response.json();
     },
     onSuccess: (data) => {
@@ -90,10 +95,11 @@ const InspirationGallery = () => {
       // Redirect to the workflow editor
       window.location.href = `/workflow-editor/${data.id}`;
     },
-    onError: (error) => {
+    onError: (error: Error) => {
+      console.error('Import template error:', error);
       toast({
         title: 'Import failed',
-        description: error.message || 'Could not import template',
+        description: error.message || 'Could not import template. Please make sure you are logged in.',
         variant: 'destructive',
       });
     },
