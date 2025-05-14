@@ -56,8 +56,7 @@ const InspirationGallery = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearch || '');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  // No longer need preview state variables
 
   // Fetch templates
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery<WorkflowTemplate[]>({
@@ -124,12 +123,6 @@ const InspirationGallery = () => {
 
   // Get all unique tags from templates
   const allTags = Array.from(new Set(templates.flatMap(template => template.tags)));
-
-  // Handle template preview
-  const handlePreview = (template: WorkflowTemplate) => {
-    setSelectedTemplate(template);
-    setPreviewDialogOpen(true);
-  };
 
   // Handle template import
   const handleImport = (templateId: string | number) => {
@@ -295,12 +288,20 @@ const InspirationGallery = () => {
                   )}
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-base font-medium">{template.name}</CardTitle>
+                      <CardTitle className="text-base font-medium bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                        {template.name}
+                      </CardTitle>
                       <Badge variant="outline" className="text-xs">
                         {template.difficulty}
                       </Badge>
                     </div>
-                    <CardDescription>{template.description}</CardDescription>
+                    <CardDescription className="mt-1">
+                      <p className="line-clamp-2">{template.description}</p>
+                      <div className="mt-2 text-xs">
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">Time-saving: </span>
+                        <span className="text-muted-foreground">Get started in minutes instead of hours</span>
+                      </div>
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
                     <div className="flex flex-wrap gap-1 mt-1 mb-3">
@@ -323,32 +324,28 @@ const InspirationGallery = () => {
                     )}
                   </CardContent>
                   <CardFooter className="flex justify-between">
-                    <Button variant="outline" size="sm" onClick={() => handlePreview(template)}>
-                      Preview
-                    </Button>
-                    <div className="flex gap-2">
-                      <Link href={`/templates/${template.id}`}>
-                        <Button variant="outline" size="sm">
-                          Details
-                        </Button>
-                      </Link>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleImport(template.id)}
-                        disabled={importMutation.isPending}
-                      >
-                        {importMutation.isPending && importMutation.variables === template.id ? (
-                          <div className="flex items-center">
-                            <span className="mr-2">Importing</span>
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          </div>
-                        ) : (
-                          <>
-                            Use Template <ArrowRight className="ml-2 h-4 w-4" />
-                          </>
-                        )}
+                    <Link href={`/templates/${template.id}`} className="flex-1 mr-2">
+                      <Button variant="outline" size="sm" className="w-full">
+                        See Details <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
-                    </div>
+                    </Link>
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleImport(template.id)}
+                      disabled={importMutation.isPending}
+                      className="flex-1 bg-primary hover:bg-primary/90"
+                    >
+                      {importMutation.isPending && importMutation.variables === template.id ? (
+                        <div className="flex items-center">
+                          <span className="mr-2">Importing</span>
+                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : (
+                        <>
+                          Use Template <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -373,101 +370,7 @@ const InspirationGallery = () => {
           )}
         </div>
 
-        {/* Preview Dialog */}
-        <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-          <DialogContent className="max-w-4xl">
-            {selectedTemplate && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>{selectedTemplate.name}</DialogTitle>
-                  <DialogDescription>{selectedTemplate.description}</DialogDescription>
-                </DialogHeader>
 
-                <div className="py-4">
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Badge variant="outline">{selectedTemplate.category}</Badge>
-                    {selectedTemplate.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">{tag}</Badge>
-                    ))}
-                  </div>
-
-                  {selectedTemplate.imageUrl && (
-                    <div className="mb-4 rounded-lg overflow-hidden border">
-                      <img 
-                        src={selectedTemplate.imageUrl} 
-                        alt={selectedTemplate.name} 
-                        className="w-full object-cover"
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Template Details</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Difficulty:</span>
-                          <span className="font-medium">{selectedTemplate.difficulty}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Used by:</span>
-                          <span className="font-medium">{selectedTemplate.popularity} users</span>
-                        </div>
-                        {selectedTemplate.createdBy && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Created by:</span>
-                            <span className="font-medium">{selectedTemplate.createdBy}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">What You'll Get</h3>
-                      <ul className="space-y-2 text-sm">
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          <span>Pre-configured workflow nodes and connections</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          <span>Fully customizable settings and values</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          <span>Ready to use after configuring your accounts</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border p-4 mb-4">
-                    <h3 className="text-sm font-medium mb-2">Workflow Preview</h3>
-                    {/* This would be a simplified view of the workflow structure */}
-                    <div className="h-40 bg-muted rounded flex items-center justify-center">
-                      <p className="text-muted-foreground">Workflow visualization preview</p>
-                    </div>
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      handleImport(selectedTemplate.id);
-                      setPreviewDialogOpen(false);
-                    }}
-                    disabled={importMutation.isPending}
-                  >
-                    {importMutation.isPending ? 'Importing...' : 'Use This Template'}
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </GradientBackground>
   );
