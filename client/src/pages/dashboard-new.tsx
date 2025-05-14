@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { GradientBackground } from '@/components/ui/gradient-background';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { 
   PlusCircle, 
   ListChecks, 
@@ -16,7 +17,11 @@ import {
   BarChart3,
   Sparkles,
   ArrowRightLeft,
-  Rocket
+  Rocket,
+  CheckCircle,
+  XCircle,
+  Clock,
+  PauseCircle
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
@@ -99,6 +104,22 @@ export default function Dashboard() {
         return 'Paused';
       default:
         return 'Unknown';
+    }
+  };
+
+  // Function to get state icon based on workflow state
+  const getStateIcon = (state: string) => {
+    switch (state) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-emerald-500" />;
+      case 'running':
+        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
+      case 'failed':
+        return <XCircle className="h-4 w-4 text-rose-500" />;
+      case 'paused':
+        return <PauseCircle className="h-4 w-4 text-amber-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-slate-500" />;
     }
   };
 
@@ -302,18 +323,17 @@ export default function Dashboard() {
               </Link>
             </div>
             
-            {recentWorkflows && recentWorkflows.length > 0 ? (
+            {recentWorkflows.length > 0 ? (
               <div className="grid gap-5 md:grid-cols-2">
                 {recentWorkflows.map((workflow) => (
                   <Card key={workflow.id} className="overflow-hidden transition-all hover:shadow-md">
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-base font-medium">{workflow.name}</CardTitle>
-                        <WorkflowStateIndicator 
-                          state={workflow.state} 
-                          size="sm"
-                          animate={false}
-                        />
+                        <Badge variant={getStateVariant(workflow.state)}>
+                          {getStateIcon(workflow.state)}
+                          <span className="ml-1">{getStateLabel(workflow.state)}</span>
+                        </Badge>
                       </div>
                       <CardDescription>{workflow.description}</CardDescription>
                     </CardHeader>
@@ -340,6 +360,16 @@ export default function Dashboard() {
                           <span>{workflow.runCount}</span>
                         </div>
                       </div>
+                      
+                      {workflow.state === 'running' && (
+                        <div className="mt-3">
+                          <Progress value={67} className="h-1.5" />
+                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            <span>67% complete</span>
+                            <span>~1 min remaining</span>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="mt-4 flex justify-end gap-2">
                         <Button variant="outline" size="sm">Edit</Button>
@@ -383,7 +413,7 @@ export default function Dashboard() {
             
             <div className="space-y-4">
               {/* Recent workflow executions */}
-              {recentWorkflows.map((workflow, idx) => (
+              {recentWorkflows.map((workflow) => (
                 <Card 
                   key={workflow.id}
                   className={`transition-all hover:shadow-md ${
@@ -396,11 +426,7 @@ export default function Dashboard() {
                   <CardContent className="p-4">
                     <div className="flex items-center">
                       <div className="mr-4">
-                        <WorkflowStateIndicator 
-                          state={workflow.state}
-                          size="md"
-                          animate={workflow.state === 'running'} 
-                        />
+                        {getStateIcon(workflow.state)}
                       </div>
                       <div className="flex-1">
                         <h3 className="font-medium text-base">{workflow.name}</h3>
@@ -564,97 +590,6 @@ export default function Dashboard() {
                     <Button variant="outline" size="sm">Manage</Button>
                   </div>
                 </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </GradientBackground>
-  );
-                    ))}
-                  </div>
-                  
-                  <div className="mt-6 text-center">
-                    <Link href="/workflow-animations">
-                      <Button>
-                        <Zap className="h-4 w-4 mr-2" />
-                        View Full Animation Demo
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          {/* Settings Tab */}
-          <TabsContent value="settings">
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-2">Settings</h2>
-              <p className="text-muted-foreground">
-                Manage your account preferences and integrations.
-              </p>
-            </div>
-            
-            <div className="max-w-lg">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Settings</CardTitle>
-                  <CardDescription>Manage your account preferences and integrations</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="text-md font-medium mb-2">Connected Account</h3>
-                    {user && user.claims?.profile_image_url && (
-                      <div className="flex items-center gap-3 p-3 border rounded-md">
-                        <img 
-                          src={user.claims.profile_image_url} 
-                          alt="Profile" 
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                        <div>
-                          <div className="font-medium">{user.claims?.username || 'User'}</div>
-                          <div className="text-sm text-muted-foreground">{user.claims?.email || ''}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-md font-medium mb-2">Subscription & Billing</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Manage your subscription plan, payment methods, and billing history.
-                    </p>
-                    <div className="flex items-center justify-between p-3 border rounded-md">
-                      <span>Manage subscription</span>
-                      <Button variant="outline" size="sm">
-                        <Link href="/account/billing">
-                          Billing Settings
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-md font-medium mb-2">Workflow Animation Settings</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Configure how workflow state transitions are animated throughout the application.
-                    </p>
-                    <div className="flex items-center justify-between p-3 border rounded-md">
-                      <span>Enable animations</span>
-                      <Button variant="outline" size="sm">
-                        <Link href="/workflow-animations">
-                          Configure
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" onClick={handleLogout} className="w-full">
-                    Log Out
-                  </Button>
-                </CardFooter>
               </Card>
             </div>
           </TabsContent>
