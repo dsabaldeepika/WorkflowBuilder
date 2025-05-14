@@ -156,6 +156,7 @@ export interface IStorage {
     errorMessage?: string,
     errorCategory?: string
   ): Promise<WorkflowRun | undefined>;
+  incrementWorkflowRunCount(workflowId: number): Promise<boolean>;
   getWorkflowRuns(workflowId: number, limit?: number): Promise<WorkflowRun[]>;
   getWorkflowRunsByDateRange(workflowId: number, startDate: Date, endDate: Date): Promise<WorkflowRun[]>;
   getAllWorkflows(): Promise<Workflow[]>;
@@ -787,6 +788,54 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedRun;
+  }
+  
+  /**
+   * Increments the run count for a workflow
+   * This is used to track usage for subscription limits
+   * Only successful workflow executions count toward the usage limit
+   * 
+   * @param workflowId - The ID of the workflow to increment the run count for
+   * @returns A boolean indicating success or failure
+   */
+  async incrementWorkflowRunCount(workflowId: number): Promise<boolean> {
+    try {
+      // First get the current workflow to check current runCount
+      const workflow = await this.getWorkflow(workflowId);
+      
+      if (!workflow) {
+        console.error(`Cannot increment run count: Workflow ${workflowId} not found`);
+        return false;
+      }
+      
+      // Get the current run count or default to 0
+      const currentRunCount = workflow.runCount || 0;
+      
+      // Increment the run count
+      await db
+        .update(workflows)
+        .set({
+          runCount: currentRunCount + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(workflows.id, workflowId));
+      
+      // Also get the user to check against their subscription limits
+      if (workflow.createdByUserId) {
+        const user = await this.getUserById(workflow.createdByUserId);
+        
+        if (user) {
+          // We could add subscription limit enforcement here or log a warning
+          // if the user has exceeded their subscription tier's execution limit
+          console.log(`User ${user.username} (ID: ${user.id}) has now used ${currentRunCount + 1} executions for workflow ${workflowId}`);
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`Failed to increment run count for workflow ${workflowId}:`, error);
+      return false;
+    }
   }
   
   async getWorkflowRuns(workflowId: number, limit: number = 10): Promise<WorkflowRun[]> {
