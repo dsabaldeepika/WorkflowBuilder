@@ -40,6 +40,7 @@ interface WorkflowTemplate {
 
 interface Category {
   name: string;
+  displayName: string;
   description: string;
   count: number;
   icon: React.ReactNode;
@@ -65,14 +66,7 @@ const InspirationGallery = () => {
 
   // Fetch categories
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
-    queryKey: ['/api/workflow-template-categories'],
-    // After fetching categories, automatically select the tab if initialCategory is set
-    onSuccess: (fetchedCategories) => {
-      // Keep selectedCategory as is - it was set from URL parameter
-      // Just log for debugging
-      console.log('Categories loaded:', fetchedCategories);
-      console.log('Selected category from URL:', selectedCategory);
-    }
+    queryKey: ['/api/workflow-template-categories']
   });
 
   // Create mutation for importing a template
@@ -243,7 +237,11 @@ const InspirationGallery = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">
-              {selectedCategory ? `${selectedCategory} Templates` : 'All Templates'}
+              {selectedCategory ? 
+                // Look up the display name from categories if available
+                `${categories.find(cat => cat.name === selectedCategory)?.displayName || selectedCategory} Templates` 
+                : 'All Templates'
+              }
               {filteredTemplates.length > 0 && ` (${filteredTemplates.length})`}
             </h2>
             
