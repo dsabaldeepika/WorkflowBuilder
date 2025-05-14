@@ -47,8 +47,9 @@ export enum SubscriptionTier {
 // Workflow limits per subscription tier
 export const SUBSCRIPTION_LIMITS = {
   [SubscriptionTier.FREE]: {
-    maxWorkflows: 5, // Increased from 3 to 5 (more than Make.com's free tier of 2)
+    maxWorkflows: 100, // Increased from 5 to 100 (50x more than Make.com's free tier of 2)
     maxWorkflowRuns: 500, // Increased from 100 to 500
+    maxExecutionsPerMonth: 500, // Monthly execution limit
     maxNodesPerWorkflow: 10, // Increased from 5 to 10
     maxTemplates: 15, // Increased from 10 to 15
     supportResponseTime: '48 hours',
@@ -62,6 +63,7 @@ export const SUBSCRIPTION_LIMITS = {
   [SubscriptionTier.BASIC]: {
     maxWorkflows: 25, // Increased from 10 to 25
     maxWorkflowRuns: 2500, // Increased from 1000 to 2500
+    maxExecutionsPerMonth: 2500, // Monthly execution limit
     maxNodesPerWorkflow: 20, // Increased from 15 to 20
     maxTemplates: 40, // Increased from 30 to 40
     supportResponseTime: '24 hours',
@@ -75,6 +77,7 @@ export const SUBSCRIPTION_LIMITS = {
   [SubscriptionTier.PROFESSIONAL]: {
     maxWorkflows: 100, // Increased from 50 to 100
     maxWorkflowRuns: 25000, // Increased from 10000 to 25000
+    maxExecutionsPerMonth: 25000, // Monthly execution limit
     maxNodesPerWorkflow: 75, // Increased from 50 to 75
     maxTemplates: 200, // Increased from 100 to 200
     supportResponseTime: '8 hours',
@@ -88,6 +91,7 @@ export const SUBSCRIPTION_LIMITS = {
   [SubscriptionTier.ENTERPRISE]: {
     maxWorkflows: -1, // Unlimited
     maxWorkflowRuns: -1, // Unlimited
+    maxExecutionsPerMonth: -1, // Unlimited
     maxNodesPerWorkflow: -1, // Unlimited
     maxTemplates: -1, // Unlimited
     supportResponseTime: '2 hours',
