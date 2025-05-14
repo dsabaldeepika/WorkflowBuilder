@@ -39,34 +39,33 @@ export async function runMigrations() {
       `);
     }
     
-    // Drop old workflow_templates table if it exists and re-create it with the correct schema
+    // Check if workflow_templates table exists and create it if it doesn't
     const workflowTemplatesExists = await checkTableExists('workflow_templates');
     
-    if (workflowTemplatesExists) {
-      console.log('Dropping old workflow_templates table');
-      await db.execute(sql`DROP TABLE IF EXISTS workflow_templates CASCADE`);
+    if (!workflowTemplatesExists) {
+      console.log('Creating workflow_templates table');
+      await db.execute(sql`
+        CREATE TABLE workflow_templates (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          category TEXT NOT NULL,
+          tags TEXT[],
+          difficulty TEXT NOT NULL DEFAULT 'beginner',
+          "workflowData" JSONB NOT NULL DEFAULT '{}'::jsonb,
+          "imageUrl" TEXT,
+          popularity INTEGER NOT NULL DEFAULT 0,
+          "createdBy" TEXT,
+          "createdByUserId" INTEGER REFERENCES users(id),
+          "isPublished" BOOLEAN NOT NULL DEFAULT false,
+          "isOfficial" BOOLEAN NOT NULL DEFAULT false,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+    } else {
+      console.log('Workflow templates table already exists, skipping creation');
     }
-    
-    console.log('Creating workflow_templates table');
-    await db.execute(sql`
-      CREATE TABLE workflow_templates (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT NOT NULL,
-        tags TEXT[],
-        difficulty TEXT NOT NULL DEFAULT 'beginner',
-        "workflowData" JSONB NOT NULL DEFAULT '{}'::jsonb,
-        "imageUrl" TEXT,
-        popularity INTEGER NOT NULL DEFAULT 0,
-        "createdBy" TEXT,
-        "createdByUserId" INTEGER REFERENCES users(id),
-        "isPublished" BOOLEAN NOT NULL DEFAULT false,
-        "isOfficial" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
-        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
-      )
-    `);
     
     // Check if node_types table exists
     const nodeTypesExists = await checkTableExists('node_types');
