@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
 import { GradientBackground } from '@/components/ui/gradient-background';
 import { queryClient } from '@/lib/queryClient';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   ArrowRight, 
   Check,
@@ -56,7 +55,6 @@ const InspirationGallery = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearch || '');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  // No longer need preview state variables
 
   // Fetch templates
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery<WorkflowTemplate[]>({
@@ -304,7 +302,7 @@ const InspirationGallery = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
-                    <div className="flex flex-wrap gap-1 mt-1 mb-3">
+                    <div className="flex flex-wrap gap-1 mt-1 mb-2">
                       {template.tags.slice(0, 3).map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs">
                           {tag}
@@ -317,11 +315,23 @@ const InspirationGallery = () => {
                       )}
                     </div>
                     
-                    {template.createdBy && (
-                      <div className="text-xs text-muted-foreground flex items-center mt-3">
-                        <Users className="h-3 w-3 mr-1" /> Created by {template.createdBy}
+                    <div className="mt-3 space-y-2">
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 p-2 rounded-md text-xs flex items-center">
+                        <Check className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                        <span>Pre-built workflow saves {template.difficulty === 'beginner' ? '1-2 hours' : template.difficulty === 'intermediate' ? '3-5 hours' : '8+ hours'} of setup time</span>
                       </div>
-                    )}
+                      
+                      <div className="flex justify-between text-xs mt-2">
+                        <div className="text-muted-foreground flex items-center">
+                          <ThumbsUp className="h-3 w-3 mr-1" /> {template.popularity} users
+                        </div>
+                        {template.createdBy && (
+                          <div className="text-muted-foreground flex items-center">
+                            <Users className="h-3 w-3 mr-1" /> By {template.createdBy}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </CardContent>
                   <CardFooter className="flex justify-between">
                     <Link href={`/templates/${template.id}`} className="flex-1 mr-2">
