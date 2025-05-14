@@ -1198,7 +1198,7 @@ const templates: InsertWorkflowTemplate[] = [
   },
 ];
 
-async function seedTemplates() {
+export async function seedTemplates() {
   console.log("Starting template seeding process directly to the database...");
   
   try {
@@ -1237,6 +1237,19 @@ async function seedTemplates() {
     console.error("Error in seed process:", error);
     process.exit(1);
   }
+}
+
+// Execute the script if run directly
+if (require.main === module) {
+  seedTemplates()
+    .then(() => {
+      console.log("Template seeding completed successfully!");
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error("Error seeding templates:", err);
+      process.exit(1);
+    });
 }
 
 seedTemplates();
