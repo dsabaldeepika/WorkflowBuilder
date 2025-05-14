@@ -653,23 +653,77 @@ export function GoogleSheetsConnector({
           
           <div className="space-y-6 p-4 border rounded-lg">
             <div className="space-y-3">
-              <Label>Action</Label>
-              <RadioGroup 
-                value={formState.action} 
-                onValueChange={handleActionChange}
-                className="flex flex-col space-y-3"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="get_values" id="get_values" />
-                  <Label htmlFor="get_values" className="font-normal">Read Data</Label>
+              <h3 className="text-lg font-medium mb-2">Select Google Sheets Module</h3>
+              <p className="text-gray-500 mb-4">Choose an action or trigger from Google Sheets</p>
+              
+              <div className="mb-4">
+                <h4 className="font-medium mb-2 text-gray-700">ROWS</h4>
+                <div className="grid gap-3">
+                  <div 
+                    className={`p-3 border rounded-lg ${formState.action === 'watch_rows' ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'} cursor-pointer flex items-start gap-3`}
+                    onClick={() => handleActionChange('watch_rows')}
+                  >
+                    <div className="p-2 bg-blue-100 text-blue-600 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-medium">Watch New Rows</h5>
+                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Trigger</Badge>
+                      </div>
+                      <p className="text-gray-500 text-sm mt-1">Triggers when a new row is added to the sheet</p>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className={`p-3 border rounded-lg ${formState.action === 'get_values' ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'} cursor-pointer flex items-start gap-3`}
+                    onClick={() => handleActionChange('get_values')}
+                  >
+                    <div className="p-2 bg-green-100 text-green-600 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-medium">Read Data</h5>
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Action</Badge>
+                      </div>
+                      <p className="text-gray-500 text-sm mt-1">Retrieves data from a spreadsheet</p>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className={`p-3 border rounded-lg ${formState.action === 'append_row' ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'} cursor-pointer flex items-start gap-3`}
+                    onClick={() => handleActionChange('append_row')}
+                  >
+                    <div className="p-2 bg-green-100 text-green-600 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-medium">Add a Row</h5>
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Action</Badge>
+                      </div>
+                      <p className="text-gray-500 text-sm mt-1">Appends a new row to the sheet</p>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className={`p-3 border rounded-lg ${formState.action === 'update_row' ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'} cursor-pointer flex items-start gap-3`}
+                    onClick={() => handleActionChange('update_row')}
+                  >
+                    <div className="p-2 bg-green-100 text-green-600 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-medium">Update Row</h5>
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Action</Badge>
+                      </div>
+                      <p className="text-gray-500 text-sm mt-1">Updates an existing row in the sheet</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="append_row" id="append_row" />
-                  <Label htmlFor="append_row" className="font-normal">Append Row</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="update_row" id="update_row" />
-                  <Label htmlFor="update_row" className="font-normal">Update Row</Label>
+              </div>
                 </div>
               </RadioGroup>
             </div>
