@@ -310,12 +310,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if they've reached their limit
       if (maxWorkflows !== -1 && workflowCount >= maxWorkflows) {
+        // Format a more user-friendly message that explains the situation clearly
+        const remainingMsg = subscriptionTier === SubscriptionTier.FREE ?
+          `You can upgrade to our Basic plan to create up to ${SUBSCRIPTION_LIMITS[SubscriptionTier.BASIC].maxWorkflows} workflows, or to our Professional plan for ${SUBSCRIPTION_LIMITS[SubscriptionTier.PROFESSIONAL].maxWorkflows} workflows.` :
+          `You can upgrade to our ${subscriptionTier === SubscriptionTier.BASIC ? 'Professional' : 'Enterprise'} plan to create more workflows.`;
+          
         return res.status(403).json({
-          message: "Workflow limit reached for your subscription tier",
+          message: `You've reached your limit of ${maxWorkflows} workflows on your ${subscriptionTier} plan. ${remainingMsg}`,
           currentCount: workflowCount,
           maxAllowed: maxWorkflows,
           subscriptionTier: subscriptionTier,
-          upgradeRequired: true
+          upgradeRequired: true,
+          upgradeOptions: {
+            nextTier: subscriptionTier === SubscriptionTier.FREE ? SubscriptionTier.BASIC : 
+                      subscriptionTier === SubscriptionTier.BASIC ? SubscriptionTier.PROFESSIONAL : 
+                      SubscriptionTier.ENTERPRISE,
+            nextTierLimit: subscriptionTier === SubscriptionTier.FREE ? SUBSCRIPTION_LIMITS[SubscriptionTier.BASIC].maxWorkflows :
+                           subscriptionTier === SubscriptionTier.BASIC ? SUBSCRIPTION_LIMITS[SubscriptionTier.PROFESSIONAL].maxWorkflows :
+                           -1 // Enterprise is unlimited
+          }
         });
       }
       

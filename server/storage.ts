@@ -1,5 +1,6 @@
 import { eq, and, desc, or, sql } from "drizzle-orm";
 import { db } from "./db";
+import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
 import { 
   users, 
   workflows, 
@@ -825,9 +826,23 @@ export class DatabaseStorage implements IStorage {
         const user = await this.getUserById(workflow.createdByUserId);
         
         if (user) {
-          // We could add subscription limit enforcement here or log a warning
-          // if the user has exceeded their subscription tier's execution limit
-          console.log(`User ${user.username} (ID: ${user.id}) has now used ${currentRunCount + 1} executions for workflow ${workflowId}`);
+          // Get user's subscription information to check execution limits
+          const subscriptionTier = user.subscriptionTier || SubscriptionTier.FREE;
+          const executionLimit = SUBSCRIPTION_LIMITS[subscriptionTier as SubscriptionTier].maxExecutionsPerMonth;
+          const used = currentRunCount + 1;
+          const percentUsed = Math.round((used / executionLimit) * 100);
+          
+          // Log the execution with usage percentage
+          console.log(`User ${user.username} (ID: ${user.id}) has completed ${used} executions for workflow ${workflowId} (${percentUsed}% of monthly limit)`);
+          
+          // We'll notify the user when they reach usage thresholds
+          if (percentUsed >= 90 && percentUsed < 100) {
+            // User is approaching their limit - we could send an email or display a warning in the UI
+            console.log(`⚠️ User ${user.id} is approaching their execution limit (${percentUsed}% used)`);
+          } else if (percentUsed >= 100) {
+            // User has exceeded their limit
+            console.log(`🚫 User ${user.id} has exceeded their execution limit (${percentUsed}% used)`);
+          }
         }
       }
       
