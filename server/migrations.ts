@@ -18,32 +18,55 @@ export async function runMigrations() {
     ]);
     
     // --- Workflow Tables Migrations ---
-    // Check if workflow_templates table exists
-    const workflowTemplatesExists = await checkTableExists('workflow_templates');
+    // Check if workflow_template_categories table exists
+    const workflowCategoriesExists = await checkTableExists('workflow_template_categories');
     
-    if (!workflowTemplatesExists) {
-      console.log('Creating workflow_templates table');
+    if (!workflowCategoriesExists) {
+      console.log('Creating workflow_template_categories table');
       await db.execute(sql`
-        CREATE TABLE workflow_templates (
+        CREATE TABLE workflow_template_categories (
           id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          description TEXT,
-          category TEXT NOT NULL,
-          tags TEXT[],
-          nodes JSONB NOT NULL,
-          edges JSONB NOT NULL,
-          cover_image TEXT,
-          complexity TEXT NOT NULL DEFAULT 'medium',
-          estimated_duration TEXT,
-          popularity INTEGER NOT NULL DEFAULT 0,
-          created_by_user_id INTEGER REFERENCES users(id),
-          is_published BOOLEAN NOT NULL DEFAULT false,
-          is_official BOOLEAN NOT NULL DEFAULT false,
+          name TEXT NOT NULL UNIQUE,
+          display_name TEXT NOT NULL,
+          description TEXT NOT NULL,
+          icon TEXT,
+          count INTEGER NOT NULL DEFAULT 0,
+          is_active BOOLEAN NOT NULL DEFAULT true,
+          sort_order INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMP NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
       `);
     }
+    
+    // Drop old workflow_templates table if it exists and re-create it with the correct schema
+    const workflowTemplatesExists = await checkTableExists('workflow_templates');
+    
+    if (workflowTemplatesExists) {
+      console.log('Dropping old workflow_templates table');
+      await db.execute(sql`DROP TABLE IF EXISTS workflow_templates CASCADE`);
+    }
+    
+    console.log('Creating workflow_templates table');
+    await db.execute(sql`
+      CREATE TABLE workflow_templates (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT NOT NULL,
+        tags TEXT[],
+        difficulty TEXT NOT NULL DEFAULT 'beginner',
+        workflow_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+        image_url TEXT,
+        popularity INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_by_user_id INTEGER REFERENCES users(id),
+        is_published BOOLEAN NOT NULL DEFAULT false,
+        is_official BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
     
     // Check if node_types table exists
     const nodeTypesExists = await checkTableExists('node_types');
@@ -147,6 +170,8 @@ export async function runMigrations() {
       { name: 'run_count', dataType: 'INTEGER NOT NULL DEFAULT 0' },
       { name: 'last_run_at', dataType: 'TIMESTAMP' }
     ]);
+    
+    // We've recreated the workflow_templates table already, so no need to check for columns
     
     console.log('Migrations completed successfully');
   } catch (error) {
