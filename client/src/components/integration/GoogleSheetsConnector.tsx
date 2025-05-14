@@ -666,7 +666,7 @@ export function GoogleSheetsConnector({
                     <div className="p-2 bg-blue-100 text-blue-600 rounded-full">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium">Watch New Rows</h5>
                         <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Trigger</Badge>
@@ -682,7 +682,7 @@ export function GoogleSheetsConnector({
                     <div className="p-2 bg-green-100 text-green-600 rounded-full">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium">Read Data</h5>
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Action</Badge>
@@ -698,7 +698,7 @@ export function GoogleSheetsConnector({
                     <div className="p-2 bg-green-100 text-green-600 rounded-full">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium">Add a Row</h5>
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Action</Badge>
@@ -714,7 +714,7 @@ export function GoogleSheetsConnector({
                     <div className="p-2 bg-green-100 text-green-600 rounded-full">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium">Update Row</h5>
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Action</Badge>
@@ -724,8 +724,6 @@ export function GoogleSheetsConnector({
                   </div>
                 </div>
               </div>
-                </div>
-              </RadioGroup>
             </div>
             
             <Separator />
