@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { GradientBackground } from '@/components/ui/gradient-background';
-import WorkflowTemplates from '@/components/templates/WorkflowTemplates';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   PlusCircle, 
@@ -15,12 +14,17 @@ import {
   Zap, 
   Activity,
   RefreshCw,
-  CreditCard
+  CreditCard,
+  BarChart3,
+  Sparkles,
+  ArrowRightLeft,
+  Rocket
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { WorkflowStateIndicator, WorkflowState } from '@/components/workflow/StateChangeAnimation';
 import WorkflowAnimationCard from '@/components/workflow/WorkflowAnimationCard';
+import { WorkflowStateProvider } from '@/components/workflow/WorkflowStateContext';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -85,8 +89,9 @@ export default function Dashboard() {
   };
 
   return (
-    <GradientBackground>
-      <div className="container mx-auto py-8">
+    <WorkflowStateProvider>
+      <GradientBackground>
+        <div className="container mx-auto py-8">
         {/* Header section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
@@ -112,69 +117,103 @@ export default function Dashboard() {
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <Card className="col-span-1 hover:shadow-md transition-shadow border-2 border-primary/10 hover:border-primary/30">
             <CardContent className="p-6 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <PlusCircle className="h-6 w-6 text-primary" />
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center mb-5">
+                <Rocket className="h-7 w-7 text-primary" />
               </div>
-              <h3 className="font-medium">Create Workflow</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Start building from scratch</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/create'}>
-                Create New
+              <h3 className="font-semibold text-lg">Create Workflow</h3>
+              <p className="text-muted-foreground mt-2 mb-5">
+                Build custom automations that work for you 24/7. Connect your apps and data with our intuitive drag-and-drop builder.
+              </p>
+              <Button className="w-full" onClick={() => window.location.href = '/create'}>
+                Start Building
               </Button>
             </CardContent>
           </Card>
           
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
+          <Card className="col-span-1 hover:shadow-md transition-shadow border-2 border-amber-100 hover:border-amber-200">
             <CardContent className="p-6 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Stars className="h-6 w-6 text-primary" />
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center mb-5">
+                <Sparkles className="h-7 w-7 text-amber-500" />
               </div>
-              <h3 className="font-medium">Template Library</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Browse ready-made templates</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/templates'}>
-                Browse Templates
+              <h3 className="font-semibold text-lg">Template Library</h3>
+              <p className="text-muted-foreground mt-2 mb-5">
+                Save hours with ready-made workflows built by experts. Customize pre-built templates for marketing, sales, operations and more.
+              </p>
+              <Button className="w-full bg-amber-500 hover:bg-amber-600" onClick={() => window.location.href = '/templates'}>
+                Explore Templates
               </Button>
             </CardContent>
           </Card>
           
-          <Card className="col-span-1 hover:shadow-md transition-shadow">
+          <Card className="col-span-1 hover:shadow-md transition-shadow border-2 border-blue-100 hover:border-blue-200">
             <CardContent className="p-6 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <CreditCard className="h-6 w-6 text-primary" />
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center mb-5">
+                <BarChart3 className="h-7 w-7 text-blue-500" />
               </div>
-              <h3 className="font-medium">Subscription Plans</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Explore premium features</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/pricing'}>
-                View Plans
+              <h3 className="font-semibold text-lg">Health Dashboard</h3>
+              <p className="text-muted-foreground mt-2 mb-5">
+                Gain complete visibility into your workflow performance. Track metrics, receive alerts, and optimize for peak efficiency.
+              </p>
+              <Button className="w-full bg-blue-500 hover:bg-blue-600" onClick={() => window.location.href = '/health-dashboard'}>
+                Monitor Performance
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Secondary features */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          <Card className="col-span-1 hover:shadow-md transition-shadow">
+            <CardContent className="p-5 flex items-start">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
+                <ArrowRightLeft className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium mb-1">Integrations Marketplace</h3>
+                <p className="text-muted-foreground text-sm">
+                  Connect with 300+ apps and services to build powerful workflow automations.
+                </p>
+                <Button variant="link" className="p-0 h-auto mt-2" onClick={() => window.location.href = '/integrations'}>
+                  Browse Integrations
+                </Button>
+              </div>
             </CardContent>
           </Card>
           
           <Card className="col-span-1 hover:shadow-md transition-shadow">
-            <CardContent className="p-6 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Activity className="h-6 w-6 text-primary" />
+            <CardContent className="p-5 flex items-start">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
+                <CreditCard className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-medium">Health Dashboard</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">Monitor workflow performance</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/health-dashboard'}>
-                View Metrics
-              </Button>
+              <div>
+                <h3 className="font-medium mb-1">Subscription Plans</h3>
+                <p className="text-muted-foreground text-sm">
+                  Find the perfect plan for your automation needs, from free starter to enterprise solutions.
+                </p>
+                <Button variant="link" className="p-0 h-auto mt-2" onClick={() => window.location.href = '/pricing'}>
+                  View Pricing
+                </Button>
+              </div>
             </CardContent>
           </Card>
           
           <Card className="col-span-1 hover:shadow-md transition-shadow">
-            <CardContent className="p-6 flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Zap className="h-6 w-6 text-primary" />
+            <CardContent className="p-5 flex items-start">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
+                <Zap className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-medium">State Animations</h3>
-              <p className="text-muted-foreground text-sm mt-1 mb-4">View workflow transitions</p>
-              <Button className="w-full" variant="outline" onClick={() => window.location.href = '/workflow-animations'}>
-                View Animations
-              </Button>
+              <div>
+                <h3 className="font-medium mb-1">Workflow Analytics</h3>
+                <p className="text-muted-foreground text-sm">
+                  Analyze execution patterns and optimize your workflows for maximum efficiency.
+                </p>
+                <Button variant="link" className="p-0 h-auto mt-2" onClick={() => window.location.href = '/analytics'}>
+                  View Analytics
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -203,12 +242,8 @@ export default function Dashboard() {
         </Card>
 
         {/* Main content tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-8 grid w-full max-w-md grid-cols-4">
-            <TabsTrigger value="templates">
-              <Stars className="h-4 w-4 mr-2" />
-              Templates
-            </TabsTrigger>
+        <Tabs defaultValue="workflows" className="w-full">
+          <TabsList className="mb-8 grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="workflows">
               <ListChecks className="h-4 w-4 mr-2" />
               My Workflows
@@ -223,24 +258,14 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
           
-          {/* Templates Tab */}
-          <TabsContent value="templates">
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-2">Workflow Templates</h2>
-              <p className="text-muted-foreground">
-                Get started quickly with pre-built workflow templates that you can customize for your needs.
-              </p>
-            </div>
-            
-            <WorkflowTemplates />
-          </TabsContent>
-          
           {/* My Workflows Tab */}
           <TabsContent value="workflows">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-semibold mb-2">My Workflows</h2>
-                <p className="text-muted-foreground">Manage and monitor your active workflows.</p>
+                <p className="text-muted-foreground text-lg">
+                  Create, manage and monitor all your active automation flows in one place. Get insights on performance and optimization opportunities.
+                </p>
               </div>
               
               <Link href="/workflow-animations">
