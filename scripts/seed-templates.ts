@@ -1282,17 +1282,13 @@ export async function seedTemplates() {
   }
 }
 
-// Execute the script if run directly
-if (require.main === module) {
-  seedTemplates()
-    .then(() => {
-      console.log("Template seeding completed successfully!");
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error("Error seeding templates:", err);
-      process.exit(1);
-    });
-}
-
-seedTemplates();
+// Execute the script immediately since we're using ES modules
+seedTemplates()
+  .then(() => {
+    console.log("Template seeding completed successfully!");
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("Error seeding templates:", err);
+    process.exit(1);
+  });
