@@ -155,7 +155,7 @@ router.post('/workflow-templates/:id/import', isAuthenticated, async (req: Reque
     }
 
     // Extract workflow data from the template
-    const workflowData = template.workflow_data || template.workflowData as any;
+    const workflowData = template.workflowData as any;
     
     if (!workflowData) {
       return res.status(500).json({ message: 'Template data is missing or invalid' });

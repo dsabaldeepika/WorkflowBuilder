@@ -56,15 +56,15 @@ export async function runMigrations() {
         category TEXT NOT NULL,
         tags TEXT[],
         difficulty TEXT NOT NULL DEFAULT 'beginner',
-        workflow_data JSONB NOT NULL DEFAULT '{}'::jsonb,
-        image_url TEXT,
+        "workflowData" JSONB NOT NULL DEFAULT '{}'::jsonb,
+        "imageUrl" TEXT,
         popularity INTEGER NOT NULL DEFAULT 0,
-        created_by TEXT,
-        created_by_user_id INTEGER REFERENCES users(id),
-        is_published BOOLEAN NOT NULL DEFAULT false,
-        is_official BOOLEAN NOT NULL DEFAULT false,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        "createdBy" TEXT,
+        "createdByUserId" INTEGER REFERENCES users(id),
+        "isPublished" BOOLEAN NOT NULL DEFAULT false,
+        "isOfficial" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
     
