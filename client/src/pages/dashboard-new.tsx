@@ -115,22 +115,34 @@ export default function Dashboard() {
     {
       title: "Customer Journey Automation",
       description: "Map and automate your entire customer journey from first contact to repeat business.",
-      icon: <BrainCircuit className="h-5 w-5 text-purple-500" />
+      icon: <BrainCircuit className="h-5 w-5 text-purple-500" />,
+      templateId: 25, // The ID of the template in the database
+      category: "crm",
+      url: "/inspiration-gallery?category=crm&search=Customer%20Journey%20Automation"
     },
     {
       title: "Marketing Campaign Orchestration",
       description: "Schedule and coordinate multi-channel marketing campaigns that respond to customer actions.",
-      icon: <Sparkles className="h-5 w-5 text-amber-500" />
+      icon: <Sparkles className="h-5 w-5 text-amber-500" />,
+      templateId: 26,
+      category: "marketing",
+      url: "/inspiration-gallery?category=marketing&search=Marketing%20Campaign%20Orchestration"
     },
     {
       title: "Data Synchronization Hub",
       description: "Keep your business data in sync across all platforms without manual imports/exports.",
-      icon: <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+      icon: <ArrowRightLeft className="h-5 w-5 text-blue-500" />,
+      templateId: 27,
+      category: "data-processing",
+      url: "/inspiration-gallery?category=data-processing&search=Data%20Synchronization%20Hub"
     },
     {
       title: "Intelligent Lead Scoring",
       description: "Automatically score and prioritize leads based on engagement and conversion potential.",
-      icon: <LightbulbIcon className="h-5 w-5 text-green-500" />
+      icon: <LightbulbIcon className="h-5 w-5 text-green-500" />,
+      templateId: 28,
+      category: "sales",
+      url: "/inspiration-gallery?category=sales&search=Intelligent%20Lead%20Scoring"
     }
   ];
 
@@ -286,9 +298,11 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">
                     {idea.description}
                   </p>
-                  <Button variant="link" className="p-0 h-auto mt-2 text-xs" onClick={() => window.location.href = '/templates'}>
-                    View Templates
-                  </Button>
+                  <Link href={idea.url}>
+                    <Button variant="link" className="p-0 h-auto mt-2 text-xs">
+                      View Templates
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}

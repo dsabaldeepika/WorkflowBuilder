@@ -47,8 +47,13 @@ interface Category {
 
 const InspirationGallery = () => {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // Parse URL parameters for initial filter state
+  const params = new URLSearchParams(window.location.search);
+  const initialCategory = params.get('category');
+  const initialSearch = params.get('search');
+  
+  const [searchQuery, setSearchQuery] = useState(initialSearch || '');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
