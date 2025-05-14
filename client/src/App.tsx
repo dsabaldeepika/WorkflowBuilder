@@ -28,6 +28,7 @@ const TemplateDetailPage = lazy(() => import("@/pages/template-detail-page"));
 const PricingPage = lazy(() => import("@/pages/pricing-page"));
 const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
 const AccountUsagePage = lazy(() => import("@/pages/account-usage-page"));
+const WorkflowOptimizerPage = lazy(() => import("@/pages/workflow-optimizer-page"));
 const LoadingAnimationsDemo = lazy(() => import("@/pages/loading-animations-demo"));
 const EmailSettingsPage = lazy(() => import("@/pages/email-settings-page"));
 const InspirationGalleryPage = lazy(() => import("@/pages/inspiration-gallery"));
