@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Zap, 
   AlertTriangle, 
@@ -12,36 +15,108 @@ import {
   Hourglass, 
   Database, 
   BarChart, 
-  CheckCircle
+  CheckCircle,
+  Sparkles
 } from 'lucide-react';
 import { NodeData } from '@/store/useWorkflowStore';
 import { PerformanceReport, PerformanceIssue } from '@/types/workflow';
 
+interface OptimizationSuggestion {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  impactLevel: string;
+  nodeIds: string[];
+  selected?: boolean;
+}
+
+interface AppliedOptimization {
+  id: string;
+  title: string;
+  appliedTo: number;
+  type: string;
+}
+
 interface PerformanceOptimizerProps {
   nodes: Node<NodeData>[];
   edges: Edge[];
-  onOptimize?: (optimizedNodes: Node<NodeData>[]) => void;
+  workflowId?: number;
+  onOptimize?: (optimizedNodes: Node<NodeData>[], optimizedEdges: Edge[]) => void;
   className?: string;
 }
 
 export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
   nodes,
   edges,
+  workflowId,
   onOptimize,
   className
 }) => {
+  const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [performanceReport, setPerformanceReport] = useState<PerformanceReport | null>(null);
   const [optimized, setOptimized] = useState(false);
+  const [optimizationSuggestions, setOptimizationSuggestions] = useState<OptimizationSuggestion[]>([]);
+  const [appliedOptimizations, setAppliedOptimizations] = useState<AppliedOptimization[]>([]);
   
-  // Generate a performance report
+  // Mutation for applying optimizations via API
+  const optimizeMutation = useMutation({
+    mutationFn: async (data: { workflowId: number, optimizationIds?: string[] }) => {
+      const response = await fetch(`/api/workflows/${data.workflowId}/optimize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          optimizationIds: data.optimizationIds 
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to optimize workflow' }));
+        throw new Error(errorData.message || 'Failed to optimize workflow');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Workflow optimized",
+        description: `Successfully applied ${data.appliedOptimizations.length} optimizations.`,
+        variant: "default",
+      });
+      
+      // Update state with the optimized workflow data
+      setAppliedOptimizations(data.appliedOptimizations);
+      setOptimized(true);
+      setIsOptimizing(false);
+      setProgress(100);
+      
+      // If we have an onOptimize callback, call it with the optimized nodes and edges
+      if (onOptimize && data.workflow) {
+        onOptimize(data.workflow.nodes, data.workflow.edges);
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Optimization failed",
+        description: error.message || "There was an error optimizing the workflow",
+        variant: "destructive",
+      });
+      setIsOptimizing(false);
+    }
+  });
+  
+  // Generate a performance report and optimization suggestions
   const analyzeWorkflow = useCallback(() => {
     setIsAnalyzing(true);
     setProgress(0);
     setPerformanceReport(null);
     setOptimized(false);
+    setAppliedOptimizations([]);
     
     // Simulate analysis with progress updates
     const interval = setInterval(() => {
@@ -67,7 +142,61 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
               ]
             };
             
+            // Generate optimization suggestions based on the analysis
+            const suggestions: OptimizationSuggestion[] = [];
+            
+            // Add timeout optimization if there are API calls
+            if (report.apiCalls.length > 0) {
+              suggestions.push({
+                id: 'timeout-optimization',
+                type: 'timeout',
+                title: 'Increase API timeout thresholds',
+                description: 'Add retry logic with increased timeouts for external API calls',
+                impactLevel: 'high',
+                nodeIds: report.apiCalls.map(issue => issue.nodeId),
+                selected: true
+              });
+            }
+            
+            // Add parallel execution optimization if multiple API calls
+            if (report.apiCalls.length > 1) {
+              suggestions.push({
+                id: 'parallel-execution',
+                type: 'execution',
+                title: 'Parallelize API requests',
+                description: 'Convert sequential API calls to parallel execution for faster processing',
+                impactLevel: 'medium',
+                nodeIds: report.apiCalls.map(issue => issue.nodeId),
+                selected: true
+              });
+            }
+            
+            // Add data transformation optimization if redundancies exist
+            if (report.redundancies.length > 0) {
+              suggestions.push({
+                id: 'data-transformation',
+                type: 'data_processing',
+                title: 'Optimize data transformations',
+                description: 'Combine multiple transformation steps into fewer operations',
+                impactLevel: 'medium',
+                nodeIds: report.redundancies.map(issue => issue.nodeId),
+                selected: true
+              });
+            }
+            
+            // Always suggest error handling improvements
+            suggestions.push({
+              id: 'error-handling',
+              type: 'error_handling',
+              title: 'Improve error handling',
+              description: 'Add comprehensive error handling with fallback options to all nodes',
+              impactLevel: 'high',
+              nodeIds: nodes.map(node => node.id),
+              selected: true
+            });
+            
             setPerformanceReport(report);
+            setOptimizationSuggestions(suggestions);
             setIsAnalyzing(false);
             setProgress(100);
           }, 500);
@@ -81,64 +210,191 @@ export const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
     return () => clearInterval(interval);
   }, [nodes, edges]);
   
-  // Simulate optimization of the workflow
+  // Toggle selection of an optimization suggestion
+  const toggleOptimizationSelection = (id: string) => {
+    setOptimizationSuggestions(prev => 
+      prev.map(suggestion => 
+        suggestion.id === id 
+          ? { ...suggestion, selected: !suggestion.selected } 
+          : suggestion
+      )
+    );
+  };
+  
+  // Apply optimizations to the workflow
   const optimizeWorkflow = useCallback(() => {
-    if (!performanceReport) return;
+    if (!optimizationSuggestions.length) return;
     
     setIsOptimizing(true);
     setProgress(0);
     
-    // Simulate optimization with progress updates
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + Math.random() * 20;
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          
-          // Make "optimized" copies of nodes
-          setTimeout(() => {
-            const optimizedNodes = nodes.map(node => {
-              // Identify if this node has issues
-              const hasBottleneck = performanceReport.bottlenecks.some(b => b.nodeId === node.id);
-              const hasRedundancy = performanceReport.redundancies.some(r => r.nodeId === node.id);
-              const hasApiIssue = performanceReport.apiCalls.some(a => a.nodeId === node.id);
+    // Check if we have a workflowId for API optimization
+    if (workflowId) {
+      // Get selected optimization IDs
+      const selectedOptimizationIds = optimizationSuggestions
+        .filter(suggestion => suggestion.selected)
+        .map(suggestion => suggestion.id);
+      
+      // Show progress indicator
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = Math.min(95, prev + Math.random() * 10);
+          return newProgress;
+        });
+      }, 200);
+      
+      // Call the API to apply optimizations
+      optimizeMutation.mutate(
+        { 
+          workflowId, 
+          optimizationIds: selectedOptimizationIds 
+        },
+        {
+          onSettled: () => {
+            clearInterval(interval);
+            setProgress(100);
+          }
+        }
+      );
+      
+      return () => clearInterval(interval);
+    } 
+    // If no workflowId, use the local simulation approach
+    else {
+      // Simulate optimization with progress updates
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = prev + Math.random() * 20;
+          if (newProgress >= 100) {
+            clearInterval(interval);
+            
+            // Make "optimized" copies of nodes
+            setTimeout(() => {
+              const optimizedNodes = [...nodes];
+              const optimizedEdges = [...edges];
+              const appliedOptimizations: AppliedOptimization[] = [];
               
-              // If it has issues, create an "optimized" version
-              if (hasBottleneck || hasRedundancy || hasApiIssue) {
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    optimized: true,
-                    label: node.data.label + ' (Optimized)',
-                    performance: {
-                      before: Math.round(Math.random() * 1000 + 500),
-                      after: Math.round(Math.random() * 300 + 50)
-                    }
+              // Apply selected optimizations
+              optimizationSuggestions
+                .filter(suggestion => suggestion.selected)
+                .forEach(suggestion => {
+                  // Apply optimization based on type
+                  switch (suggestion.type) {
+                    case 'timeout':
+                      // Add timeout configurations to relevant nodes
+                      suggestion.nodeIds.forEach(nodeId => {
+                        const nodeIndex = optimizedNodes.findIndex(n => n.id === nodeId);
+                        if (nodeIndex !== -1) {
+                          optimizedNodes[nodeIndex] = {
+                            ...optimizedNodes[nodeIndex],
+                            data: {
+                              ...optimizedNodes[nodeIndex].data,
+                              optimized: true,
+                              label: `${optimizedNodes[nodeIndex].data.label || nodeId} (Optimized)`,
+                              timeoutConfig: {
+                                enabled: true,
+                                duration: 30000, // 30 seconds
+                                retryStrategy: 'exponential',
+                                maxRetries: 3
+                              }
+                            }
+                          };
+                        }
+                      });
+                      break;
+                      
+                    case 'execution':
+                      // Mark nodes for parallel execution
+                      suggestion.nodeIds.forEach(nodeId => {
+                        const nodeIndex = optimizedNodes.findIndex(n => n.id === nodeId);
+                        if (nodeIndex !== -1) {
+                          optimizedNodes[nodeIndex] = {
+                            ...optimizedNodes[nodeIndex],
+                            data: {
+                              ...optimizedNodes[nodeIndex].data,
+                              optimized: true,
+                              label: `${optimizedNodes[nodeIndex].data.label || nodeId} (Optimized)`,
+                              executionStrategy: 'parallel'
+                            }
+                          };
+                        }
+                      });
+                      break;
+                      
+                    case 'data_processing':
+                      // Optimize data transformation nodes
+                      suggestion.nodeIds.forEach(nodeId => {
+                        const nodeIndex = optimizedNodes.findIndex(n => n.id === nodeId);
+                        if (nodeIndex !== -1) {
+                          optimizedNodes[nodeIndex] = {
+                            ...optimizedNodes[nodeIndex],
+                            data: {
+                              ...optimizedNodes[nodeIndex].data,
+                              optimized: true,
+                              label: `${optimizedNodes[nodeIndex].data.label || nodeId} (Optimized)`,
+                              combinedTransformation: true
+                            }
+                          };
+                        }
+                      });
+                      break;
+                      
+                    case 'error_handling':
+                      // Add error handling to all nodes
+                      optimizedNodes.forEach((node, index) => {
+                        optimizedNodes[index] = {
+                          ...node,
+                          data: {
+                            ...node.data,
+                            optimized: true,
+                            label: `${node.data.label || node.id} (Optimized)`,
+                            errorHandling: {
+                              enabled: true,
+                              retryOnError: true,
+                              maxRetries: 2,
+                              fallbackValue: null
+                            }
+                          }
+                        };
+                      });
+                      break;
                   }
-                };
+                  
+                  // Add to applied optimizations list
+                  appliedOptimizations.push({
+                    id: suggestion.id,
+                    title: suggestion.title,
+                    appliedTo: suggestion.nodeIds.length,
+                    type: suggestion.type
+                  });
+                });
+              
+              if (onOptimize) {
+                onOptimize(optimizedNodes, optimizedEdges);
               }
               
-              return node;
-            });
+              setAppliedOptimizations(appliedOptimizations);
+              setIsOptimizing(false);
+              setProgress(100);
+              setOptimized(true);
+            }, 500);
             
-            if (onOptimize) {
-              onOptimize(optimizedNodes);
-            }
-            
-            setIsOptimizing(false);
-            setProgress(100);
-            setOptimized(true);
-          }, 500);
-          
-          return 100;
-        }
-        return newProgress;
-      });
-    }, 200);
-    
-    return () => clearInterval(interval);
-  }, [nodes, performanceReport, onOptimize]);
+            return 100;
+          }
+          return newProgress;
+        });
+      }, 200);
+      
+      return () => clearInterval(interval);
+    }
+  }, [
+    nodes, 
+    edges, 
+    workflowId, 
+    optimizationSuggestions, 
+    optimizeMutation, 
+    onOptimize
+  ]);
   
   // Generate random bottlenecks for demo
   const generateBottlenecks = (): PerformanceIssue[] => {
