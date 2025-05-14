@@ -22,12 +22,14 @@ import {
   MessageCircle, 
   LifeBuoy,
   HelpCircle, 
-  Loader2
+  Loader2,
+  Wand2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { InlineWorkflowLoading } from '@/components/workflow/InlineWorkflowLoading';
+import { NodeConfigWizard } from './NodeConfigWizard';
 // Import template preview images
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
 import facebookToHubspotPreview from "@/assets/templates/facebook-lead-to-hubspot.svg";
