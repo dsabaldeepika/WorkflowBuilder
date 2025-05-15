@@ -210,11 +210,18 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   const handleLaunchWizard = () => {
     console.log("Opening wizard...");
     // If we don't have nodes in the state yet, try to use templateNodes instead
-    if (nodes.length === 0 && templateNodes.length > 0) {
+    if (nodes.length === 0) {
       try {
-        const parsedNodes = Array.isArray(templateNodes) ? templateNodes : JSON.parse(templateNodes);
-        loadWorkflowFromTemplate(parsedNodes, templateEdges);
-        console.log("Loaded template nodes for configuration:", parsedNodes);
+        // If we have template nodes, use them
+        if (templateNodes && templateNodes.length > 0) {
+          const parsedNodes = Array.isArray(templateNodes) ? templateNodes : JSON.parse(templateNodes);
+          loadWorkflowFromTemplate(parsedNodes, templateEdges);
+          console.log("Loaded template nodes for configuration:", parsedNodes);
+        } else {
+          // Otherwise, create default nodes for configuration
+          console.log("No template nodes available, using default nodes");
+          // The NodeConfigWizard will handle creating default nodes
+        }
       } catch (err) {
         console.error("Failed to parse template nodes:", err);
       }
