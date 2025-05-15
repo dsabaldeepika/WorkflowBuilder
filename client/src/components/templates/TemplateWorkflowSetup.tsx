@@ -208,6 +208,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   
   // Launch the Node Configuration Wizard
   const handleLaunchWizard = () => {
+    console.log("Opening wizard...");
     // If we don't have nodes in the state yet, try to use templateNodes instead
     if (nodes.length === 0 && templateNodes.length > 0) {
       try {
@@ -220,7 +221,8 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
     }
     
     // Show the wizard regardless
-    setShowWizard(true);
+    setShowWizard(true); 
+    console.log("Wizard should now be visible");
   };
 
   // Handle wizard completion
@@ -966,7 +968,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
                       <div className="flex flex-col space-y-3">
                         <Button 
                           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md" 
-                          disabled={!credentialsComplete || isLoading}
+                          disabled={isLoading}
                           onClick={handleLaunchWizard}
                         >
                           {isLoading ? (
