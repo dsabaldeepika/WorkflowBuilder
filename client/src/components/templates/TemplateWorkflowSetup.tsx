@@ -208,6 +208,18 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   
   // Launch the Node Configuration Wizard
   const handleLaunchWizard = () => {
+    // If we don't have nodes in the state yet, try to use templateNodes instead
+    if (nodes.length === 0 && templateNodes.length > 0) {
+      try {
+        const parsedNodes = Array.isArray(templateNodes) ? templateNodes : JSON.parse(templateNodes);
+        loadWorkflowFromTemplate(parsedNodes, templateEdges);
+        console.log("Loaded template nodes for configuration:", parsedNodes);
+      } catch (err) {
+        console.error("Failed to parse template nodes:", err);
+      }
+    }
+    
+    // Show the wizard regardless
     setShowWizard(true);
   };
 
@@ -323,7 +335,7 @@ export function TemplateWorkflowSetup({ templateId }: TemplateWorkflowSetupProps
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50">
       {/* Show wizard overlay when active */}
-      {showWizard && nodes.length > 0 && (
+      {showWizard && (
         <div className="fixed inset-0 bg-black/50 z-50 overflow-auto">
           <NodeConfigWizard 
             nodes={nodes}

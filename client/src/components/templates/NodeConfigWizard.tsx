@@ -35,15 +35,50 @@ interface NodeConfigWizardProps {
 }
 
 export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWizardProps) {
+  // Create fallback nodes if none are provided
+  const allNodes = React.useMemo(() => {
+    return nodes.length > 0 ? nodes : [
+      {
+        id: 'google-sheets-1',
+        type: 'custom',
+        data: {
+          label: 'Google Sheets',
+          service: 'google-sheets',
+          config: {
+            spreadsheet_id: '',
+            sheet_name: '',
+            range: ''
+          }
+        },
+        position: { x: 250, y: 100 }
+      },
+      {
+        id: 'slack-1',
+        type: 'custom',
+        data: {
+          label: 'Slack',
+          service: 'slack',
+          config: {
+            channel: '',
+            message: ''
+          }
+        },
+        position: { x: 250, y: 250 }
+      }
+    ];
+  }, [nodes]);
+  
   const [currentNodeIndex, setCurrentNodeIndex] = useState(0);
-  const [configuredNodes, setConfiguredNodes] = useState<Node[]>([...nodes]);
+  const [configuredNodes, setConfiguredNodes] = useState<Node[]>([...allNodes]);
   const [nodeConfigs, setNodeConfigs] = useState<Record<string, any>>({});
   const [isCompleting, setIsCompleting] = useState(false);
   
   // Filter out nodes that need configuration (have service property)
-  const configurableNodes = nodes.filter(node => 
-    node.data.service || (node.data.config && Object.keys(node.data.config).length > 0)
-  );
+  const configurableNodes = React.useMemo(() => {
+    return allNodes.filter(node => 
+      node.data.service || (node.data.config && Object.keys(node.data.config).length > 0)
+    );
+  }, [allNodes]);
   
   const currentNode = configurableNodes[currentNodeIndex];
   const progress = Math.round(((currentNodeIndex) / Math.max(1, configurableNodes.length)) * 100);
@@ -84,7 +119,7 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
   
   // Apply configs to nodes
   useEffect(() => {
-    const updatedNodes = nodes.map(node => {
+    const updatedNodes = allNodes.map(node => {
       if (nodeConfigs[node.id]) {
         return {
           ...node,
@@ -101,7 +136,7 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
     });
     
     setConfiguredNodes(updatedNodes);
-  }, [nodes, nodeConfigs]);
+  }, [allNodes, nodeConfigs]);
   
   // Handle moving to next node
   const handleNext = () => {
@@ -378,7 +413,7 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
                 <p className="text-gray-500 mb-6">
                   This workflow template is ready to use as-is. No additional setup is required.
                 </p>
-                <Button onClick={() => onComplete(nodes)}>
+                <Button onClick={() => onComplete(configuredNodes)}>
                   Activate Workflow
                 </Button>
               </div>
@@ -390,8 +425,8 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
   }
   
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Card className="shadow-lg border-0">
+    <div className="fixed inset-0 bg-black/50 z-50 overflow-auto flex items-start justify-center p-4 sm:p-6 md:p-8">
+      <Card className="shadow-lg border-0 w-full max-w-4xl">
         <CardHeader className="border-b bg-muted/20">
           <div className="flex justify-between items-center">
             <div>
@@ -413,85 +448,58 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
           <Progress value={progress} className="h-1" />
         </div>
         
-        <div className="flex border-b">
-          <div className="w-1/4 border-r p-4 bg-muted/10">
-            <ScrollArea className="h-[450px] pr-4">
-              <h3 className="font-medium text-sm text-muted-foreground mb-3 uppercase">Nodes</h3>
-              <ul className="space-y-2">
-                {configurableNodes.map((node, index) => (
-                  <li 
-                    key={node.id}
-                    className={`p-3 rounded-md flex items-center cursor-pointer ${
+        <div className="flex">
+          {/* Left sidebar with node list */}
+          <div className="w-64 border-r p-4 hidden md:block">
+            <h3 className="font-medium mb-3 text-sm text-muted-foreground">WORKFLOW NODES</h3>
+            <ul className="space-y-1">
+              {configurableNodes.map((node, index) => (
+                <li key={node.id}>
+                  <button
+                    className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
                       index === currentNodeIndex 
-                        ? 'bg-primary/10 border border-primary/30' 
-                        : index < currentNodeIndex 
-                          ? 'bg-green-50 border border-green-100' 
-                          : 'hover:bg-muted/50 border border-transparent'
+                        ? 'bg-primary/10 text-primary font-medium' 
+                        : 'hover:bg-muted'
                     }`}
                     onClick={() => setCurrentNodeIndex(index)}
                   >
-                    <div className="mr-3">
-                      {index < currentNodeIndex ? (
-                        <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
-                          <Check className="h-3.5 w-3.5 text-green-600" />
-                        </div>
-                      ) : (
-                        <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
-                          index === currentNodeIndex ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {index + 1}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center">
-                        {getServiceIcon(node.data.service)}
-                        <span className="ml-2 text-sm font-medium truncate">
-                          {node.data.label || `Node ${index + 1}`}
-                        </span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {node.data.service || node.type}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </ScrollArea>
+                    {getServiceIcon(node.data.service)}
+                    <span className="truncate">{node.data.label}</span>
+                    {index < currentNodeIndex && (
+                      <Check className="h-4 w-4 ml-auto text-green-500" />
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            
+            <Separator className="my-4" />
+            
+            <Alert variant="default" className="bg-blue-50/50 border-blue-100 text-sm">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertTitle className="text-blue-700">Setup Service Nodes</AlertTitle>
+              <AlertDescription className="text-blue-600">
+                Configure each node to connect your workflow with external services.
+              </AlertDescription>
+            </Alert>
           </div>
           
+          {/* Main content area */}
           <div className="flex-1 p-6">
             <AnimatePresence mode="wait">
               <motion.div
-                key={currentNode?.id}
+                key={currentNodeIndex}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="mb-6">
-                  <div className="flex items-center mb-2">
-                    {getServiceIcon(currentNode?.data.service)}
-                    <h2 className="text-xl font-bold ml-2">
-                      {currentNode?.data.label || `Node ${currentNodeIndex + 1}`}
-                    </h2>
-                  </div>
-                  
-                  <p className="text-muted-foreground mb-6">
-                    Configure how this node connects to {currentNode?.data.service || 'the service'} and what data it will use.
-                  </p>
-                  
-                  <Alert className="mb-6">
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Configuration Required</AlertTitle>
-                    <AlertDescription>
-                      This step will connect your workflow node to the actual service. 
-                      Complete all required fields to ensure your workflow runs correctly.
-                    </AlertDescription>
-                  </Alert>
+                <div className="flex items-center mb-4">
+                  {getServiceIcon(currentNode?.data.service)}
+                  <h2 className="text-xl font-medium ml-2">{currentNode?.data.label}</h2>
                 </div>
                 
-                <ScrollArea className="h-[280px] pr-2">
+                <ScrollArea className="h-[calc(100vh-350px)] min-h-[400px] pr-4">
                   {currentNode && renderConfigForm(currentNode)}
                 </ScrollArea>
               </motion.div>
@@ -499,25 +507,26 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
           </div>
         </div>
         
-        <CardFooter className="flex justify-between p-6 bg-muted/10">
-          <div>
-            <Button
-              variant="outline"
+        <CardFooter className="border-t p-4 bg-muted/10 flex justify-between">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
               onClick={onCancel}
+              disabled={isCompleting}
             >
               Cancel
             </Button>
-          </div>
-          
-          <div className="space-x-2">
+            
             <Button
               variant="ghost"
               onClick={handleSkipNode}
-              disabled={isCompleting}
+              disabled={isCompleting || currentNodeIndex >= configurableNodes.length - 1}
             >
-              Skip This Step
+              Skip This Node
             </Button>
-            
+          </div>
+          
+          <div className="flex gap-2">
             <Button
               variant="outline"
               onClick={handlePrevious}
@@ -526,38 +535,20 @@ export function NodeConfigWizard({ nodes, onComplete, onCancel }: NodeConfigWiza
               Previous
             </Button>
             
-            {currentNodeIndex < configurableNodes.length - 1 ? (
-              <Button
-                onClick={handleNext}
-                disabled={isCompleting}
-              >
-                Continue
+            <Button 
+              onClick={handleNext}
+              disabled={isCompleting}
+            >
+              {isCompleting 
+                ? 'Processing...' 
+                : currentNodeIndex < configurableNodes.length - 1 
+                  ? 'Next' 
+                  : 'Complete'
+              }
+              {!isCompleting && currentNodeIndex < configurableNodes.length - 1 && 
                 <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleComplete}
-                disabled={isCompleting}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isCompleting ? (
-                  <>
-                    <span className="mr-2">Completing...</span>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                    </motion.div>
-                  </>
-                ) : (
-                  <>
-                    Finish & Activate
-                    <Check className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            )}
+              }
+            </Button>
           </div>
         </CardFooter>
       </Card>
