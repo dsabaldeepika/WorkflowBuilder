@@ -10,8 +10,8 @@ PumpFlux is a powerful drag-and-drop workflow builder that enables users to crea
 - Predefined templates for common workflow scenarios
 - Comprehensive health monitoring for all workflows
 - Integration with major services (Facebook, HubSpot, Slack, etc.)
-- User authentication and subscription management
 - Workflow execution tracking and performance optimization
+- **No authentication required for local development**
 
 ## Prerequisites
 
@@ -25,10 +25,11 @@ Create a `.env` file in the project root with the following variables:
 
 ```
 DATABASE_URL=postgresql://username:password@localhost:5432/pumpflux
-SESSION_SECRET=your_session_secret
 STRIPE_SECRET_KEY=your_stripe_secret_key
 VITE_STRIPE_PUBLIC_KEY=your_stripe_publishable_key
 ```
+
+> **Note:** `SESSION_SECRET` and authentication-related variables are no longer required.
 
 ## Running the Project
 
@@ -42,28 +43,33 @@ VITE_STRIPE_PUBLIC_KEY=your_stripe_publishable_key
 ### Option 2: Running Locally
 
 1. Clone the repository:
+
    ```
    git clone https://github.com/yourusername/pumpflux.git
    cd pumpflux
    ```
 
 2. Install dependencies:
+
    ```
    npm install
    ```
 
 3. Set up the database:
+
    ```
    npm run db:push
    ```
 
 4. Seed the database with initial templates and plans (optional):
+
    ```
    npm run seed:templates
    npm run seed:plans
    ```
 
 5. Start the development server:
+
    ```
    npm run dev
    ```
@@ -73,6 +79,7 @@ VITE_STRIPE_PUBLIC_KEY=your_stripe_publishable_key
 ## Project Structure
 
 - `/client` - Frontend React application
+
   - `/src/components` - UI components
   - `/src/pages` - Application pages
   - `/src/store` - State management
@@ -80,6 +87,7 @@ VITE_STRIPE_PUBLIC_KEY=your_stripe_publishable_key
   - `/src/assets` - Static assets
 
 - `/server` - Backend Express server
+
   - `/routes` - API routes
   - `/db` - Database connection
   - `/migrations` - Database migrations
@@ -100,7 +108,9 @@ API documentation is available at `/api/docs` when the server is running.
 
 ## Authentication
 
-The application uses Replit authentication by default, but also supports local username/password authentication.
+> **Authentication has been removed for local and development use.**
+>
+> The application now runs without authentication or login. All authentication and session logic has been removed from both backend and frontend. You can access all features directly after starting the server.
 
 ## License
 

@@ -1,28 +1,30 @@
-import { db } from './db';
-import { sql } from 'drizzle-orm';
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 /**
  * Run database migrations for new or updated columns
  * This file handles creating tables and adding columns if they don't exist
  */
 export async function runMigrations() {
-  console.log('Running database migrations...');
-  
+  console.log("Running database migrations...");
+
   try {
     // --- OAuth Providers Table Migrations ---
-    await ensureColumnsExist('oauth_providers', [
-      { name: 'display_name', dataType: 'TEXT NOT NULL DEFAULT \'Unknown\'' },
-      { name: 'enabled', dataType: 'BOOLEAN NOT NULL DEFAULT false' },
-      { name: 'created_at', dataType: 'TIMESTAMP NOT NULL DEFAULT NOW()' },
-      { name: 'updated_at', dataType: 'TIMESTAMP NOT NULL DEFAULT NOW()' }
+    await ensureColumnsExist("oauth_providers", [
+      { name: "display_name", dataType: "TEXT NOT NULL DEFAULT 'Unknown'" },
+      { name: "enabled", dataType: "BOOLEAN NOT NULL DEFAULT false" },
+      { name: "created_at", dataType: "TIMESTAMP NOT NULL DEFAULT NOW()" },
+      { name: "updated_at", dataType: "TIMESTAMP NOT NULL DEFAULT NOW()" },
     ]);
-    
+
     // --- Workflow Tables Migrations ---
     // Check if workflow_template_categories table exists
-    const workflowCategoriesExists = await checkTableExists('workflow_template_categories');
-    
+    const workflowCategoriesExists = await checkTableExists(
+      "workflow_template_categories"
+    );
+
     if (!workflowCategoriesExists) {
-      console.log('Creating workflow_template_categories table');
+      console.log("Creating workflow_template_categories table");
       await db.execute(sql`
         CREATE TABLE workflow_template_categories (
           id SERIAL PRIMARY KEY,
@@ -38,12 +40,14 @@ export async function runMigrations() {
         )
       `);
     }
-    
+
     // Check if workflow_templates table exists and create it if it doesn't
-    const workflowTemplatesExists = await checkTableExists('workflow_templates');
-    
+    const workflowTemplatesExists = await checkTableExists(
+      "workflow_templates"
+    );
+
     if (!workflowTemplatesExists) {
-      console.log('Creating workflow_templates table');
+      console.log("Creating workflow_templates table");
       await db.execute(sql`
         CREATE TABLE workflow_templates (
           id SERIAL PRIMARY KEY,
@@ -64,14 +68,14 @@ export async function runMigrations() {
         )
       `);
     } else {
-      console.log('Workflow templates table already exists, skipping creation');
+      console.log("Workflow templates table already exists, skipping creation");
     }
-    
+
     // Check if node_types table exists
-    const nodeTypesExists = await checkTableExists('node_types');
-    
+    const nodeTypesExists = await checkTableExists("node_types");
+
     if (!nodeTypesExists) {
-      console.log('Creating node_types table');
+      console.log("Creating node_types table");
       await db.execute(sql`
         CREATE TABLE node_types (
           id SERIAL PRIMARY KEY,
@@ -88,12 +92,12 @@ export async function runMigrations() {
         )
       `);
     }
-    
+
     // Check if app_integrations table exists
-    const appIntegrationsExists = await checkTableExists('app_integrations');
-    
+    const appIntegrationsExists = await checkTableExists("app_integrations");
+
     if (!appIntegrationsExists) {
-      console.log('Creating app_integrations table');
+      console.log("Creating app_integrations table");
       await db.execute(sql`
         CREATE TABLE app_integrations (
           id SERIAL PRIMARY KEY,
@@ -111,12 +115,14 @@ export async function runMigrations() {
         )
       `);
     }
-    
+
     // Check if user_app_credentials table exists
-    const userAppCredentialsExists = await checkTableExists('user_app_credentials');
-    
+    const userAppCredentialsExists = await checkTableExists(
+      "user_app_credentials"
+    );
+
     if (!userAppCredentialsExists) {
-      console.log('Creating user_app_credentials table');
+      console.log("Creating user_app_credentials table");
       await db.execute(sql`
         CREATE TABLE user_app_credentials (
           id SERIAL PRIMARY KEY,
@@ -131,12 +137,14 @@ export async function runMigrations() {
         )
       `);
     }
-    
+
     // Check if workflow_node_executions table exists
-    const workflowNodeExecutionsExists = await checkTableExists('workflow_node_executions');
-    
+    const workflowNodeExecutionsExists = await checkTableExists(
+      "workflow_node_executions"
+    );
+
     if (!workflowNodeExecutionsExists) {
-      console.log('Creating workflow_node_executions table');
+      console.log("Creating workflow_node_executions table");
       await db.execute(sql`
         CREATE TABLE workflow_node_executions (
           id SERIAL PRIMARY KEY,
@@ -156,25 +164,25 @@ export async function runMigrations() {
         )
       `);
     }
-    
+
     // Check if workflow_runs table has execution_data column
-    await ensureColumnsExist('workflow_runs', [
-      { name: 'execution_data', dataType: 'JSONB' },
-      { name: 'error_message', dataType: 'TEXT' },
-      { name: 'error_category', dataType: 'TEXT' }
+    await ensureColumnsExist("workflow_runs", [
+      { name: "execution_data", dataType: "JSONB" },
+      { name: "error_message", dataType: "TEXT" },
+      { name: "error_category", dataType: "TEXT" },
     ]);
-    
+
     // Check if workflows table has additional needed columns
-    await ensureColumnsExist('workflows', [
-      { name: 'run_count', dataType: 'INTEGER NOT NULL DEFAULT 0' },
-      { name: 'last_run_at', dataType: 'TIMESTAMP' }
+    await ensureColumnsExist("workflows", [
+      { name: "run_count", dataType: "INTEGER NOT NULL DEFAULT 0" },
+      { name: "last_run_at", dataType: "TIMESTAMP" },
     ]);
-    
+
     // We've recreated the workflow_templates table already, so no need to check for columns
-    
-    console.log('Migrations completed successfully');
+
+    console.log("Migrations completed successfully");
   } catch (error) {
-    console.error('Error running migrations:', error);
+    console.error("Error running migrations:", error);
   }
 }
 
@@ -191,7 +199,7 @@ async function checkTableExists(tableName: string): Promise<boolean> {
       AND table_name = ${tableName}
     )
   `);
-  
+
   return result.rows[0]?.exists === true;
 }
 
@@ -200,20 +208,35 @@ async function checkTableExists(tableName: string): Promise<boolean> {
  * @param tableName - Name of the table to check
  * @param columns - Array of column definitions to ensure exist
  */
-async function ensureColumnsExist(tableName: string, columns: Array<{ name: string, dataType: string }>): Promise<void> {
+async function ensureColumnsExist(
+  tableName: string,
+  columns: Array<{ name: string; dataType: string }>
+): Promise<void> {
   for (const column of columns) {
     // Check if column exists
     const result = await db.execute(sql`
       SELECT column_name FROM information_schema.columns 
       WHERE table_name = ${tableName} AND column_name = ${column.name}
     `);
-    
-    if (result.rows.length === 0) {
+    // Drizzle postgres-js returns an array of rows directly
+    const rows = Array.isArray(result) ? result : [];
+    if (!rows.some((r: any) => r.column_name === column.name)) {
       console.log(`Adding ${column.name} column to ${tableName} table`);
-      await db.execute(sql`
-        ALTER TABLE ${sql.identifier([tableName])} 
-        ADD COLUMN ${sql.identifier([column.name])} ${sql.raw(column.dataType)}
-      `);
+      try {
+        await db.execute(sql`
+          ALTER TABLE ${sql.identifier(tableName)} 
+          ADD COLUMN ${sql.identifier(column.name)} ${sql.raw(column.dataType)}
+        `);
+      } catch (err: any) {
+        // If column already exists, skip error
+        if (err && err.code === "42701") {
+          console.log(
+            `Column ${column.name} already exists in ${tableName}, skipping.`
+          );
+        } else {
+          throw err;
+        }
+      }
     }
   }
 }

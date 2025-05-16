@@ -7,64 +7,72 @@
   .animate-pulse-subtle {
     animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  
+
   /* Warning flash for paused states */
   .animate-warning-flash {
     animation: warning-flash 2s ease-in-out infinite;
   }
-  
+
   @keyframes warning-flash {
-    0%, 100% {
+    0%,
+    100% {
       border-color: rgb(251 191 36);
     }
     50% {
       border-color: rgb(245 158 11);
     }
   }
-  
+
   /* Shadow glow effect for completed items */
   .shadow-glow {
     box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.5);
   }
-  
+
   /* Error shake animation for failed states */
   .animate-error-shake {
-    animation: error-shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+    animation: error-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   }
-  
+
   @keyframes error-shake {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateX(0);
     }
-    20%, 60% {
+    20%,
+    60% {
       transform: translateX(-4px);
     }
-    40%, 80% {
+    40%,
+    80% {
       transform: translateX(4px);
     }
   }
-  
+
   /* Particle burst effect for completed states */
   .animate-success-particles {
     position: relative;
     overflow: visible;
   }
-  
+
   .animate-success-particles::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 50%;
     left: 50%;
     width: 0;
     height: 0;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.7) 0%, transparent 70%);
+    background: radial-gradient(
+      circle,
+      rgba(16, 185, 129, 0.7) 0%,
+      transparent 70%
+    );
     border-radius: 50%;
     opacity: 0;
     transform: translate(-50%, -50%);
     z-index: -1;
     animation: success-burst 0.8s ease-out forwards;
   }
-  
+
   @keyframes success-burst {
     0% {
       width: 0%;
@@ -80,7 +88,7 @@
       opacity: 0;
     }
   }
-  
+
   /* Success checkmark animation for completed states */
   .animate-checkmark {
     stroke-dasharray: 100;
@@ -96,61 +104,109 @@
       stroke-dashoffset: 0;
     }
   }
-  
+
   @keyframes pulse-subtle {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {
       opacity: 0.85;
     }
   }
+
+  /* Animated gradient background */
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-move 8s ease-in-out infinite;
+  }
+  @keyframes gradient-move {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  /* Floating animation for badges/icons */
+  .animate-float {
+    animation: float 3.2s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float 5.5s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  /* Fade-in animation for SVGs/illustrations */
+  .animate-fade-in {
+    animation: fade-in 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 :root {
-      --background: 0 0% 100%;
---foreground: 20 14.3% 4.1%;
---muted: 60 4.8% 95.9%;
---muted-foreground: 25 5.3% 44.7%;
---popover: 0 0% 100%;
---popover-foreground: 20 14.3% 4.1%;
---card: 0 0% 100%;
---card-foreground: 20 14.3% 4.1%;
---border: 20 5.9% 90%;
---input: 20 5.9% 90%;
---primary: 207 90% 54%;
---primary-foreground: 211 100% 99%;
---secondary: 60 4.8% 95.9%;
---secondary-foreground: 24 9.8% 10%;
---accent: 60 4.8% 95.9%;
---accent-foreground: 24 9.8% 10%;
---destructive: 0 84.2% 60.2%;
---destructive-foreground: 60 9.1% 97.8%;
---ring: 20 14.3% 4.1%;
---radius: 0.5rem;
-  }
-  .dark {
-      --background: 240 10% 3.9%;
---foreground: 0 0% 98%;
---muted: 240 3.7% 15.9%;
---muted-foreground: 240 5% 64.9%;
---popover: 240 10% 3.9%;
---popover-foreground: 0 0% 98%;
---card: 240 10% 3.9%;
---card-foreground: 0 0% 98%;
---border: 240 3.7% 15.9%;
---input: 240 3.7% 15.9%;
---primary: 207 90% 54%;
---primary-foreground: 211 100% 99%;
---secondary: 240 3.7% 15.9%;
---secondary-foreground: 0 0% 98%;
---accent: 240 3.7% 15.9%;
---accent-foreground: 0 0% 98%;
---destructive: 0 62.8% 30.6%;
---destructive-foreground: 0 0% 98%;
---ring: 240 4.9% 83.9%;
---radius: 0.5rem;
-  }
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --muted: 60 4.8% 95.9%;
+  --muted-foreground: 25 5.3% 44.7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14.3% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14.3% 4.1%;
+  --border: 20 5.9% 90%;
+  --input: 20 5.9% 90%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 60 4.8% 95.9%;
+  --secondary-foreground: 24 9.8% 10%;
+  --accent: 60 4.8% 95.9%;
+  --accent-foreground: 24 9.8% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  --ring: 20 14.3% 4.1%;
+  --radius: 0.5rem;
+}
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 240 4.9% 83.9%;
+  --radius: 0.5rem;
+}
 
 @layer base {
   * {
