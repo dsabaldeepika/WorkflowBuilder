@@ -249,10 +249,10 @@ const LoginPage: React.FC = () => {
             <Card className="w-full max-w-md border-0 shadow-none">
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">Sign in to PumpFlux</CardTitle>
-                <CardDescription>
+          <CardDescription>
                   Enter your credentials to access the platform
-                </CardDescription>
-              </CardHeader>
+          </CardDescription>
+        </CardHeader>
               <CardContent className="space-y-6">
                 <Tabs defaultValue="login" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
@@ -343,7 +343,7 @@ const LoginPage: React.FC = () => {
                       </div>
                       <Button type="submit" className="w-full">
                         Register
-                      </Button>
+            </Button>
                     </form>
                   </TabsContent>
                 </Tabs>
@@ -368,9 +368,9 @@ const LoginPage: React.FC = () => {
                   <p className="mt-2 text-xs text-blue-600">
                     These credentials are for testing purposes only.
                   </p>
-                </div>
-              </CardContent>
-            </Card>
+          </div>
+        </CardContent>
+      </Card>
           </div>
         </div>
       </div>

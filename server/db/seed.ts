@@ -1,6 +1,7 @@
 import { db } from '../db';
 import { users } from '@shared/schema';
 import { hashPassword } from '../auth/auth.service';
+import { seedNodeConfigurations } from './seed-nodes';
 
 export async function seedDatabase() {
   console.log('Starting database seeding...');
@@ -50,7 +51,7 @@ export async function seedDatabase() {
       try {
         await db.insert(users).values(user);
         console.log(`Created user: ${user.email}`);
-      } catch (error) {
+      } catch (error: any) {
         if (error.code === '23505') { // Unique violation
           console.log(`User ${user.email} already exists, skipping...`);
         } else {
@@ -59,6 +60,10 @@ export async function seedDatabase() {
       }
     }
 
+    // Add node configurations
+    console.log('Seeding node configurations...');
+    await seedNodeConfigurations();
+
     console.log('Database seeding completed successfully!');
   } catch (error) {
     console.error('Error seeding database:', error);
@@ -66,7 +71,7 @@ export async function seedDatabase() {
   }
 }
 
-// Only run the seed function if this file is being run directly
+// Only run if this file is being run directly
 if (import.meta.url === import.meta.main) {
   seedDatabase()
     .then(() => {

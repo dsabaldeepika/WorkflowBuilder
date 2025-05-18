@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Database,
   Info,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SiGooglesheets, SiHubspot, SiFacebook, SiSlack } from "react-icons/si";
@@ -37,784 +38,461 @@ import {
 } from "@/components/ui/tooltip";
 import { Node } from "reactflow";
 import { NodeData } from "@/store/useWorkflowStore";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
+import { SERVICE_REGISTRY } from "./serviceRegistry";
+import { Label } from "@/components/ui/label";
 
 interface NodeConfigWizardProps {
   nodes: Node<NodeData>[];
-  onComplete: (configuredNodes: Node<NodeData>[]) => void;
+  onComplete: (nodes: Node<NodeData>[]) => void;
   onCancel: () => void;
 }
+
+interface ValidationError {
+  nodeId: string;
+  field: string;
+  message: string;
+}
+
+// Helper function to validate node structure
+const isValidNode = (node: Node<NodeData>): boolean => {
+  return (
+    node &&
+    typeof node === 'object' &&
+    'id' in node &&
+    'type' in node &&
+    'data' in node &&
+    typeof node.data === 'object' &&
+    node.data !== null &&
+    'label' in node.data
+  );
+};
 
 export function NodeConfigWizard({
   nodes,
   onComplete,
   onCancel,
 }: NodeConfigWizardProps) {
-  // Use the nodes prop directly, no fallback
-  const allNodes = nodes;
-
-  const [currentNodeIndex, setCurrentNodeIndex] = useState(0);
-  const [configuredNodes, setConfiguredNodes] = useState<Node<NodeData>[]>([...allNodes]);
-  const [nodeConfigs, setNodeConfigs] = useState<Record<string, any>>({});
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
-  const [connectionStatus, setConnectionStatus] = useState<
-    Record<string, string>
-  >({});
+  const { toast } = useToast();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [configNodes, setConfigNodes] = useState<Node<NodeData>[]>(nodes);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
-  // Filter out nodes that need configuration (have service property)
-  const configurableNodes = React.useMemo(() => {
-    if (!Array.isArray(allNodes) || allNodes.length === 0) {
-      console.warn("[NodeConfigWizard] No nodes provided to wizard.");
-      return [];
-    }
-
-    // Only include nodes that have a service or config fields to configure
-    return allNodes.filter((node) => {
-      // Check if node has a service
-      const hasService = node.data?.service;
-      
-      // Check if node has config that needs to be filled
-      const hasConfig = node.data?.config && 
-        Object.entries(node.data.config).some(([_, value]) => 
-          typeof value === "string" && value.includes("${")
-        );
-
-      return hasService || hasConfig;
-    });
-  }, [allNodes]);
-
-  // Defensive: If no nodes, show a clear error
-  if (!Array.isArray(nodes) || nodes.length === 0) {
-    return (
-      <div className="p-8 max-w-3xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>No Nodes Found</CardTitle>
-            <CardDescription>
-              This template does not contain any nodes. Please check the
-              template definition.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center p-8">
-              <div className="text-center">
-                <div className="bg-red-100 rounded-full p-3 inline-flex mb-4">
-                  <AlertCircle className="h-8 w-8 text-red-600" />                  npx ts-node scripts/seed-templates.ts
-                  npx ts-node scripts/seed-template-gallery.ts
-                  npx ts-node scripts/seed-popular-workflows.ts
-                </div>
-                <h3 className="text-xl font-medium mb-2">No Workflow Nodes</h3>
-                <p className="text-gray-500 mb-6">
-                  This workflow template is missing node definitions. Please
-                  contact support or try another template.
-                </p>
-                <Button onClick={onCancel} variant="outline">
-                  Back
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const currentNode = configurableNodes[currentNodeIndex];
-  const progress = Math.round(
-    (currentNodeIndex / Math.max(1, configurableNodes.length)) * 100
-  );
-
-  // Add console log to verify nodes from templates
+  // Initialize configNodes state and validate nodes on mount
   useEffect(() => {
-    console.log("[NodeConfigWizard] nodes prop:", nodes);
-    console.log("[NodeConfigWizard] allNodes:", allNodes);
-    console.log("[NodeConfigWizard] configurableNodes:", configurableNodes);
-  }, [nodes, allNodes, configurableNodes]);
+    const validNodes = nodes.filter(isValidNode);
 
-  // Enhanced getServiceIcon to support all template services
-  const getServiceIcon = (service?: string) => {
-    if (!service) return <Database className="h-5 w-5 text-gray-600" />;
-    const iconSize = 24;
-    switch (service.toLowerCase()) {
-      case "google-sheets":
-      case "googlesheets":
-        return <SiGooglesheets size={iconSize} className="text-green-600" />;
-      case "hubspot":
-        return <SiHubspot size={iconSize} className="text-orange-500" />;
-      case "facebook":
-        return <SiFacebook size={iconSize} className="text-blue-600" />;
-      case "slack":
-        return <SiSlack size={iconSize} className="text-purple-600" />;
-      case "pipedrive":
-        return <Layers size={iconSize} className="text-green-700" />;
-      case "airtable":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#18BFFF] rounded text-white flex items-center justify-center font-bold">
-            A
-          </span>
-        );
-      case "clickup":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#7B68EE] rounded text-white flex items-center justify-center font-bold">
-            C
-          </span>
-        );
-      case "openai":
-        return (
-          <span className="inline-block w-6 h-6 bg-black rounded text-white flex items-center justify-center font-bold">
-            AI
-          </span>
-        );
-      case "anthropic":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#FFD700] rounded text-black flex items-center justify-center font-bold">
-            A
-          </span>
-        );
-      case "pandadoc":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#00ADEF] rounded text-white flex items-center justify-center font-bold">
-            P
-          </span>
-        );
-      case "mailchimp":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#FFE01B] rounded text-black flex items-center justify-center font-bold">
-            M
-          </span>
-        );
-      case "trello":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#0079BF] rounded text-white flex items-center justify-center font-bold">
-            T
-          </span>
-        );
-      case "salesforce":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#00A1E0] rounded text-white flex items-center justify-center font-bold">
-            S
-          </span>
-        );
-      case "google-forms":
-        return (
-          <span className="inline-block w-6 h-6 bg-[#673AB7] rounded text-white flex items-center justify-center font-bold">
-            GF
-          </span>
-        );
-      case "manual":
-        return (
-          <span className="inline-block w-6 h-6 bg-gray-400 rounded text-white flex items-center justify-center font-bold">
-            M
-          </span>
-        );
-      case "http":
-        return (
-          <span className="inline-block w-6 h-6 bg-gray-700 rounded text-white flex items-center justify-center font-bold">
-            H
-          </span>
-        );
-      default:
-        return <Database className="h-5 w-5 text-gray-600" />;
-    }
-  };
-
-  // Handle node configuration changes
-  const handleNodeConfigChange = (
-    nodeId: string,
-    config: Record<string, any>
-  ) => {
-    setNodeConfigs((prev) => ({
-      ...prev,
-      [nodeId]: {
-        ...prev[nodeId],
-        ...config,
-      },
-    }));
-    // Validate
-    const node = configurableNodes.find((n) => n.id === nodeId);
-    if (node) {
-      const errors = validateNodeConfig(node, {
-        ...nodeConfigs[nodeId],
-        ...config,
+    if (validNodes.length !== nodes.length) {
+      toast({
+        title: "Invalid Node Configuration",
+        description: "Some nodes have invalid configuration. They will be skipped.",
+        variant: "destructive",
       });
-      setValidationErrors((prev) => ({
-        ...prev,
-        [nodeId]: Object.values(errors)[0] || "",
-      }));
     }
-  };
 
-  // Apply configs to nodes
-  useEffect(() => {
-    const updatedNodes = allNodes.map((node) => {
-      if (nodeConfigs[node.id]) {
+    // Initialize config object for each valid node based on SERVICE_REGISTRY
+    const nodesWithInitializedConfig = validNodes.map((node: Node<NodeData>) => {
+      const serviceDefinition = node.data?.service ? SERVICE_REGISTRY[node.data.service] : undefined;
+      const initialConfig: any = { ...node.data?.config }; // Start with existing config values
+
+      if (serviceDefinition?.fields) {
+        serviceDefinition.fields.forEach(field => {
+          if (!(field.name in initialConfig)) {
+            // Initialize field with a default value if not present
+            if (field.type === 'boolean') {
+              initialConfig[field.name] = false;
+            } else if (field.type === 'number') {
+              initialConfig[field.name] = 0; // Or field.min if available
+            } else if (field.options && field.options.length > 0) {
+                initialConfig[field.name] = field.options[0].value; // Default to first option
+            } else {
+              initialConfig[field.name] = ''; // Default to empty string for text/textarea/select without options
+            }
+          }
+        });
+      }
+
         return {
           ...node,
           data: {
             ...node.data,
-            config: {
-              ...node.data.config,
-              ...nodeConfigs[node.id],
-            },
-          },
-        };
-      }
-      return node;
+          config: initialConfig,
+        },
+      };
     });
 
-    setConfiguredNodes(updatedNodes);
-  }, [allNodes, nodeConfigs]);
+    setConfigNodes(nodesWithInitializedConfig);
 
-  // Handle moving to next node
-  const handleNext = () => {
-    if (currentNodeIndex < configurableNodes.length - 1) {
-      setCurrentNodeIndex((prevIndex) => prevIndex + 1);
-    } else {
-      setShowReview(true);
+  }, [nodes, toast]);
+
+  // Reset validation errors when current step changes
+  useEffect(() => {
+    setValidationErrors([]);
+  }, [currentStep]);
+
+  // Validate current node configuration
+  const validateCurrentNode = useCallback(() => {
+    const currentNode = configNodes[currentStep];
+    if (!currentNode || !isValidNode(currentNode)) {
+      setValidationErrors([{
+        nodeId: currentNode?.id || 'unknown',
+        field: 'node',
+        message: 'Invalid node structure'
+      }]);
+      return false;
     }
-  };
 
-  // Handle moving to previous node
-  const handlePrevious = () => {
-    if (currentNodeIndex > 0) {
-      setCurrentNodeIndex((prevIndex) => prevIndex - 1);
-    }
-  };
-
-  // Complete the wizard
-  const handleComplete = () => {
-    setIsCompleting(true);
-
-    // Simulate API call or processing
-    setTimeout(() => {
-      onComplete(configuredNodes);
-      setIsCompleting(false);
-    }, 1000);
-  };
-
-  // Skip configuration for the current node
-  const handleSkipNode = () => {
-    if (currentNodeIndex < configurableNodes.length - 1) {
-      setCurrentNodeIndex((prevIndex) => prevIndex + 1);
-    } else {
-      setShowReview(true);
-    }
-  };
-
-  // Check if current node is configured
-  const isCurrentNodeConfigured = () => {
-    if (!currentNode) return true;
-
-    const nodeConfig = nodeConfigs[currentNode.id];
-    if (!nodeConfig) return false;
-
-    // Simple validation - check if all required fields have values
-    const requiredFields = Object.keys(currentNode.data.config || {}).filter(
-      (key) =>
-        currentNode.data.config?.[key] &&
-        typeof currentNode.data.config[key] === "string" &&
-        currentNode.data.config[key].includes("${")
-    );
-
-    // If no required fields, consider configured
-    if (requiredFields.length === 0) return true;
-
-    // Check if all required fields are present in the config
-    return requiredFields.every(
-      (field) => nodeConfig[field] && nodeConfig[field].trim() !== ""
-    );
-  };
-
-  // Enhanced validation for required fields
-  const validateNodeConfig = (node: Node<NodeData>, config: Record<string, any>) => {
-    const errors: Record<string, string> = {};
-    if (node.data.config) {
-      Object.entries(node.data.config).forEach(([key, value]) => {
-        if (typeof value === "string" && value.includes("${")) {
-          if (!config[key] || config[key].trim() === "") {
-            errors[key] = "This field is required.";
-          }
-        }
-      });
-    }
-    return errors;
-  };
-
-  // Test connection logic
-  const handleTestConnection = async (service: string, nodeId: string) => {
-    setConnectionStatus((prev) => ({ ...prev, [nodeId]: "testing" }));
-    // Simulate async test
-    setTimeout(() => {
-      setConnectionStatus((prev) => ({ ...prev, [nodeId]: "success" }));
-    }, 1200);
-  };
-
-  // Render config form based on service type
-  const renderConfigForm = (node: Node<NodeData>) => {
-    const service = node.data.service?.toLowerCase();
-    const nodeId = node.id;
-    const config = nodeConfigs[nodeId] || {};
-    const error = validationErrors[nodeId];
-    const connStatus = connectionStatus[nodeId];
+    const errors: ValidationError[] = [];
+    const service = currentNode.data.service ? SERVICE_REGISTRY[currentNode.data.service] : null;
 
     if (!service) {
-      return (
-        <div className="p-6 bg-gray-50 rounded-lg text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-600 mb-2">
-            No Configuration Required
-          </h3>
-          <p className="text-gray-500">
-            This node doesn't require any additional setup.
-          </p>
-        </div>
-      );
+      errors.push({
+        nodeId: currentNode.id,
+        field: "service",
+        message: "Invalid service configuration",
+      });
+      setValidationErrors(errors);
+      return false;
     }
 
-    // Extract required fields from config
-    const requiredFields: Record<string, string> = {};
-    if (node.data.config) {
-      Object.entries(node.data.config).forEach(([key, value]) => {
-        if (typeof value === "string" && value.includes("${")) {
-          const match = value.match(/\${([^}]+)}/);
-          if (match && match[1]) {
-            requiredFields[match[1]] = "";
+    // Validate required fields
+    if (service.requiredFields) {
+      service.requiredFields.forEach((field) => {
+        const value = currentNode.data.config?.[field];
+        if (!value || (typeof value === "string" && value.trim() === "")) {
+          errors.push({
+            nodeId: currentNode.id,
+            field,
+            message: `${field} is required`,
+          });
+        }
+      });
+    }
+
+    // Validate field types and constraints
+    if (service.fieldValidations) {
+      Object.entries(service.fieldValidations).forEach(([field, validation]) => {
+        const value = currentNode.data.config?.[field];
+        if (value !== undefined) {
+          if (validation.type === "number") {
+            const numValue = Number(value);
+            if (isNaN(numValue)) {
+              errors.push({
+                nodeId: currentNode.id,
+                field,
+                message: `${field} must be a number`,
+              });
+            } else {
+              if (validation.min !== undefined && numValue < validation.min) {
+                errors.push({
+                  nodeId: currentNode.id,
+                  field,
+                  message: `${field} must be at least ${validation.min}`,
+                });
+              }
+              if (validation.max !== undefined && numValue > validation.max) {
+                errors.push({
+                  nodeId: currentNode.id,
+                  field,
+                  message: `${field} must be at most ${validation.max}`,
+                });
+              }
+            }
+          } else if (validation.type === "string") {
+            if (validation.minLength && value.length < validation.minLength) {
+              errors.push({
+                nodeId: currentNode.id,
+                field,
+                message: `${field} must be at least ${validation.minLength} characters`,
+              });
+            }
+            if (validation.maxLength && value.length > validation.maxLength) {
+              errors.push({
+                nodeId: currentNode.id,
+                field,
+                message: `${field} must be at most ${validation.maxLength} characters`,
+              });
+            }
+            if (validation.pattern && !validation.pattern.test(value)) {
+              errors.push({
+                nodeId: currentNode.id,
+                field,
+                message: validation.message || `${field} has invalid format`,
+              });
+            }
           }
         }
       });
     }
 
-    // Render appropriate connector based on service type
-    switch (service) {
-      case "google-sheets":
-      case "googlesheets":
-        return (
-          <div className="mb-6 p-4 border rounded-md bg-green-50/30">
-            <div className="flex items-center mb-4">
-              <SiGooglesheets className="h-5 w-5 text-green-600 mr-2" />
-              <h3 className="text-lg font-medium">
-                Google Sheets Configuration
-              </h3>
-            </div>
+    setValidationErrors(errors);
+    return errors.length === 0;
+  }, [configNodes, currentStep]);
 
-            <GoogleSheetsConnector
-              initialSpreadsheetId={nodeConfigs[node.id]?.spreadsheet_id || ""}
-              initialSheetName={nodeConfigs[node.id]?.sheet_name || ""}
-              initialAction={
-                Object.keys(requiredFields).some((key) =>
-                  key.includes("append")
-                )
-                  ? "append_row"
-                  : "get_values"
-              }
-              onConfigurationComplete={(config) => {
-                // Map Google Sheets config to node config
-                handleNodeConfigChange(node.id, {
-                  spreadsheet_id: config.spreadsheetId,
-                  sheet_name: config.sheetName,
-                  range: config.range || "",
-                  action: config.action,
-                });
-              }}
-            />
-          </div>
-        );
+  // Handle configuration changes
+  const handleConfigChange = useCallback(
+    (field: string, value: any) => {
+      setConfigNodes((prev) =>
+        prev.map((node, index) => {
+          if (index === currentStep) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                config: {
+                  ...node.data.config,
+                  [field]: value,
+                },
+              },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [currentStep]
+  );
 
-      case "facebook":
-        return (
-          <div className="mb-6 p-4 border rounded-md bg-blue-50/30">
-            <div className="flex items-center mb-4">
-              <SiFacebook className="h-5 w-5 text-blue-600 mr-2" />
-              <h3 className="text-lg font-medium">Facebook Configuration</h3>
-            </div>
-
-            <ConnectionManager
-              service="facebook"
-              requiredFields={requiredFields}
-              onCredentialSelected={(credential) => {
-                handleNodeConfigChange(node.id, {
-                  facebook_credential_id: credential.id,
-                  ...requiredFields, // Add any field placeholder values
-                });
-              }}
-            />
-
-            {/* Additional Facebook-specific form fields */}
-            {Object.keys(requiredFields).length > 0 && (
-              <div className="mt-6 pt-4 border-t">
-                <h4 className="font-medium mb-3">Configure Facebook Details</h4>
-                <Alert className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Required Settings</AlertTitle>
-                  <AlertDescription>
-                    Complete these fields to connect your Facebook account
-                    properly
-                  </AlertDescription>
-                </Alert>
-
-                {/* Additional form fields based on required parameters */}
-                {/* Field mapping would be implemented here */}
-              </div>
-            )}
-          </div>
-        );
-
-      case "hubspot":
-        return (
-          <div className="mb-6 p-4 border rounded-md bg-orange-50/30">
-            <div className="flex items-center mb-4">
-              <SiHubspot className="h-5 w-5 text-orange-600 mr-2" />
-              <h3 className="text-lg font-medium">HubSpot Configuration</h3>
-            </div>
-
-            <ConnectionManager
-              service="hubspot"
-              requiredFields={requiredFields}
-              onCredentialSelected={(credential) => {
-                handleNodeConfigChange(node.id, {
-                  hubspot_credential_id: credential.id,
-                  ...requiredFields,
-                });
-              }}
-            />
-
-            {/* Additional HubSpot-specific form fields */}
-            {Object.keys(requiredFields).length > 0 && (
-              <div className="mt-6 pt-4 border-t">
-                <h4 className="font-medium mb-3">Configure HubSpot Details</h4>
-                <Alert className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Required Settings</AlertTitle>
-                  <AlertDescription>
-                    Complete these fields to connect your HubSpot account
-                    properly
-                  </AlertDescription>
-                </Alert>
-
-                {/* Additional form fields based on required parameters */}
-                {/* Field mapping would be implemented here */}
-              </div>
-            )}
-          </div>
-        );
-
-      case "slack":
-        return (
-          <div className="mb-6 p-4 border rounded-md bg-purple-50/30">
-            <div className="flex items-center mb-4">
-              <SiSlack className="h-5 w-5 text-purple-600 mr-2" />
-              <h3 className="text-lg font-medium">Slack Configuration</h3>
-            </div>
-
-            <ConnectionManager
-              service="slack"
-              requiredFields={requiredFields}
-              onCredentialSelected={(credential) => {
-                handleNodeConfigChange(node.id, {
-                  slack_credential_id: credential.id,
-                  ...requiredFields,
-                });
-              }}
-            />
-
-            {/* Additional Slack-specific form fields */}
-            {Object.keys(requiredFields).length > 0 && (
-              <div className="mt-6 pt-4 border-t">
-                <h4 className="font-medium mb-3">Configure Slack Details</h4>
-                <Alert className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Required Settings</AlertTitle>
-                  <AlertDescription>
-                    Complete these fields to connect your Slack account properly
-                  </AlertDescription>
-                </Alert>
-
-                {/* Additional form fields based on required parameters */}
-                {/* Field mapping would be implemented here */}
-              </div>
-            )}
-          </div>
-        );
-
-      default:
-        return (
-          <div className="p-6 bg-gray-50 rounded-lg">
-            <div className="flex items-center mb-4">
-              <Database className="h-5 w-5 text-gray-600 mr-2" />
-              <h3 className="text-lg font-medium">
-                Generic Service Configuration
-              </h3>
-            </div>
-
-            <ConnectionManager
-              service={service}
-              requiredFields={requiredFields}
-              onCredentialSelected={(credential) => {
-                handleNodeConfigChange(node.id, {
-                  [`${service}_credential_id`]: credential.id,
-                  ...requiredFields,
-                });
-              }}
-            />
-          </div>
-        );
+  // Handle next step
+  const handleNext = useCallback(() => {
+    if (validateCurrentNode()) {
+      if (currentStep < configNodes.length - 1) {
+        setCurrentStep((prev) => prev + 1);
+      } else {
+        handleComplete();
+      }
+    } else {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors before proceeding.",
+        variant: "destructive",
+      });
     }
-  };
+  }, [currentStep, configNodes.length, validateCurrentNode, toast]);
 
-  if (configurableNodes.length === 0) {
+  // Handle previous step
+  const handlePrevious = useCallback(() => {
+    setCurrentStep((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  // Handle completion
+  const handleComplete = useCallback(async () => {
+    setIsSubmitting(true);
+    try {
+      if (validateCurrentNode()) {
+        onComplete(configNodes);
+      } else {
+        toast({
+          title: "Validation Error",
+          description: "Please fix all errors before completing the configuration.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error completing configuration:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete configuration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [configNodes, onComplete, toast, validateCurrentNode]);
+
+  // Get current node
+  const currentNode = configNodes[currentStep];
+  const service = currentNode?.data?.service ? SERVICE_REGISTRY[currentNode.data.service] : null;
+
+  // Render loading state
+  if (!currentNode || !service) {
     return (
-      <div className="p-8 max-w-3xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>No Configuration Required</CardTitle>
-            <CardDescription>
-              This template doesn't have any nodes that require configuration.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center p-8">
-              <div className="text-center">
-                <div className="bg-green-100 rounded-full p-3 inline-flex mb-4">
-                  <Check className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-medium mb-2">Ready to Use</h3>
-                <p className="text-gray-500 mb-6">
-                  This workflow template is ready to use as-is. No additional
-                  setup is required.
-                </p>
-                <Button onClick={() => onComplete(configuredNodes)}>
-                  Activate Workflow
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Invalid node configuration. Please try again.
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={onCancel} variant="outline">
+              Cancel
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
-  if (showReview) {
+  // Render the wizard
     return (
-      <div className="fixed inset-0 bg-black/50 z-50 overflow-auto flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl">
-          <CardHeader>
-            <CardTitle>Review Your Workflow Setup</CardTitle>
-            <CardDescription>
-              Please check your workflow details below. If everything looks
-              good, click <b>Activate Workflow</b> to finish.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {configuredNodes.map((node) => (
-                <div
-                  key={node.id}
-                  className="border rounded-lg p-4 bg-gray-50 flex items-start gap-4"
-                >
-                  <div className="mt-1">
-                    {getServiceIcon(node.data.service)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg mb-1 text-gray-800">
-                      {node.data.label}
-                    </div>
-                    <ul className="text-gray-700 text-sm space-y-1">
-                      {node.data.config &&
-                      Object.keys(node.data.config).length > 0 ? (
-                        Object.entries(node.data.config).map(([key, value]) => (
-                          <li key={key} className="flex items-center gap-2">
-                            <span className="font-medium capitalize">
-                              {key.replace(/_/g, " ")}:
-                            </span>
-                            <span className="bg-white rounded px-2 py-0.5 border text-gray-900">
-                              {value ? (
-                                value
-                              ) : (
-                                <span className="text-gray-400 italic">
-                                  Not set
-                                </span>
-                              )}
-                            </span>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-gray-500 italic">
-                          No configuration required
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 p-4 bg-blue-50 rounded text-blue-900 flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              <span>
-                Your workflow is almost ready! Click <b>Activate Workflow</b> to
-                start using your automation.
-              </span>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setShowReview(false)}>
-              Back
-            </Button>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Configure {currentNode.data.label}
+          </h2>
             <Button
-              onClick={handleComplete}
-              disabled={isCompleting}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-            >
-              {isCompleting ? "Activating..." : "Activate Workflow"}
+            onClick={onCancel}
+            variant="ghost"
+            size="icon"
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-5 w-5" />
             </Button>
-          </CardFooter>
-        </Card>
       </div>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 overflow-auto flex items-start justify-center p-4 sm:p-6 md:p-8">
-      <Card className="shadow-lg border-0 w-full max-w-4xl">
-        <CardHeader className="border-b bg-muted/20">
-          <div className="flex justify-between items-center">
+        <div className="space-y-6">
+          {/* Service Information */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              {service.icon && <service.icon className="h-6 w-6 text-gray-600" />}
             <div>
-              <CardTitle className="text-2xl">
-                Configure Workflow Nodes
-              </CardTitle>
-              <CardDescription>
-                Step {currentNodeIndex + 1} of {configurableNodes.length} -
-                Setup each node in your workflow
-              </CardDescription>
+                <h3 className="font-medium text-gray-900">{service.name}</h3>
+                <p className="text-sm text-gray-600">{service.description}</p>
+              </div>
             </div>
-            <Badge
-              variant={isCurrentNodeConfigured() ? "outline" : "secondary"}
-              className={
-                isCurrentNodeConfigured()
-                  ? "bg-green-100 text-green-800 hover:bg-green-100"
-                  : ""
-              }
-            >
-              {isCurrentNodeConfigured() ? "Ready" : "Needs Setup"}
-            </Badge>
           </div>
-        </CardHeader>
 
-        <div className="p-1">
-          <Progress value={progress} className="h-1" />
-        </div>
+          {/* Configuration Fields */}
+          <div className="space-y-4">
+            {service.fields?.map((field) => {
+              const error = validationErrors.find(
+                (e) => e.nodeId === currentNode.id && e.field === field.name
+              );
 
-        <div className="flex">
-          {/* Left sidebar with node list */}
-          <div className="w-64 border-r p-4 hidden md:block">
-            <h3 className="font-medium mb-3 text-sm text-muted-foreground">
-              WORKFLOW NODES
-            </h3>
-            <ul className="space-y-1">
-              {configurableNodes.map((node, index) => (
-                <li key={node.id}>
-                  <button
-                    className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
-                      index === currentNodeIndex
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "hover:bg-muted"
-                    }`}
-                    onClick={() => setCurrentNodeIndex(index)}
-                  >
-                    {getServiceIcon(node.data.service)}
-                    <span className="truncate">{node.data.label}</span>
-                    {index < currentNodeIndex && (
-                      <Check className="h-4 w-4 ml-auto text-green-500" />
+              return (
+                <div key={field.name} className="space-y-2">
+                  <Label htmlFor={field.name} className="text-gray-700">
+                    {field.label}
+                    {field.required && (
+                      <span className="text-red-500 ml-1">*</span>
                     )}
-                  </button>
-                </li>
-              ))}
-            </ul>
+                  </Label>
 
-            <Separator className="my-4" />
-
-            <Alert
-              variant="default"
-              className="bg-blue-50/50 border-blue-100 text-sm"
-            >
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertTitle className="text-blue-700">
-                Setup Service Nodes
-              </AlertTitle>
-              <AlertDescription className="text-blue-600">
-                Configure each node to connect your workflow with external
-                services.
-              </AlertDescription>
-            </Alert>
+                  {field.type === "select" ? (
+                    <Select
+                      value={currentNode.data.config?.[field.name] || ""}
+                      onValueChange={(value) =>
+                        handleConfigChange(field.name, value)
+                      }
+                    >
+                      <SelectTrigger
+                        id={field.name}
+                        className={error ? "border-red-500" : ""}
+                      >
+                        <SelectValue placeholder={field.placeholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options?.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : field.type === "textarea" ? (
+                    <Textarea
+                      id={field.name}
+                      value={currentNode.data.config?.[field.name] || ""}
+                      onChange={(e) =>
+                        handleConfigChange(field.name, e.target.value)
+                      }
+                      placeholder={field.placeholder}
+                      className={error ? "border-red-500" : ""}
+                    />
+                  ) : field.type === "boolean" ? (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id={field.name}
+                        checked={!!currentNode.data.config?.[field.name]}
+                        onCheckedChange={(checked) =>
+                          handleConfigChange(field.name, checked)
+                        }
+                      />
+                      <Label htmlFor={field.name} className="text-sm text-gray-600">
+                        {field.placeholder}
+                      </Label>
           </div>
+                  ) : (
+                    <Input
+                      id={field.name}
+                      type={field.type || "text"}
+                      value={currentNode.data.config?.[field.name] || ""}
+                      onChange={(e) =>
+                        handleConfigChange(
+                          field.name,
+                          field.type === "number"
+                            ? Number(e.target.value)
+                            : e.target.value
+                        )
+                      }
+                      placeholder={field.placeholder}
+                      className={error ? "border-red-500" : ""}
+                    />
+                  )}
 
-          {/* Main content area */}
-          <div className="flex-1 p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentNodeIndex}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="flex items-center mb-4">
-                  {getServiceIcon(currentNode?.data.service)}
-                  <h2 className="text-xl font-medium ml-2">
-                    {currentNode?.data.label}
-                  </h2>
+                  {error && (
+                    <p className="text-sm text-red-500">{error.message}</p>
+                  )}
+                  {field.help && (
+                    <p className="text-sm text-gray-500">{field.help}</p>
+                  )}
                 </div>
-
-                <ScrollArea className="h-[calc(100vh-350px)] min-h-[400px] pr-4">
-                  {currentNode && renderConfigForm(currentNode)}
-                </ScrollArea>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <CardFooter className="border-t p-4 bg-muted/10 flex justify-between">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              disabled={isCompleting}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              variant="ghost"
-              onClick={handleSkipNode}
-              disabled={
-                isCompleting || currentNodeIndex >= configurableNodes.length - 1
-              }
-            >
-              Skip This Node
-            </Button>
+              );
+            })}
           </div>
 
-          <div className="flex gap-2">
+          {/* Navigation */}
+          <div className="flex justify-between pt-4 border-t">
             <Button
-              variant="outline"
               onClick={handlePrevious}
-              disabled={currentNodeIndex === 0 || isCompleting}
+              variant="outline"
+              disabled={currentStep === 0}
             >
               Previous
             </Button>
-
+            <div className="flex gap-2">
+              <Button onClick={onCancel} variant="outline">
+                Cancel
+              </Button>
             <Button
-              onClick={() => setShowReview(true)}
-              disabled={isCompleting || !isCurrentNodeConfigured()}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200"
-            >
-              Review & Complete
+                onClick={handleNext}
+                disabled={isSubmitting}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    Processing...
+                  </>
+                ) : currentStep === configNodes.length - 1 ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Complete
+                  </>
+                ) : (
+                  "Next"
+                )}
             </Button>
+            </div>
           </div>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

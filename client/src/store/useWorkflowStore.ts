@@ -24,7 +24,7 @@ const loadCustomTemplates = (): NodeTemplate[] => {
   return [];
 };
 
-export type NodeData = {
+export interface NodeData {
   label: string;
   type?: string;
   nodeType?: string;
@@ -63,9 +63,9 @@ export type NodeData = {
     required?: boolean;
     allowedConnections?: string[];
   }>;
-};
+}
 
-interface WorkflowStoreState {
+export interface WorkflowState {
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
@@ -135,6 +135,22 @@ interface WorkflowStoreState {
   duplicateCustomTemplate: (id: string) => void;
   applyNodeTemplate: (template: NodeTemplate) => void;
 }
+
+export interface WorkflowActions {
+  setNodes: (nodes: Node<NodeData>[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  addNode: (node: Node<NodeData>) => void;
+  updateNode: (nodeId: string, data: Partial<NodeData>) => void;
+  removeNode: (nodeId: string) => void;
+  addEdge: (edge: Edge) => void;
+  removeEdge: (edgeId: string) => void;
+  setSelectedNode: (node: Node<NodeData> | null) => void;
+  setIsDirty: (isDirty: boolean) => void;
+  loadWorkflowFromTemplate: (nodes: Node<NodeData>[], edges: Edge[]) => void;
+  saveWorkflow: (workflow: { name: string; description: string; nodes: Node<NodeData>[]; edges: Edge[] }) => Promise<void>;
+}
+
+export interface WorkflowStoreState extends WorkflowState, WorkflowActions {}
 
 export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   nodes: [],

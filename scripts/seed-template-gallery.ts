@@ -111,39 +111,72 @@ async function seedTemplates() {
             id: "trigger-1",
             type: "trigger",
             position: { x: 100, y: 100 },
-            data: { name: "New Customer" },
+            data: { 
+              service: "manual",
+              event: "trigger",
+              config: {
+                input_fields: [
+                  { name: "customer_name", type: "string", label: "Customer Name" },
+                  { name: "customer_email", type: "string", label: "Customer Email" }
+                ]
+              }
+            }
           },
           {
             id: "email-1",
             type: "action",
             position: { x: 400, y: 100 },
-            data: { name: "Send Welcome Email" },
+            data: { 
+              service: "gmail",
+              action: "send_email",
+              config: {
+                to: "${customer_email}",
+                subject: "Welcome to Our Service!",
+                body_type: "text",
+                body: "Hi ${customer_name},\n\nWelcome to our service! We're excited to have you on board."
+              }
+            }
           },
           {
             id: "delay-1",
             type: "action",
             position: { x: 700, y: 100 },
-            data: { name: "Wait 3 Days" },
+            data: { 
+              service: "delay",
+              action: "wait",
+              config: {
+                duration: "3d"
+              }
+            }
           },
           {
             id: "email-2",
             type: "action",
             position: { x: 1000, y: 100 },
-            data: { name: "Send Follow-up Email" },
-          },
+            data: { 
+              service: "gmail",
+              action: "send_email",
+              config: {
+                to: "${customer_email}",
+                subject: "How's Your Experience So Far?",
+                body_type: "text",
+                body: "Hi ${customer_name},\n\nWe hope you're enjoying our service. Let us know if you need any help!"
+              }
+            }
+          }
         ],
         edges: [
           { id: "e1-2", source: "trigger-1", target: "email-1" },
           { id: "e2-3", source: "email-1", target: "delay-1" },
-          { id: "e3-4", source: "delay-1", target: "email-2" },
-        ],
+          { id: "e3-4", source: "delay-1", target: "email-2" }
+        ]
       },
       imageUrl:
         "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=800&q=80",
       popularity: 45,
       createdBy: "PumpFlux Team",
       isPublished: true,
-      isOfficial: true,
+      isOfficial: true
     },
     {
       name: "Lead Scoring",
@@ -331,50 +364,113 @@ async function seedTemplates() {
             id: "trigger-1",
             type: "trigger",
             position: { x: 100, y: 100 },
-            data: { name: "Start Campaign" },
+            data: { 
+              service: "manual",
+              event: "trigger",
+              config: {
+                input_fields: [
+                  { name: "campaign_name", type: "string", label: "Campaign Name" },
+                  { name: "audience_segment", type: "string", label: "Audience Segment" }
+                ]
+              }
+            }
           },
           {
             id: "segment",
             type: "action",
             position: { x: 400, y: 100 },
-            data: { name: "Segment Audience" },
+            data: { 
+              service: "mailchimp",
+              action: "get_segment",
+              config: {
+                list_id: "${list_id}",
+                segment_name: "{{trigger.audience_segment}}"
+              }
+            }
           },
           {
             id: "email-1",
             type: "action",
             position: { x: 700, y: 100 },
-            data: { name: "Send Initial Email" },
+            data: { 
+              service: "gmail",
+              action: "send_email",
+              config: {
+                to: "{{segment.emails}}",
+                subject: "${initial_subject}",
+                body_type: "html",
+                body: "${initial_template}"
+              }
+            }
           },
           {
             id: "wait",
             type: "action",
             position: { x: 1000, y: 100 },
-            data: { name: "Wait 5 Days" },
+            data: { 
+              service: "delay",
+              action: "wait",
+              config: {
+                duration: "5d"
+              }
+            }
           },
           {
             id: "condition",
             type: "router",
             position: { x: 1300, y: 100 },
-            data: { name: "Opened First Email?" },
+            data: { 
+              service: "analytics",
+              action: "check_opens",
+              config: {
+                campaign_id: "${campaign_id}",
+                threshold: 0
+              }
+            }
           },
           {
             id: "email-2a",
             type: "action",
             position: { x: 1600, y: 0 },
-            data: { name: "Send Follow-up A" },
+            data: { 
+              service: "gmail",
+              action: "send_email",
+              config: {
+                to: "{{condition.opened_emails}}",
+                subject: "${followup_a_subject}",
+                body_type: "html",
+                body: "${followup_a_template}"
+              }
+            }
           },
           {
             id: "email-2b",
             type: "action",
             position: { x: 1600, y: 200 },
-            data: { name: "Send Follow-up B" },
+            data: { 
+              service: "gmail",
+              action: "send_email",
+              config: {
+                to: "{{condition.not_opened_emails}}",
+                subject: "${followup_b_subject}",
+                body_type: "html",
+                body: "${followup_b_template}"
+              }
+            }
           },
           {
             id: "analytics",
             type: "action",
             position: { x: 1900, y: 100 },
-            data: { name: "Track Results" },
-          },
+            data: { 
+              service: "analytics",
+              action: "track_campaign",
+              config: {
+                campaign_id: "${campaign_id}",
+                metrics: ["opens", "clicks", "conversions"]
+              }
+            }
+          }
         ],
         edges: [
           { id: "e1-2", source: "trigger-1", target: "segment" },
@@ -384,15 +480,14 @@ async function seedTemplates() {
           { id: "e5-6", source: "condition", target: "email-2a" },
           { id: "e5-7", source: "condition", target: "email-2b" },
           { id: "e6-8", source: "email-2a", target: "analytics" },
-          { id: "e7-8", source: "email-2b", target: "analytics" },
-        ],
+          { id: "e7-8", source: "email-2b", target: "analytics" }
+        ]
       },
-      imageUrl:
-        "https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?auto=format&fit=crop&w=800&q=80",
-      popularity: 42,
+      imageUrl: "https://example.com/images/email-campaign.png",
+      popularity: 78,
       createdBy: "PumpFlux Team",
       isPublished: true,
-      isOfficial: true,
+      isOfficial: true
     },
     {
       name: "Task Manager Automation",
