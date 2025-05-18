@@ -1,4 +1,17 @@
-import { pgTable, text, serial, jsonb, varchar, timestamp, boolean, integer, primaryKey, index, uniqueIndex, decimal } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  jsonb,
+  varchar,
+  timestamp,
+  boolean,
+  integer,
+  primaryKey,
+  index,
+  uniqueIndex,
+  decimal,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -10,9 +23,9 @@ import { z } from "zod";
 
 // User role enum
 export enum UserRole {
-  CREATOR = 'creator',
-  EDITOR = 'editor',
-  ADMIN = 'admin'
+  CREATOR = "creator",
+  EDITOR = "editor",
+  ADMIN = "admin",
 }
 
 // Session table for auth session management
@@ -23,25 +36,29 @@ export const sessions = pgTable(
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)],
+  (table) => [index("IDX_session_expire").on(table.expire)]
 );
 
 // OAuth providers
 export const oauthProviders = pgTable("oauth_providers", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(), // 'google', 'facebook', etc.
-  displayName: text("display_name").notNull(), // 'Google', 'Facebook', etc.
-  enabled: boolean("enabled").notNull().default(false),
+  name: text("name").notNull(),
+  displayName: text("display_name").notNull(),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  callbackUrl: text("callback_url"),
+  scope: text("scope").array(),
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Subscription plan tiers
 export enum SubscriptionTier {
-  FREE = 'free',
-  BASIC = 'basic',
-  PROFESSIONAL = 'professional',
-  ENTERPRISE = 'enterprise'
+  FREE = "free",
+  BASIC = "basic",
+  PROFESSIONAL = "professional",
+  ENTERPRISE = "enterprise",
 }
 
 // Subscription plans table
@@ -58,7 +75,9 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   maxWorkspaces: integer("max_workspaces").notNull(),
   maxExecutionsPerMonth: integer("max_executions_per_month").notNull(),
   maxTeamMembers: integer("max_team_members").notNull(),
-  hasAdvancedIntegrations: boolean("has_advanced_integrations").notNull().default(false),
+  hasAdvancedIntegrations: boolean("has_advanced_integrations")
+    .notNull()
+    .default(false),
   hasAiFeatures: boolean("has_ai_features").notNull().default(false),
   hasCustomBranding: boolean("has_custom_branding").notNull().default(false),
   hasPrioritySuppport: boolean("has_priority_support").notNull().default(false),
@@ -83,7 +102,9 @@ export const users = pgTable("users", {
   // Subscription and billing fields
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
-  subscriptionTier: text("subscription_tier").notNull().default(SubscriptionTier.FREE),
+  subscriptionTier: text("subscription_tier")
+    .notNull()
+    .default(SubscriptionTier.FREE),
   subscriptionStatus: text("subscription_status"),
   subscriptionPeriodEnd: timestamp("subscription_period_end"),
   // Base timestamp fields
@@ -94,8 +115,12 @@ export const users = pgTable("users", {
 // OAuth connections for users
 export const userOauth = pgTable("user_oauth", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  providerId: integer("provider_id").notNull().references(() => oauthProviders.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  providerId: integer("provider_id")
+    .notNull()
+    .references(() => oauthProviders.id),
   providerUserId: text("provider_user_id").notNull(), // ID from the provider
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
@@ -110,7 +135,9 @@ export const invitations = pgTable("invitations", {
   email: text("email").notNull(),
   role: text("role").notNull(),
   token: text("token").notNull().unique(),
-  invitedByUserId: integer("invited_by_user_id").notNull().references(() => users.id),
+  invitedByUserId: integer("invited_by_user_id")
+    .notNull()
+    .references(() => users.id),
   accepted: boolean("accepted").notNull().default(false),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -119,7 +146,9 @@ export const invitations = pgTable("invitations", {
 
 // Test user flag for development
 export const testUserFlags = pgTable("test_user_flags", {
-  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
   isTestUser: boolean("is_test_user").notNull().default(false),
   testUserToken: text("test_user_token"), // For simplified auth during development
 });
@@ -141,7 +170,9 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 // Schema for inserting subscription plans
-export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).pick({
+export const insertSubscriptionPlanSchema = createInsertSchema(
+  subscriptionPlans
+).pick({
   name: true,
   tier: true,
   description: true,
@@ -166,26 +197,34 @@ export const workspaces = pgTable("workspaces", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  createdByUserId: integer("created_by_user_id").notNull().references(() => users.id),
+  createdByUserId: integer("created_by_user_id")
+    .notNull()
+    .references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Workspace user permissions
 export enum WorkspacePermission {
-  VIEW = 'view',     // Can only view workflows in the workspace
-  EDIT = 'edit',     // Can edit workflows in the workspace
-  MANAGE = 'manage', // Can manage workspace settings and members
-  ADMIN = 'admin'    // Full control over the workspace
+  VIEW = "view", // Can only view workflows in the workspace
+  EDIT = "edit", // Can edit workflows in the workspace
+  MANAGE = "manage", // Can manage workspace settings and members
+  ADMIN = "admin", // Full control over the workspace
 }
 
 // Workspace members table
 export const workspaceMembers = pgTable("workspace_members", {
   id: serial("id").primaryKey(),
-  workspaceId: integer("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId: integer("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   permission: text("permission").notNull().default(WorkspacePermission.VIEW),
-  addedByUserId: integer("added_by_user_id").notNull().references(() => users.id),
+  addedByUserId: integer("added_by_user_id")
+    .notNull()
+    .references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -195,8 +234,12 @@ export const workflows = pgTable("workflows", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  workspaceId: integer("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
-  createdByUserId: integer("created_by_user_id").notNull().references(() => users.id),
+  workspaceId: integer("workspace_id").references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
+  createdByUserId: integer("created_by_user_id")
+    .notNull()
+    .references(() => users.id),
   nodes: jsonb("nodes").notNull(),
   edges: jsonb("edges").notNull(),
   isPublished: boolean("is_published").notNull().default(false),
@@ -209,10 +252,16 @@ export const workflows = pgTable("workflows", {
 // Individual workflow permissions (for when users need specific permissions outside of workspace permissions)
 export const workflowPermissions = pgTable("workflow_permissions", {
   id: serial("id").primaryKey(),
-  workflowId: integer("workflow_id").notNull().references(() => workflows.id, { onDelete: 'cascade' }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workflowId: integer("workflow_id")
+    .notNull()
+    .references(() => workflows.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   permission: text("permission").notNull(), // view, edit
-  grantedByUserId: integer("granted_by_user_id").notNull().references(() => users.id),
+  grantedByUserId: integer("granted_by_user_id")
+    .notNull()
+    .references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -220,7 +269,9 @@ export const workflowPermissions = pgTable("workflow_permissions", {
 // Workflow run logs
 export const workflowRuns = pgTable("workflow_runs", {
   id: serial("id").primaryKey(),
-  workflowId: integer("workflow_id").notNull().references(() => workflows.id, { onDelete: 'cascade' }),
+  workflowId: integer("workflow_id")
+    .notNull()
+    .references(() => workflows.id, { onDelete: "cascade" }),
   startedByUserId: integer("started_by_user_id").references(() => users.id),
   status: text("status").notNull(), // running, completed, failed
   startTime: timestamp("start_time").notNull(),
@@ -231,18 +282,21 @@ export const workflowRuns = pgTable("workflow_runs", {
 });
 
 // Workflow template categories
-export const workflowTemplateCategories = pgTable("workflow_template_categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  displayName: text("display_name").notNull(),
-  description: text("description").notNull(),
-  icon: text("icon"),
-  count: integer("count").notNull().default(0),
-  isActive: boolean("is_active").notNull().default(true),
-  sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const workflowTemplateCategories = pgTable(
+  "workflow_template_categories",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    description: text("description").notNull(),
+    icon: text("icon"),
+    count: integer("count").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  }
+);
 
 // Workflow templates table
 export const workflowTemplates = pgTable("workflow_templates", {
@@ -251,7 +305,7 @@ export const workflowTemplates = pgTable("workflow_templates", {
   description: text("description"),
   category: text("category").notNull(),
   tags: text("tags").array(),
-  difficulty: text("difficulty").notNull().default('beginner'), // beginner, intermediate, advanced
+  difficulty: text("difficulty").notNull().default("beginner"), // beginner, intermediate, advanced
   workflowData: jsonb("workflowData").notNull(),
   imageUrl: text("imageUrl"),
   popularity: integer("popularity").notNull().default(0),
@@ -297,8 +351,12 @@ export const appIntegrations = pgTable("app_integrations", {
 // User app credentials table
 export const userAppCredentials = pgTable("user_app_credentials", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  appIntegrationId: integer("app_integration_id").references(() => appIntegrations.id).notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  appIntegrationId: integer("app_integration_id")
+    .references(() => appIntegrations.id)
+    .notNull(),
   credentials: jsonb("credentials").notNull(), // Encrypted credentials
   name: text("name"), // Optional friendly name for these credentials
   isValid: boolean("is_valid").notNull().default(true),
@@ -310,8 +368,12 @@ export const userAppCredentials = pgTable("user_app_credentials", {
 // Subscription history records table
 export const subscriptionHistory = pgTable("subscription_history", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  subscriptionPlanId: integer("subscription_plan_id").references(() => subscriptionPlans.id).notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  subscriptionPlanId: integer("subscription_plan_id")
+    .references(() => subscriptionPlans.id)
+    .notNull(),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripeInvoiceId: text("stripe_invoice_id"),
   billingPeriod: text("billing_period").notNull(), // monthly, yearly
@@ -329,7 +391,9 @@ export const subscriptionHistory = pgTable("subscription_history", {
 // Workflow Node Executions table
 export const workflowNodeExecutions = pgTable("workflow_node_executions", {
   id: serial("id").primaryKey(),
-  workflowRunId: integer("workflow_run_id").references(() => workflowRuns.id, { onDelete: 'cascade' }).notNull(),
+  workflowRunId: integer("workflow_run_id")
+    .references(() => workflowRuns.id, { onDelete: "cascade" })
+    .notNull(),
   nodeId: text("node_id").notNull(), // ID of the node in the workflow
   status: text("status").notNull(), // pending, running, completed, failed, skipped
   startTime: timestamp("start_time"),
@@ -347,7 +411,9 @@ export const workflowNodeExecutions = pgTable("workflow_node_executions", {
 // Workflow connections table for storing node connections
 export const workflowConnections = pgTable("workflow_connections", {
   id: serial("id").primaryKey(),
-  workflowId: integer("workflow_id").references(() => workflows.id, { onDelete: 'cascade' }),
+  workflowId: integer("workflow_id").references(() => workflows.id, {
+    onDelete: "cascade",
+  }),
   sourceNodeId: text("source_node_id").notNull(),
   targetNodeId: text("target_node_id").notNull(),
   edgeId: text("edge_id").notNull().unique(),
@@ -375,7 +441,9 @@ export const insertWorkflowSchema = createInsertSchema(workflows).pick({
   isPublished: true,
 });
 
-export const insertWorkflowConnectionSchema = createInsertSchema(workflowConnections).pick({
+export const insertWorkflowConnectionSchema = createInsertSchema(
+  workflowConnections
+).pick({
   workflowId: true,
   sourceNodeId: true,
   targetNodeId: true,
@@ -386,7 +454,9 @@ export const insertWorkflowConnectionSchema = createInsertSchema(workflowConnect
 });
 
 // Schema for inserting template categories
-export const insertWorkflowTemplateCategorySchema = createInsertSchema(workflowTemplateCategories).pick({
+export const insertWorkflowTemplateCategorySchema = createInsertSchema(
+  workflowTemplateCategories
+).pick({
   name: true,
   displayName: true,
   description: true,
@@ -397,7 +467,9 @@ export const insertWorkflowTemplateCategorySchema = createInsertSchema(workflowT
 });
 
 // Schema for inserting workflow templates
-export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates).pick({
+export const insertWorkflowTemplateSchema = createInsertSchema(
+  workflowTemplates
+).pick({
   name: true,
   description: true,
   category: true,
@@ -406,7 +478,7 @@ export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates
   workflowData: true,
   imageUrl: true,
   popularity: true,
-  createdBy: true, 
+  createdBy: true,
   createdByUserId: true,
   isPublished: true,
   isOfficial: true,
@@ -423,7 +495,9 @@ export const insertNodeTypeSchema = createInsertSchema(nodeTypes).pick({
   outputFields: true,
 });
 
-export const insertAppIntegrationSchema = createInsertSchema(appIntegrations).pick({
+export const insertAppIntegrationSchema = createInsertSchema(
+  appIntegrations
+).pick({
   name: true,
   displayName: true,
   description: true,
@@ -435,7 +509,9 @@ export const insertAppIntegrationSchema = createInsertSchema(appIntegrations).pi
   isActive: true,
 });
 
-export const insertUserAppCredentialsSchema = createInsertSchema(userAppCredentials).pick({
+export const insertUserAppCredentialsSchema = createInsertSchema(
+  userAppCredentials
+).pick({
   userId: true,
   appIntegrationId: true,
   credentials: true,
@@ -443,7 +519,9 @@ export const insertUserAppCredentialsSchema = createInsertSchema(userAppCredenti
   isValid: true,
 });
 
-export const insertSubscriptionHistorySchema = createInsertSchema(subscriptionHistory).pick({
+export const insertSubscriptionHistorySchema = createInsertSchema(
+  subscriptionHistory
+).pick({
   userId: true,
   subscriptionPlanId: true,
   stripeSubscriptionId: true,
@@ -475,11 +553,16 @@ export type Workflow = typeof workflows.$inferSelect;
 export type WorkflowPermission = typeof workflowPermissions.$inferSelect;
 export type WorkflowRun = typeof workflowRuns.$inferSelect;
 
-export type InsertWorkflowConnection = z.infer<typeof insertWorkflowConnectionSchema>;
+export type InsertWorkflowConnection = z.infer<
+  typeof insertWorkflowConnectionSchema
+>;
 export type WorkflowConnection = typeof workflowConnections.$inferSelect;
-export type WorkflowTemplateCategory = typeof workflowTemplateCategories.$inferSelect;
+export type WorkflowTemplateCategory =
+  typeof workflowTemplateCategories.$inferSelect;
 
-export type InsertWorkflowTemplate = z.infer<typeof insertWorkflowTemplateSchema>;
+export type InsertWorkflowTemplate = z.infer<
+  typeof insertWorkflowTemplateSchema
+>;
 export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
 
 export type InsertNodeType = z.infer<typeof insertNodeTypeSchema>;
@@ -488,15 +571,21 @@ export type NodeType = typeof nodeTypes.$inferSelect;
 export type InsertAppIntegration = z.infer<typeof insertAppIntegrationSchema>;
 export type AppIntegration = typeof appIntegrations.$inferSelect;
 
-export type InsertUserAppCredential = z.infer<typeof insertUserAppCredentialsSchema>;
+export type InsertUserAppCredential = z.infer<
+  typeof insertUserAppCredentialsSchema
+>;
 export type UserAppCredential = typeof userAppCredentials.$inferSelect;
 
 export type WorkflowNodeExecution = typeof workflowNodeExecutions.$inferSelect;
 
-export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type InsertSubscriptionPlan = z.infer<
+  typeof insertSubscriptionPlanSchema
+>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 
-export type InsertSubscriptionHistory = z.infer<typeof insertSubscriptionHistorySchema>;
+export type InsertSubscriptionHistory = z.infer<
+  typeof insertSubscriptionHistorySchema
+>;
 export type SubscriptionHistory = typeof subscriptionHistory.$inferSelect;
 
 // Form schemas
@@ -534,9 +623,13 @@ export const demoRequestFormSchema = z.object({
   jobTitle: z.string().min(2, "Job title is required"),
   phoneNumber: z.string().optional(),
   teamSize: z.string().min(1, "Team size is required"),
-  requirements: z.string().min(10, "Requirements must be at least 10 characters"),
+  requirements: z
+    .string()
+    .min(10, "Requirements must be at least 10 characters"),
 });
 
-export type TemplateRequestFormInput = z.infer<typeof templateRequestFormSchema>;
+export type TemplateRequestFormInput = z.infer<
+  typeof templateRequestFormSchema
+>;
 export type TemplateRequestInput = z.infer<typeof templateRequestSchema>;
 export type DemoRequestFormInput = z.infer<typeof demoRequestFormSchema>;

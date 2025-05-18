@@ -1,13 +1,16 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ROUTES } from "@shared/config";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import { Workflow } from "lucide-react";
+import LoginPage from '@/components/auth/LoginPage';
+import { WelcomeContent } from '@/components/dashboard/WelcomeContent';
+import { useLocation } from "wouter";
 
 // Import the home page eagerly (critical for initial load)
 import Home from "@/pages/home";
@@ -37,7 +40,14 @@ const InspirationGalleryPage = lazy(() => import("@/pages/inspiration-gallery"))
 
 // Protected route component
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
-  const { isAuthenticated, isLoading, login } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate('/');
+    }
+  }, [isLoading, isAuthenticated, navigate]);
   
   if (isLoading) {
     return (
@@ -60,12 +70,14 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   }
   
   if (!isAuthenticated) {
-    // Use the Replit Auth login method
-    login();
     return null;
   }
   
-  return <Component {...rest} />;
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Component {...rest} />
+    </Suspense>
+  );
 };
 
 // Loading fallback for lazy-loaded components
@@ -88,9 +100,6 @@ const PageLoader = () => (
 );
 
 function Router() {
-  // BYPASS: Direct access to components without authentication
-  // This is a temporary solution until auth issues are resolved
-  
   // Define a wrapper component that handles lazy loading
   const LazyRouteComponent = ({ Component }: { Component: React.ComponentType<any> }) => (
     <Suspense fallback={<PageLoader />}>
@@ -100,12 +109,13 @@ function Router() {
   
   return (
     <Switch>
-      <Route path={ROUTES.home}>
-        <Home />
+      {/* Make login page the default route */}
+      <Route path="/">
+        <LoginPage />
       </Route>
       
       <Route path="/login">
-        <LazyRouteComponent Component={Dashboard} />
+        <LoginPage />
       </Route>
       
       <Route path="/signup">
@@ -113,80 +123,81 @@ function Router() {
       </Route>
       
       <Route path="/auth/callback">
-        <LazyRouteComponent Component={Dashboard} />
+        <LazyRouteComponent Component={Callback} />
       </Route>
       
-      <Route path={ROUTES.dashboard}>
-        <LazyRouteComponent Component={Dashboard} />
+      <Route path="/dashboard">
+        <ProtectedRoute component={Dashboard} />
       </Route>
       
+      {/* Protected routes */}
       <Route path={ROUTES.createWorkflow}>
-        <LazyRouteComponent Component={WorkflowBuilder} />
+        <ProtectedRoute component={WorkflowBuilder} />
       </Route>
       
       <Route path={ROUTES.workflowAnimations}>
-        <LazyRouteComponent Component={WorkflowAnimationsDemo} />
+        <ProtectedRoute component={WorkflowAnimationsDemo} />
       </Route>
       
       <Route path="/monitoring">
-        <LazyRouteComponent Component={WorkflowMonitoring} />
+        <ProtectedRoute component={WorkflowMonitoring} />
       </Route>
       
       <Route path="/health-dashboard">
-        <LazyRouteComponent Component={HealthDashboardPage} />
+        <ProtectedRoute component={HealthDashboardPage} />
       </Route>
       
       <Route path={ROUTES.templates}>
-        <LazyRouteComponent Component={TemplatesPage} />
+        <ProtectedRoute component={TemplatesPage} />
       </Route>
       
       <Route path={ROUTES.inspirationGallery}>
-        <LazyRouteComponent Component={InspirationGalleryPage} />
+        <ProtectedRoute component={InspirationGalleryPage} />
       </Route>
       
       <Route path="/templates/:id">
-        <LazyRouteComponent Component={TemplateDetailPage} />
+        <ProtectedRoute component={TemplateDetailPage} />
       </Route>
       
       <Route path="/template-setup/:id">
-        <LazyRouteComponent Component={TemplateSetupPage} />
+        <ProtectedRoute component={TemplateSetupPage} />
       </Route>
       
       <Route path={ROUTES.pricing}>
-        <LazyRouteComponent Component={PricingPage} />
+        <ProtectedRoute component={PricingPage} />
       </Route>
       
       <Route path={ROUTES.loadingAnimations}>
-        <LazyRouteComponent Component={LoadingAnimationsDemo} />
+        <ProtectedRoute component={LoadingAnimationsDemo} />
       </Route>
       
-      {/* Temporarily disabled checkout route to fix Stripe.js loading issue */}
       <Route path={ROUTES.checkout}>
-        <LazyRouteComponent Component={PricingPage} />
+        <ProtectedRoute component={PricingPage} />
       </Route>
       
       <Route path={ROUTES.accountBilling}>
-        <LazyRouteComponent Component={AccountBillingPage} />
+        <ProtectedRoute component={AccountBillingPage} />
       </Route>
       
       <Route path={ROUTES.subscriptionUsage}>
-        <LazyRouteComponent Component={AccountUsagePage} />
+        <ProtectedRoute component={AccountUsagePage} />
       </Route>
       
       <Route path={ROUTES.transactionHistory}>
-        <LazyRouteComponent Component={AccountUsagePage} />
+        <ProtectedRoute component={AccountUsagePage} />
       </Route>
       
       <Route path={ROUTES.emailSettings}>
-        <LazyRouteComponent Component={EmailSettingsPage} />
+        <ProtectedRoute component={EmailSettingsPage} />
       </Route>
       
       <Route path={ROUTES.workflowOptimizer}>
-        <LazyRouteComponent Component={WorkflowOptimizerPage} />
+        <ProtectedRoute component={WorkflowOptimizerPage} />
       </Route>
       
+      {/* Catch-all route - redirect to login */}
       <Route>
-        <LazyRouteComponent Component={Dashboard} />
+        <LoginPage />
       </Route>
     </Switch>
   );
@@ -197,6 +208,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        {process.env.NODE_ENV === 'development'}
         <Router />
       </TooltipProvider>
     </QueryClientProvider>

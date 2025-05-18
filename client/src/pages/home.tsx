@@ -59,7 +59,7 @@ export default function Home() {
               </Badge>
 
               <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent drop-shadow-lg">
-                Transform Your Business with Automated Workflows
+                Transform Your Business with Automated Workflows...
               </h1>
 
               <p className="text-xl text-gray-700 max-w-2xl mb-6">

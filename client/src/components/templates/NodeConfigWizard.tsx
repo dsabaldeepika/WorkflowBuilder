@@ -35,22 +35,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-// Types
-interface Node {
-  id: string;
-  type: string;
-  data: {
-    label: string;
-    service?: string;
-    config?: Record<string, any>;
-  };
-  position: { x: number; y: number };
-}
+import { Node } from "reactflow";
+import { NodeData } from "@/store/useWorkflowStore";
 
 interface NodeConfigWizardProps {
-  nodes: Node[];
-  onComplete: (configuredNodes: Node[]) => void;
+  nodes: Node<NodeData>[];
+  onComplete: (configuredNodes: Node<NodeData>[]) => void;
   onCancel: () => void;
 }
 
@@ -59,43 +49,11 @@ export function NodeConfigWizard({
   onComplete,
   onCancel,
 }: NodeConfigWizardProps) {
-  // Create fallback nodes if none are provided
-  const allNodes = React.useMemo(() => {
-    return nodes.length > 0
-      ? nodes
-      : [
-          {
-            id: "google-sheets-1",
-            type: "custom",
-            data: {
-              label: "Google Sheets",
-              service: "google-sheets",
-              config: {
-                spreadsheet_id: "",
-                sheet_name: "",
-                range: "",
-              },
-            },
-            position: { x: 250, y: 100 },
-          },
-          {
-            id: "slack-1",
-            type: "custom",
-            data: {
-              label: "Slack",
-              service: "slack",
-              config: {
-                channel: "",
-                message: "",
-              },
-            },
-            position: { x: 250, y: 250 },
-          },
-        ];
-  }, [nodes]);
+  // Use the nodes prop directly, no fallback
+  const allNodes = nodes;
 
   const [currentNodeIndex, setCurrentNodeIndex] = useState(0);
-  const [configuredNodes, setConfiguredNodes] = useState<Node[]>([...allNodes]);
+  const [configuredNodes, setConfiguredNodes] = useState<Node<NodeData>[]>([...allNodes]);
   const [nodeConfigs, setNodeConfigs] = useState<Record<string, any>>({});
   const [isCompleting, setIsCompleting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<
@@ -108,24 +66,78 @@ export function NodeConfigWizard({
 
   // Filter out nodes that need configuration (have service property)
   const configurableNodes = React.useMemo(() => {
-    return allNodes.filter(
-      (node) =>
-        node.data.service ||
-        (node.data.config && Object.keys(node.data.config).length > 0)
-    );
+    if (!Array.isArray(allNodes) || allNodes.length === 0) {
+      console.warn("[NodeConfigWizard] No nodes provided to wizard.");
+      return [];
+    }
+
+    // Only include nodes that have a service or config fields to configure
+    return allNodes.filter((node) => {
+      // Check if node has a service
+      const hasService = node.data?.service;
+      
+      // Check if node has config that needs to be filled
+      const hasConfig = node.data?.config && 
+        Object.entries(node.data.config).some(([_, value]) => 
+          typeof value === "string" && value.includes("${")
+        );
+
+      return hasService || hasConfig;
+    });
   }, [allNodes]);
+
+  // Defensive: If no nodes, show a clear error
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>No Nodes Found</CardTitle>
+            <CardDescription>
+              This template does not contain any nodes. Please check the
+              template definition.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="bg-red-100 rounded-full p-3 inline-flex mb-4">
+                  <AlertCircle className="h-8 w-8 text-red-600" />                  npx ts-node scripts/seed-templates.ts
+                  npx ts-node scripts/seed-template-gallery.ts
+                  npx ts-node scripts/seed-popular-workflows.ts
+                </div>
+                <h3 className="text-xl font-medium mb-2">No Workflow Nodes</h3>
+                <p className="text-gray-500 mb-6">
+                  This workflow template is missing node definitions. Please
+                  contact support or try another template.
+                </p>
+                <Button onClick={onCancel} variant="outline">
+                  Back
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const currentNode = configurableNodes[currentNodeIndex];
   const progress = Math.round(
     (currentNodeIndex / Math.max(1, configurableNodes.length)) * 100
   );
 
-  // Get service icon based on node service type
+  // Add console log to verify nodes from templates
+  useEffect(() => {
+    console.log("[NodeConfigWizard] nodes prop:", nodes);
+    console.log("[NodeConfigWizard] allNodes:", allNodes);
+    console.log("[NodeConfigWizard] configurableNodes:", configurableNodes);
+  }, [nodes, allNodes, configurableNodes]);
+
+  // Enhanced getServiceIcon to support all template services
   const getServiceIcon = (service?: string) => {
     if (!service) return <Database className="h-5 w-5 text-gray-600" />;
-
     const iconSize = 24;
-
     switch (service.toLowerCase()) {
       case "google-sheets":
       case "googlesheets":
@@ -138,6 +150,72 @@ export function NodeConfigWizard({
         return <SiSlack size={iconSize} className="text-purple-600" />;
       case "pipedrive":
         return <Layers size={iconSize} className="text-green-700" />;
+      case "airtable":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#18BFFF] rounded text-white flex items-center justify-center font-bold">
+            A
+          </span>
+        );
+      case "clickup":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#7B68EE] rounded text-white flex items-center justify-center font-bold">
+            C
+          </span>
+        );
+      case "openai":
+        return (
+          <span className="inline-block w-6 h-6 bg-black rounded text-white flex items-center justify-center font-bold">
+            AI
+          </span>
+        );
+      case "anthropic":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#FFD700] rounded text-black flex items-center justify-center font-bold">
+            A
+          </span>
+        );
+      case "pandadoc":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#00ADEF] rounded text-white flex items-center justify-center font-bold">
+            P
+          </span>
+        );
+      case "mailchimp":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#FFE01B] rounded text-black flex items-center justify-center font-bold">
+            M
+          </span>
+        );
+      case "trello":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#0079BF] rounded text-white flex items-center justify-center font-bold">
+            T
+          </span>
+        );
+      case "salesforce":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#00A1E0] rounded text-white flex items-center justify-center font-bold">
+            S
+          </span>
+        );
+      case "google-forms":
+        return (
+          <span className="inline-block w-6 h-6 bg-[#673AB7] rounded text-white flex items-center justify-center font-bold">
+            GF
+          </span>
+        );
+      case "manual":
+        return (
+          <span className="inline-block w-6 h-6 bg-gray-400 rounded text-white flex items-center justify-center font-bold">
+            M
+          </span>
+        );
+      case "http":
+        return (
+          <span className="inline-block w-6 h-6 bg-gray-700 rounded text-white flex items-center justify-center font-bold">
+            H
+          </span>
+        );
       default:
         return <Database className="h-5 w-5 text-gray-600" />;
     }
@@ -251,7 +329,7 @@ export function NodeConfigWizard({
   };
 
   // Enhanced validation for required fields
-  const validateNodeConfig = (node: Node, config: Record<string, any>) => {
+  const validateNodeConfig = (node: Node<NodeData>, config: Record<string, any>) => {
     const errors: Record<string, string> = {};
     if (node.data.config) {
       Object.entries(node.data.config).forEach(([key, value]) => {
@@ -275,7 +353,7 @@ export function NodeConfigWizard({
   };
 
   // Render config form based on service type
-  const renderConfigForm = (node: Node) => {
+  const renderConfigForm = (node: Node<NodeData>) => {
     const service = node.data.service?.toLowerCase();
     const nodeId = node.id;
     const config = nodeConfigs[nodeId] || {};
@@ -525,30 +603,47 @@ export function NodeConfigWizard({
           <CardHeader>
             <CardTitle>Review Your Workflow Setup</CardTitle>
             <CardDescription>
-              Please check your workflow details below. If everything looks good, click <b>Activate Workflow</b> to finish.
+              Please check your workflow details below. If everything looks
+              good, click <b>Activate Workflow</b> to finish.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {configuredNodes.map(node => (
-                <div key={node.id} className="border rounded-lg p-4 bg-gray-50 flex items-start gap-4">
+              {configuredNodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="border rounded-lg p-4 bg-gray-50 flex items-start gap-4"
+                >
                   <div className="mt-1">
                     {getServiceIcon(node.data.service)}
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-lg mb-1 text-gray-800">{node.data.label}</div>
+                    <div className="font-semibold text-lg mb-1 text-gray-800">
+                      {node.data.label}
+                    </div>
                     <ul className="text-gray-700 text-sm space-y-1">
-                      {node.data.config && Object.keys(node.data.config).length > 0 ? (
+                      {node.data.config &&
+                      Object.keys(node.data.config).length > 0 ? (
                         Object.entries(node.data.config).map(([key, value]) => (
                           <li key={key} className="flex items-center gap-2">
-                            <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
+                            <span className="font-medium capitalize">
+                              {key.replace(/_/g, " ")}:
+                            </span>
                             <span className="bg-white rounded px-2 py-0.5 border text-gray-900">
-                              {value ? value : <span className="text-gray-400 italic">Not set</span>}
+                              {value ? (
+                                value
+                              ) : (
+                                <span className="text-gray-400 italic">
+                                  Not set
+                                </span>
+                              )}
                             </span>
                           </li>
                         ))
                       ) : (
-                        <li className="text-gray-500 italic">No configuration required</li>
+                        <li className="text-gray-500 italic">
+                          No configuration required
+                        </li>
                       )}
                     </ul>
                   </div>
@@ -558,14 +653,21 @@ export function NodeConfigWizard({
             <div className="mt-8 p-4 bg-blue-50 rounded text-blue-900 flex items-center gap-2">
               <Check className="h-5 w-5 text-green-600" />
               <span>
-                Your workflow is almost ready! Click <b>Activate Workflow</b> to start using your automation.
+                Your workflow is almost ready! Click <b>Activate Workflow</b> to
+                start using your automation.
               </span>
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setShowReview(false)}>Back</Button>
-            <Button onClick={handleComplete} disabled={isCompleting} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
-              {isCompleting ? 'Activating...' : 'Activate Workflow'}
+            <Button variant="outline" onClick={() => setShowReview(false)}>
+              Back
+            </Button>
+            <Button
+              onClick={handleComplete}
+              disabled={isCompleting}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+            >
+              {isCompleting ? "Activating..." : "Activate Workflow"}
             </Button>
           </CardFooter>
         </Card>

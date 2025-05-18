@@ -2,7 +2,7 @@ import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import 'reactflow/dist/style.css';
+import "reactflow/dist/style.css";
 
 // Define types for ErrorBoundary
 type ErrorBoundaryProps = {
@@ -15,7 +15,10 @@ type ErrorBoundaryState = {
 };
 
 // Error boundary for the entire application
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -35,7 +38,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-md w-full p-6 rounded-lg border border-border bg-card shadow-lg">
             <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>
-            <p className="mb-4">We're sorry, but the application has encountered an error.</p>
+            <p className="mb-4">
+              We're sorry, but the application has encountered an error.
+            </p>
             <pre className="bg-muted p-3 rounded text-sm overflow-auto max-h-40">
               {this.state.error?.toString()}
             </pre>

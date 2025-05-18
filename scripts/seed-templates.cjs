@@ -2,11 +2,8 @@
  * Seed script to populate initial workflow templates based on customer requirements
  */
 
-import { db } from "../server/db";
-import { workflowTemplates } from "../shared/schema";
-import { InsertWorkflowTemplate } from "../shared/schema";
-
-const templates: InsertWorkflowTemplate[] = [
+// Templates data based on the requirements
+const templateData = [
   {
     name: "Save Facebook Lead Ads to Google Sheets",
     description:
@@ -60,8 +57,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "transform-data", target: "sheets-action" },
       ],
     },
-    imageUrl:
-      "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&q=80",
+    coverImage: "https://example.com/images/facebook-to-sheets.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -116,8 +114,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "prepare-email", target: "gmail-action" },
       ],
     },
-    imageUrl:
-      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80",
+    coverImage: "https://example.com/images/facebook-to-gmail.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -171,7 +170,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "format-message", target: "slack-action" },
       ],
     },
-    imageUrl: "https://example.com/images/facebook-to-slack.png",
+    coverImage: "https://example.com/images/facebook-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -246,51 +247,10 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "openai-action", target: "update-sheet" },
       ],
     },
-    imageUrl: "https://example.com/images/sheets-to-openai.png",
+    coverImage: "https://example.com/images/sheets-to-openai.png",
+    complexity: "medium",
+    estimatedDuration: "10 minutes",
     createdByUserId: null,
-    isPublished: true,
-    isOfficial: true,
-  },
-  {
-    name: "Create Anthropic Claude Completions from Google Sheets",
-    description:
-      "Generate AI completions using Anthropic Claude based on Google Sheets data.",
-    category: "ai-automation",
-    tags: ["anthropic", "claude", "google-sheets", "ai"],
-    workflowData: {
-      nodes: [
-        {
-          id: "sheets-trigger",
-          type: "trigger",
-          position: { x: 100, y: 100 },
-          data: {
-            service: "google-sheets",
-            event: "new_row",
-            config: {
-              spreadsheet_id: "${spreadsheet_id}",
-              sheet_name: "${sheet_name}",
-            },
-          },
-        },
-        {
-          id: "claude-action",
-          type: "action",
-          position: { x: 400, y: 100 },
-          data: {
-            service: "anthropic",
-            action: "generate_completion",
-            config: {
-              model: "claude-3",
-              max_tokens: 500,
-              temperature: 0.7,
-            },
-          },
-        },
-      ],
-      edges: [
-        { id: "e1-2", source: "sheets-trigger", target: "claude-action" },
-      ],
-    },
     isPublished: true,
     isOfficial: true,
   },
@@ -364,7 +324,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "claude-action", target: "update-sheet" },
       ],
     },
-    imageUrl: "https://example.com/images/sheets-to-claude.png",
+    coverImage: "https://example.com/images/sheets-to-claude.png",
+    complexity: "medium",
+    estimatedDuration: "10 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -470,7 +432,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e5-6", source: "parse-json", target: "sheets-action" },
       ],
     },
-    imageUrl: "https://example.com/images/web-scraping-claude.png",
+    coverImage: "https://example.com/images/web-scraping-claude.png",
+    complexity: "complex",
+    estimatedDuration: "15 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -524,7 +488,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "format-message", target: "slack-action" },
       ],
     },
-    imageUrl: "https://example.com/images/hubspot-deal-to-slack.png",
+    coverImage: "https://example.com/images/hubspot-deal-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -580,7 +546,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "format-message", target: "slack-action" },
       ],
     },
-    imageUrl: "https://example.com/images/hubspot-form-to-slack.png",
+    coverImage: "https://example.com/images/hubspot-form-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -637,7 +605,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "prepare-task", target: "clickup-action" },
       ],
     },
-    imageUrl: "https://example.com/images/hubspot-to-clickup.png",
+    coverImage: "https://example.com/images/hubspot-to-clickup.png",
+    complexity: "medium",
+    estimatedDuration: "8 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -711,13 +681,15 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "prepare-data", target: "hubspot-action" },
       ],
     },
-    imageUrl: "https://example.com/images/airtable-to-hubspot.png",
+    coverImage: "https://example.com/images/airtable-to-hubspot.png",
+    complexity: "medium",
+    estimatedDuration: "10 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
   },
   {
-    name: "Create PandaDoc Document from HubSpot Deal Stage Change",
+    name: "Create PandaDoc Document for HubSpot Deal Stage Change",
     description:
       "Automatically generate a PandaDoc document when a deal reaches a specific stage in HubSpot CRM.",
     category: "document-automation",
@@ -787,7 +759,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "prepare-document", target: "pandadoc-action" },
       ],
     },
-    imageUrl: "https://example.com/images/hubspot-to-pandadoc.png",
+    coverImage: "https://example.com/images/hubspot-to-pandadoc.png",
+    complexity: "complex",
+    estimatedDuration: "15 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -843,7 +817,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "format-message", target: "slack-action" },
       ],
     },
-    imageUrl: "https://example.com/images/pipedrive-to-slack.png",
+    coverImage: "https://example.com/images/pipedrive-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -906,7 +882,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e2-3", source: "transform-data", target: "sheets-action" },
       ],
     },
-    imageUrl: "https://example.com/images/pipedrive-to-sheets.png",
+    coverImage: "https://example.com/images/pipedrive-to-sheets.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -999,7 +977,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e4-5", source: "prepare-deal", target: "create-deal" },
       ],
     },
-    imageUrl: "https://example.com/images/forms-to-pipedrive.png",
+    coverImage: "https://example.com/images/forms-to-pipedrive.png",
+    complexity: "medium",
+    estimatedDuration: "10 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -1067,7 +1047,9 @@ const templates: InsertWorkflowTemplate[] = [
         },
       ],
     },
-    imageUrl: "https://example.com/images/sheets-to-mailchimp.png",
+    coverImage: "https://example.com/images/sheets-to-mailchimp.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -1135,7 +1117,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "set-due-date", target: "trello-action" },
       ],
     },
-    imageUrl: "https://example.com/images/salesforce-to-trello.png",
+    coverImage: "https://example.com/images/salesforce-to-trello.png",
+    complexity: "medium",
+    estimatedDuration: "8 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -1204,7 +1188,9 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "set-due-date", target: "clickup-action" },
       ],
     },
-    imageUrl: "https://example.com/images/salesforce-to-clickup.png",
+    coverImage: "https://example.com/images/salesforce-to-clickup.png",
+    complexity: "medium",
+    estimatedDuration: "8 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
@@ -1280,58 +1266,65 @@ const templates: InsertWorkflowTemplate[] = [
         { id: "e3-4", source: "determine-channel", target: "slack-action" },
       ],
     },
-    imageUrl: "https://example.com/images/salesforce-to-slack.png",
+    coverImage: "https://example.com/images/salesforce-to-slack.png",
+    complexity: "simple",
+    estimatedDuration: "5 minutes",
     createdByUserId: null,
     isPublished: true,
     isOfficial: true,
   },
 ];
 
-export async function seedTemplates() {
+// Node.js script to seed templates directly to the database
+const { db } = require("../server/db");
+const { workflowTemplates } = require("../shared/schema");
+const { eq } = require("drizzle-orm");
+
+(async function seedTemplates() {
   console.log("Starting template seeding process directly to the database...");
 
-  try {
-    const existingTemplates = await db
-      .select({ name: workflowTemplates.name })
-      .from(workflowTemplates);
-    const existingNames = new Set(existingTemplates.map((t) => t.name));
+  // First check if templates already exist to avoid duplicates
+  const existingTemplates = await db
+    .select({ name: workflowTemplates.name })
+    .from(workflowTemplates);
+  const existingNames = new Set(existingTemplates.map((t) => t.name));
 
-    let successCount = 0;
-    let skipCount = 0;
-    let errorCount = 0;
+  console.log(`Found ${existingNames.size} existing templates`);
 
-    for (const template of templates) {
-      try {
-        if (existingNames.has(template.name)) {
-          console.log(`⏭️ Skipping existing template: ${template.name}`);
-          skipCount++;
-          continue;
-        }
-        await db.insert(workflowTemplates).values(template);
-        console.log(`✅ Successfully added template: ${template.name}`);
-        successCount++;
-      } catch (error) {
-        console.error(`❌ Error adding template: ${template.name}`, error);
-        errorCount++;
+  let successCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+
+  for (const template of templateData) {
+    try {
+      // Skip if template with same name already exists
+      if (existingNames.has(template.name)) {
+        console.log(`⏭️ Skipping existing template: ${template.name}`);
+        skipCount++;
+        continue;
       }
+
+      // Insert directly to database
+      await db.insert(workflowTemplates).values({
+        ...template,
+        workflowData: template.workflowData,
+      });
+      console.log(`✅ Successfully added template: ${template.name}`);
+      successCount++;
+    } catch (error) {
+      console.error(
+        `❌ Error adding template: ${template.name}`,
+        error.message
+      );
+      errorCount++;
     }
-
-    console.log(`Template seeding process complete.`);
-    console.log(
-      `Results: ${successCount} added, ${skipCount} skipped, ${errorCount} failed`
-    );
-  } catch (error) {
-    console.error("Error in seed process:", error);
-    process.exit(1);
   }
-}
 
-seedTemplates()
-  .then(() => {
-    console.log("Template seeding completed successfully!");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error("Error seeding templates:", err);
-    process.exit(1);
-  });
+  console.log(`Template seeding process complete.`);
+  console.log(
+    `Results: ${successCount} added, ${skipCount} skipped, ${errorCount} failed`
+  );
+})().catch((err) => {
+  console.error("Error in seed process:", err);
+  process.exit(1);
+});

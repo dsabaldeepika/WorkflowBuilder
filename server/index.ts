@@ -6,6 +6,20 @@ import { runMigrations } from "./migrations";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 import { cpus } from "os";
+import session from "express-session";
+import pgSession from "connect-pg-simple";
+import pool from "./dbPool";
+import fs from "fs";
+import https from "https";
+import path from "path";
+import { initializeTestAuth } from "./auth/init-test-auth";
+import { initializeMockData } from './auth/init-mock-data';
+import { seedDatabase } from './db/seed';
+
+// Polyfill __dirname for ESM if needed
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 process.on("unhandledRejection", (reason) => {
   console.error("UNHANDLED REJECTION:", reason);
@@ -57,10 +71,18 @@ const authLimiter = rateLimit({
   skip: () => process.env.NODE_ENV === "development",
 });
 
+// Rate limiting for OAuth endpoints
+const oauthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+});
+
 // Apply rate limiters to specific routes
 app.use("/api/login", authLimiter);
 app.use("/api/register", authLimiter);
 app.use("/api/auth", authLimiter);
+app.use("/auth/oauth", oauthLimiter);
 app.use("/api/", apiLimiter);
 
 // Add security headers
@@ -87,6 +109,21 @@ app.use((req, res, next) => {
 
   next();
 });
+
+const PgSession = pgSession(session);
+
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      tableName: "sessions",
+    }),
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === "production" },
+  })
+);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -118,8 +155,16 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+console.log("Starting server...");
+
+async function initializeServer() {
   try {
+    // Initialize mock data in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Running in development mode, initializing test data...');
+      await seedDatabase();
+    }
+
     // Run database migrations
     await runMigrations();
 
@@ -143,14 +188,36 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    // ALWAYS serve the app on port 5000
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
-    server.listen(5000, "0.0.0.0", () => {
-      log("Server running at http://localhost:5000");
-    });
+    // HTTPS dev server setup using mkcert certificates
+    if (process.env.NODE_ENV !== "production") {
+      const keyPath = path.resolve(__dirname, "../certs/localhost-key.pem");
+      const certPath = path.resolve(__dirname, "../certs/localhost.pem");
+      if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+        const key = fs.readFileSync(keyPath);
+        const cert = fs.readFileSync(certPath);
+        https.createServer({ key, cert }, app).listen(3443, () => {
+          console.log("HTTPS dev server running on https://localhost:3443");
+        });
+      } else {
+        app.listen(3000, () => {
+          console.log(
+            "HTTP dev server running on http://localhost:3000 (certs missing)"
+          );
+        });
+      }
+    } else {
+      server.listen(5000, "0.0.0.0", () => {
+        log("Server running at http://localhost:5000");
+        console.log("Server running at http://localhost:5000"); // Ensure always visible
+      });
+    }
   } catch (err) {
     console.error("SERVER STARTUP ERROR:", err);
+    if (err instanceof Error && err.stack) {
+      console.error(err.stack);
+    }
     process.exit(1);
   }
-})();
+}
+
+initializeServer();

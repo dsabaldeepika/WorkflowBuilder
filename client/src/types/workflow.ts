@@ -1,5 +1,5 @@
-import { Node, Edge } from 'reactflow';
-import { NodeData } from '@/store/useWorkflowStore';
+import { Node, Edge } from "reactflow";
+import { NodeData } from "@/store/useWorkflowStore";
 
 // App definitions
 export interface App {
@@ -20,7 +20,7 @@ export interface Module {
   actions: Action[];
 }
 
-export type ModuleType = 'trigger' | 'action' | 'helper';
+export type ModuleType = "trigger" | "action" | "helper";
 
 export interface Action {
   id: string;
@@ -54,21 +54,52 @@ export interface Option {
 }
 
 // Node category definitions
-export type NodeCategory = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer' | 'custom' | 'automation' | 'ai' | 'messaging' | 'crm' | 'social' | 'ecommerce' | 'utility';
+export type NodeCategory =
+  | "trigger"
+  | "action"
+  | "condition"
+  | "data"
+  | "integration"
+  | "agent"
+  | "transformer"
+  | "custom"
+  | "automation"
+  | "ai"
+  | "messaging"
+  | "crm"
+  | "social"
+  | "ecommerce"
+  | "utility";
 
 // For picker tabs
-export type PickerTab = 'all' | 'popular' | 'new';
+export type PickerTab = "all" | "popular" | "new";
 
 // Node type definitions
-export type NodeType = 'trigger' | 'action' | 'condition' | 'data' | 'integration' | 'agent' | 'transformer' | 'connector' | 'api';
+export type NodeType =
+  | "trigger"
+  | "action"
+  | "condition"
+  | "data"
+  | "integration"
+  | "agent"
+  | "transformer"
+  | "connector"
+  | "api";
 
 // Data type definitions
-export type DataType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'any';
+export type DataType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "object"
+  | "array"
+  | "date"
+  | "any";
 
 // Schedule options for workflows
 export interface ScheduleOptions {
   enabled: boolean;
-  frequency: 'once' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  frequency: "once" | "hourly" | "daily" | "weekly" | "monthly" | "custom";
   runCount?: number;
   customCron?: string;
   nextRun?: string;
@@ -92,8 +123,10 @@ export interface WorkflowTemplate {
   name: string;
   description: string;
   category: string;
-  nodes: Node<NodeData>[];
-  edges: Edge[];
+  workflowData: {
+    nodes: Node<NodeData>[];
+    edges: Edge[];
+  };
   image?: string;
   useCases?: string[];
   requirements?: string[];
@@ -118,7 +151,7 @@ export interface NodeTemplate {
   outputs?: Record<string, any>;
   ports?: Array<{
     id: string;
-    type: 'input' | 'output';
+    type: "input" | "output";
     dataType: DataType;
     required?: boolean;
     allowedConnections?: string[];
@@ -129,7 +162,7 @@ export interface NodeTemplate {
 export interface WorkflowExecution {
   id: string;
   workflowId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
+  status: "pending" | "running" | "completed" | "failed" | "canceled";
   startTime: string;
   endTime?: string;
   logs: ExecutionLog[];
@@ -141,7 +174,7 @@ export interface ExecutionLog {
   timestamp: string;
   nodeId: string;
   message: string;
-  level: 'info' | 'warn' | 'error' | 'debug';
+  level: "info" | "warn" | "error" | "debug";
   data?: any;
 }
 
@@ -194,7 +227,7 @@ export interface PerformanceIssue {
   id: string;
   nodeId: string;
   type: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   message: string;
   suggestion: string;
 }

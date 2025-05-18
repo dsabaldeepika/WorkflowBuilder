@@ -10,8 +10,21 @@ import { User, UserRole, insertUserSchema } from '@shared/schema';
 import { z } from 'zod';
 
 // Define registration schema with validation
-export const registerSchema = insertUserSchema.extend({
-  password: z.string().min(8, "Password must be at least 8 characters"),
+export const registerSchema = z.object({
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username must be less than 50 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+  email: z.string()
+    .email("Invalid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(255, "Email must be less than 255 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
   confirmPassword: z.string()
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -238,14 +251,14 @@ export const hasRole = (roles: UserRole[]) => {
 // Create a test user for development
 export const createInitialTestUser = async () => {
   try {
-    const testUser = await storage.getUserByEmail('test@pumpflux.com');
+    const testUser = await storage.getUserByEmail('test');
     
     if (!testUser) {
       console.log('Creating test user...');
       await storage.createUser({
         username: 'testuser',
-        email: 'test@pumpflux.com',
-        password: await hashPassword('password123'),
+        email: 'test',
+        password: await hashPassword('test'),
         firstName: 'Test',
         lastName: 'User',
         role: UserRole.ADMIN

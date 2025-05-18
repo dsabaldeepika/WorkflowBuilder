@@ -1,62 +1,107 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 // Type for Replit Auth user
 export interface User {
-  claims?: {
-    sub: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-    profile_image_url?: string;
-    username?: string;
-  };
+  id: number;
+  username: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  profileImageUrl: string | null;
 }
 
 export function useAuth() {
-  // BYPASS: Return a mock authenticated user for development
-  // This is a temporary solution until auth issues are resolved
-  
-  // Mock user data to always be authenticated
-  const mockUser = {
-    id: 1,
-    username: 'demo_user',
-    email: 'demo@example.com',
-    firstName: 'Demo',
-    lastName: 'User',
-    role: 'admin',
-    profileImageUrl: 'https://ui-avatars.com/api/?name=Demo+User&background=0D8ABC&color=fff',
-    subscriptionTier: 'pro',
-    isActive: true,
-    claims: {
-      sub: '1',
-      email: 'demo@example.com',
-      first_name: 'Demo',
-      last_name: 'User',
-      profile_image_url: 'https://ui-avatars.com/api/?name=Demo+User&background=0D8ABC&color=fff',
-      username: 'demo_user'
+  const { toast } = useToast();
+  const [token, setToken] = useState<string | null>(
+    typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+  );
+
+  // Save token to local storage when it changes
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('accessToken', token);
+    } else {
+      localStorage.removeItem('accessToken');
+    }
+  }, [token]);
+
+  // Fetch user data
+  const { 
+    data: user, 
+    isLoading: isLoadingUser,
+    error: userError 
+  } = useQuery({
+    queryKey: ['/api/auth/user'],
+    queryFn: async () => {
+      if (!token) return null;
+      
+      const response = await fetch('/api/auth/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setToken(null);
+          return null;
+        }
+        throw new Error('Failed to fetch user data');
+      }
+      
+      return response.json();
+    },
+    retry: false,
+    enabled: !!token
+  });
+
+  const login = async (credentials: { email: string; password: string }) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        setToken(data.token);
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back!',
+        });
+        return data;
+      } else {
+        throw new Error(data.message || 'Login failed');
+      }
+    } catch (error) {
+      toast({
+        title: 'Login failed',
+        description: error instanceof Error ? error.message : 'An error occurred during login',
+        variant: 'destructive',
+      });
+      throw error;
     }
   };
 
-  // Stub functions that do nothing
-  const login = () => {
-    console.log('Login bypassed');
-  };
-
   const logout = () => {
-    console.log('Logout bypassed');
-  };
-
-  const refetch = () => {
-    console.log('Refetch bypassed');
-    return Promise.resolve(mockUser);
+    setToken(null);
+    toast({
+      title: 'Logged out',
+      description: 'You have been logged out successfully',
+    });
+    window.location.href = '/';
   };
 
   return {
-    user: mockUser,
-    isLoading: false,
-    isAuthenticated: true,
+    user,
+    isLoading: isLoadingUser,
+    isAuthenticated: !!user,
     login,
-    logout,
-    refetch
+    logout
   };
 }
