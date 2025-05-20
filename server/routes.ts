@@ -19,7 +19,8 @@ import subscriptionRoutes from "./routes/subscriptionRoutes";
 import templateRoutes from "./routes/templateRoutes";
 import facebookRoutes from "./auth/facebook.routes";
 import googleRoutes from "./auth/google.routes";
-import authRoutes from './auth/auth.routes';
+import authRoutes from "./auth/auth.routes";
+import nodeTypeRouter from "./routes/nodeType";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 // Authentication bypass instead of Replit Auth
 // import { pool } from "./db"; // REMOVE: not used and not exported
@@ -115,7 +116,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", templateRoutes); // Workflow template gallery and categories
   app.use("/api/auth", facebookRoutes);
   app.use("/api/auth", googleRoutes);
-  app.use('/api/auth', authRoutes);
+  app.use("/api/auth", authRoutes);
+  app.use(nodeTypeRouter);
 
   // API Routes
 

@@ -225,11 +225,11 @@ router.get('/node-types/:id', async (req, res) => {
   }
 });
 
-// Get a node type by name
-router.get('/node-types/by-name/:name', async (req, res) => {
+// Get a node type by node ID
+router.get('/node-types/by-node-id/:nodeId', async (req, res) => {
   try {
-    const name = req.params.name;
-    const nodeType = await storage.getNodeTypeByName(name);
+    const nodeId = req.params.nodeId;
+    const nodeType = await storage.getNodeTypeByNodeId(nodeId);
     
     if (!nodeType) {
       return res.status(404).json({ message: 'Node type not found' });
@@ -237,28 +237,8 @@ router.get('/node-types/by-name/:name', async (req, res) => {
     
     res.json(nodeType);
   } catch (error) {
-    console.error('Error fetching node type by name:', error);
+    console.error('Error fetching node type:', error);
     res.status(500).json({ message: 'Failed to fetch node type' });
-  }
-});
-
-// Create a new node type
-router.post('/node-types', async (req, res) => {
-  try {
-    const parsedBody = insertNodeTypeSchema.parse(req.body);
-    
-    const nodeType = await storage.createNodeType(parsedBody);
-    res.status(201).json(nodeType);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        errors: error.errors 
-      });
-    }
-    
-    console.error('Error creating node type:', error);
-    res.status(500).json({ message: 'Failed to create node type' });
   }
 });
 

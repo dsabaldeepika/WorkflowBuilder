@@ -182,6 +182,7 @@ export interface IStorage {
   createNodeType(nodeType: InsertNodeType): Promise<NodeType>;
   updateNodeType(id: number, nodeTypeData: Partial<InsertNodeType>): Promise<NodeType | undefined>;
   deleteNodeType(id: number): Promise<boolean>;
+  getNodeTypeByNodeId(nodeId: string): Promise<NodeType | undefined>;
   
   // App integration methods
   getAppIntegration(id: number): Promise<AppIntegration | undefined>;
@@ -1386,6 +1387,14 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return historyRecord;
+  }
+
+  async getNodeTypeByNodeId(nodeId: string): Promise<NodeType | undefined> {
+    const [nodeType] = await db
+      .select()
+      .from(nodeTypes)
+      .where(eq(nodeTypes.nodeId, nodeId));
+    return nodeType;
   }
 }
 

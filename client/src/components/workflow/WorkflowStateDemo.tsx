@@ -1,34 +1,45 @@
-import React, { useState } from 'react';
-import { 
-  WorkflowStateIndicator, 
-  WorkflowState, 
-  useWorkflowState 
-} from './StateChangeAnimation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { motion } from 'framer-motion';
+import React, { useState } from "react";
+import {
+  WorkflowStateIndicator,
+  WorkflowState,
+  useWorkflowState,
+} from "./StateChangeAnimation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { motion } from "framer-motion";
 
 /**
  * WorkflowStateDemo Component
- * 
+ *
  * This component demonstrates the micro-animations used for workflow state changes.
  * It provides a UI to trigger different state transitions and shows both the current
  * and previous states with animated transitions.
  */
 export default function WorkflowStateDemo() {
-  const { currentState, previousState, changeState } = useWorkflowState('idle');
-  
+  // Use workflow state context
+  const { state, history, setState, resetState } = useWorkflowState();
+  // Track previous state for display
+  const previousState =
+    history.length > 1 ? history[history.length - 2] : undefined;
+
   // Demo cards to show different transition examples
   const statesList: WorkflowState[] = [
-    'idle',
-    'starting',
-    'running',
-    'paused',
-    'completed',
-    'failed',
-    'retrying'
+    "idle",
+    "starting",
+    "running",
+    "paused",
+    "completed",
+    "failed",
+    "retrying",
   ];
-  
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -36,60 +47,63 @@ export default function WorkflowStateDemo() {
           <CardHeader>
             <CardTitle>Current Workflow State</CardTitle>
             <CardDescription>
-              Demonstrates state transition animations. Click the buttons below to change states.
+              Demonstrates state transition animations. Click the buttons below
+              to change states.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-20 bg-slate-50 rounded-md">
-              <WorkflowStateIndicator 
-                state={currentState} 
-                previousState={previousState} 
+              <WorkflowStateIndicator
+                state={state}
+                previousState={previousState}
                 size="lg"
                 animate={true}
               />
             </div>
-            
             <div className="mt-4 text-sm text-muted-foreground">
-              <div><strong>Current state:</strong> {currentState}</div>
-              <div><strong>Previous state:</strong> {previousState || 'none'}</div>
+              <div>
+                <strong>Current state:</strong> {state}
+              </div>
+              <div>
+                <strong>Previous state:</strong> {previousState || "none"}
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            {statesList.map((state) => (
+            {statesList.map((s) => (
               <Button
-                key={state}
+                key={s}
                 size="sm"
-                variant={currentState === state ? "default" : "outline"}
-                onClick={() => changeState(state)}
+                variant={state === s ? "default" : "outline"}
+                onClick={() => setState(s)}
               >
-                {state.charAt(0).toUpperCase() + state.slice(1)}
+                {s.charAt(0).toUpperCase() + s.slice(1)}
               </Button>
             ))}
           </CardFooter>
         </Card>
-        
         <Card>
           <CardHeader>
             <CardTitle>State Indicators</CardTitle>
             <CardDescription>
-              All available workflow state indicators with their respective styles
+              All available workflow state indicators with their respective
+              styles
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {statesList.map((state) => (
-                <div 
-                  key={state} 
+              {statesList.map((s) => (
+                <div
+                  key={s}
                   className="flex items-center p-2 rounded-md hover:bg-slate-50 transition-colors"
                 >
-                  <WorkflowStateIndicator state={state} size="md" animate={false} />
+                  <WorkflowStateIndicator state={s} size="md" animate={false} />
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
-      
       <Card>
         <CardHeader>
           <CardTitle>Workflow State Transition Animation</CardTitle>
@@ -111,61 +125,66 @@ export default function WorkflowStateDemo() {
 function AutomaticWorkflowSequence() {
   // The sequence of states to cycle through
   const sequence: WorkflowState[] = [
-    'idle',
-    'starting',
-    'running',
-    'completed'
+    "idle",
+    "starting",
+    "running",
+    "completed",
   ];
-  
+
   const errorSequence: WorkflowState[] = [
-    'idle',
-    'starting',
-    'running',
-    'failed',
-    'retrying',
-    'running',
-    'completed'
+    "idle",
+    "starting",
+    "running",
+    "failed",
+    "retrying",
+    "running",
+    "completed",
   ];
-  
-  const [activeSequence, setActiveSequence] = useState<'success' | 'error'>('success');
+
+  const [activeSequence, setActiveSequence] = useState<"success" | "error">(
+    "success"
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [currentState, setCurrentState] = useState<WorkflowState>('idle');
-  const [previousState, setPreviousState] = useState<WorkflowState | undefined>(undefined);
-  
+  const [currentState, setCurrentState] = useState<WorkflowState>("idle");
+  const [previousState, setPreviousState] = useState<WorkflowState | undefined>(
+    undefined
+  );
+
   // Reset and start the animation sequence
   const startSequence = () => {
     setCurrentIndex(0);
-    setCurrentState('idle');
+    setCurrentState("idle");
     setPreviousState(undefined);
     setIsPlaying(true);
-    
+
     // Start the sequence animation
-    const currentSequence = activeSequence === 'success' ? sequence : errorSequence;
+    const currentSequence =
+      activeSequence === "success" ? sequence : errorSequence;
     animateSequence(currentSequence, 0);
   };
-  
+
   // Recursive function to animate through the sequence
   const animateSequence = (stateSequence: WorkflowState[], index: number) => {
     if (index >= stateSequence.length || !isPlaying) return;
-    
+
     // Update the state with animation
     setTimeout(() => {
       setPreviousState(currentState);
       setCurrentState(stateSequence[index]);
       setCurrentIndex(index);
-      
+
       // Continue to the next state after a delay
       setTimeout(() => {
         animateSequence(stateSequence, index + 1);
       }, 2000); // 2 second delay between state changes
     }, 300); // Small initial delay
   };
-  
+
   const getCurrentSequence = () => {
-    return activeSequence === 'success' ? sequence : errorSequence;
+    return activeSequence === "success" ? sequence : errorSequence;
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="bg-slate-50 p-6 rounded-lg">
@@ -175,13 +194,13 @@ function AutomaticWorkflowSequence() {
             {getCurrentSequence().map((state, idx) => (
               <React.Fragment key={idx}>
                 <div className="relative">
-                  <div 
+                  <div
                     className={`h-12 w-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                      idx === currentIndex 
-                        ? 'border-primary bg-primary/10 scale-110' 
-                        : idx < currentIndex 
-                          ? 'border-green-500 bg-green-50' 
-                          : 'border-gray-200 bg-white'
+                      idx === currentIndex
+                        ? "border-primary bg-primary/10 scale-110"
+                        : idx < currentIndex
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-200 bg-white"
                     }`}
                   >
                     {idx === currentIndex && (
@@ -189,94 +208,86 @@ function AutomaticWorkflowSequence() {
                         className="absolute -inset-1 rounded-full border border-primary/30"
                         animate={{
                           scale: [1, 1.1, 1],
-                          opacity: [0.5, 1, 0.5]
+                          opacity: [0.5, 1, 0.5],
                         }}
                         transition={{
                           duration: 2,
                           repeat: Infinity,
-                          ease: "easeInOut"
+                          ease: "easeInOut",
                         }}
                       />
                     )}
-                    <span className="text-sm font-medium">
-                      {idx + 1}
-                    </span>
+                    <span className="text-sm font-medium">{idx + 1}</span>
                   </div>
                   <div className="absolute -bottom-6 whitespace-nowrap text-xs font-medium opacity-80">
                     {state}
                   </div>
                 </div>
-                
+
                 {idx < getCurrentSequence().length - 1 && (
-                  <div 
+                  <div
                     className={`h-1 w-8 transition-colors duration-300 ${
-                      idx < currentIndex ? 'bg-green-500' : 'bg-gray-200'
+                      idx < currentIndex ? "bg-green-500" : "bg-gray-200"
                     }`}
                   />
                 )}
               </React.Fragment>
             ))}
           </div>
-          
+
           {/* Current state with animation */}
           <div className="mt-8 text-center">
-            <WorkflowStateIndicator 
-              state={currentState} 
-              previousState={previousState} 
+            <WorkflowStateIndicator
+              state={currentState}
+              previousState={previousState}
               size="lg"
               animate={true}
               className="mb-2"
             />
-            
+
             <p className="text-sm text-muted-foreground mt-2">
-              {isPlaying 
-                ? "Workflow is being processed..." 
+              {isPlaying
+                ? "Workflow is being processed..."
                 : "Click 'Start Sequence' to see the state transitions"}
             </p>
           </div>
         </div>
       </div>
-      
+
       <div className="flex items-center justify-center space-x-4">
         <div className="flex items-center space-x-2 mr-6">
           <Button
-            variant={activeSequence === 'success' ? 'default' : 'outline'}
+            variant={activeSequence === "success" ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              setActiveSequence('success');
+              setActiveSequence("success");
               setIsPlaying(false);
-              setCurrentState('idle');
+              setCurrentState("idle");
               setCurrentIndex(0);
             }}
           >
             Success Flow
           </Button>
           <Button
-            variant={activeSequence === 'error' ? 'default' : 'outline'}
+            variant={activeSequence === "error" ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              setActiveSequence('error');
+              setActiveSequence("error");
               setIsPlaying(false);
-              setCurrentState('idle');
+              setCurrentState("idle");
               setCurrentIndex(0);
             }}
           >
             Error/Retry Flow
           </Button>
         </div>
-        
-        <Button 
-          onClick={startSequence} 
-          disabled={isPlaying}
-        >
-          {isPlaying ? 'Running...' : 'Start Sequence'}
+
+        <Button onClick={startSequence} disabled={isPlaying}>
+          {isPlaying ? "Running..." : "Start Sequence"}
         </Button>
-        
+
         {isPlaying && (
-          <Button 
-            variant="outline" 
-            onClick={() => setIsPlaying(false)}
-          >
+          <Button variant="outline" onClick={() => setIsPlaying(false)}>
             Stop
           </Button>
         )}

@@ -63,6 +63,15 @@ export interface NodeData {
     required?: boolean;
     allowedConnections?: string[];
   }>;
+  // --- Additional backend/graph fields for full node context ---
+  id?: string; // Node ID (for direct access)
+  position?: { x: number; y: number }; // Node position in the graph
+  edges?: any[]; // Edges connected to this node (if present)
+  name?: string; // Backend name field
+  displayName?: string; // Human-friendly display name
+  color?: string; // Node color (if present)
+  iconUrl?: string; // Custom icon URL (if present)
+  [key: string]: any; // Allow extra fields for future extensibility
 }
 
 export interface WorkflowState {

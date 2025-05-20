@@ -5,6 +5,7 @@
 import { db } from "../server/db";
 import { workflowTemplates } from "../shared/schema";
 import { InsertWorkflowTemplate } from "../shared/schema";
+import { getNodeConfigById } from "./seed-nodes";
 
 const templates: InsertWorkflowTemplate[] = [
   {
@@ -16,59 +17,78 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "facebook-trigger",
-          type: "trigger",
+          ...getNodeConfigById("facebook-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "facebook",
-            event: "new_lead",
+            ...(function () {
+              const nodeConfig = getNodeConfigById("facebook-trigger");
+              if (!nodeConfig)
+                throw new Error('Node config for "facebook-trigger" not found');
+              return nodeConfig.data;
+            })(),
             config: {
+              ...(function () {
+                const nodeConfig = getNodeConfigById("facebook-trigger");
+                if (!nodeConfig || !nodeConfig.data)
+                  throw new Error(
+                    'Node config for "facebook-trigger" not found'
+                  );
+                return nodeConfig.data.config;
+              })(),
               form_id: "${form_id}",
               include_fields: ["name", "email", "phone"],
-              access_token: "${fb_access_token}"
-            }
-          }
+              access_token: "${fb_access_token}",
+            },
+          },
         },
         {
-          id: "transform-data",
-          type: "function",
-          position: { x: 400, y: 100 },
-          data: {
-            service: "transform",
-            action: "map_fields",
-            config: {
-              mapping: {
-                "Lead Name": "{{lead.name}}",
-                "Email": "{{lead.email}}",
-                "Phone": "{{lead.phone}}",
-                "Company": "{{lead.company}}",
-                "Message": "{{lead.message}}",
-                "Created At": "{{lead.created_time}}",
-                "Source": "Facebook Lead Ads"
-              }
-            }
-          }
+          // Safe null check for transform-data node config
+          ...(function () {
+            const nodeConfig = getNodeConfigById("transform-data");
+            if (!nodeConfig)
+              throw new Error('Node config for "transform-data" not found');
+            return {
+              ...nodeConfig,
+              position: { x: 400, y: 100 },
+              data: {
+                ...nodeConfig.data,
+                config: {
+                  ...(nodeConfig.data && nodeConfig.data.config
+                    ? nodeConfig.data.config
+                    : {}),
+                  mapping: {
+                    "Lead Name": "{{lead.name}}",
+                    Email: "{{lead.email}}",
+                    Phone: "{{lead.phone}}",
+                    Company: "{{lead.company}}",
+                    Message: "{{lead.message}}",
+                    "Created At": "{{lead.created_time}}",
+                    Source: "Facebook Lead Ads",
+                  },
+                },
+              },
+            };
+          })(),
         },
         {
-          id: "sheets-action",
-          type: "action",
+          ...getNodeConfigById("sheets-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "google-sheets",
-            action: "append_row",
+            ...getNodeConfigById("sheets-action").data,
             config: {
+              ...getNodeConfigById("sheets-action").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
-            }
-          }
-        }
+              include_fields: ["*"],
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "facebook-trigger", target: "transform-data" },
-        { id: "e2-3", source: "transform-data", target: "sheets-action" }
-      ]
+        { id: "e2-3", source: "transform-data", target: "sheets-action" },
+      ],
     },
     imageUrl:
       "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&q=80",
@@ -85,43 +105,40 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "facebook-trigger",
-          type: "trigger",
+          ...getNodeConfigById("facebook-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "facebook",
-            event: "new_lead",
+            ...getNodeConfigById("facebook-trigger").data,
             config: {
+              ...getNodeConfigById("facebook-trigger").data.config,
               form_id: "${form_id}",
               include_fields: ["name", "email", "phone"],
-              access_token: "${fb_access_token}"
-            }
-          }
+              access_token: "${fb_access_token}",
+            },
+          },
         },
         {
-          id: "prepare-email",
-          type: "function",
+          ...getNodeConfigById("prepare-email"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-email").data,
             config: {
+              ...getNodeConfigById("prepare-email").data.config,
               template: {
                 subject: "Welcome to ${company_name}!",
                 body: "Hi {{lead.name}},\n\nThank you for your interest in our products/services. We received your information and will contact you shortly.\n\nBest regards,\n${company_name}",
-                body_type: "text"
-              }
-            }
-          }
+                body_type: "text",
+              },
+            },
+          },
         },
         {
-          id: "gmail-action",
-          type: "action",
+          ...getNodeConfigById("gmail-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "gmail",
-            action: "send_email",
+            ...getNodeConfigById("gmail-action").data,
             config: {
+              ...getNodeConfigById("gmail-action").data.config,
               client_id: "${gmail_client_id}",
               client_secret: "${gmail_client_secret}",
               refresh_token: "${gmail_refresh_token}",
@@ -131,16 +148,16 @@ const templates: InsertWorkflowTemplate[] = [
               body_type: "text",
               reply_to: "${company_email}",
               headers: {
-                "X-Custom-Header": "Facebook Lead"
-              }
-            }
-          }
-        }
+                "X-Custom-Header": "Facebook Lead",
+              },
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "facebook-trigger", target: "prepare-email" },
-        { id: "e2-3", source: "prepare-email", target: "gmail-action" }
-      ]
+        { id: "e2-3", source: "prepare-email", target: "gmail-action" },
+      ],
     },
     imageUrl:
       "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80",
@@ -157,60 +174,57 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "facebook-trigger",
-          type: "trigger",
+          ...getNodeConfigById("facebook-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "facebook",
-            event: "new_lead",
+            ...getNodeConfigById("facebook-trigger").data,
             config: {
+              ...getNodeConfigById("facebook-trigger").data.config,
               form_id: "${form_id}",
               include_fields: ["name", "email", "phone"],
-              access_token: "${fb_access_token}"
-            }
-          }
+              access_token: "${fb_access_token}",
+            },
+          },
         },
         {
-          id: "format-message",
-          type: "function",
+          ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("format-message").data,
             config: {
+              ...getNodeConfigById("format-message").data.config,
               template: {
                 blocks: [
                   {
                     type: "section",
                     text: {
                       type: "mrkdwn",
-                      text: ":tada: *New Lead from Facebook!*\n>Name: {{lead.name}}\n>Email: {{lead.email}}\n>Phone: {{lead.phone}}\n>Form: ${form_name}\n>Submitted: {{formatDate lead.created_time}}"
-                    }
-                  }
-                ]
-              }
-            }
-          }
+                      text: ":tada: *New Lead from Facebook!*\n>Name: {{lead.name}}\n>Email: {{lead.email}}\n>Phone: {{lead.phone}}\n>Form: ${form_name}\n>Submitted: {{formatDate lead.created_time}}",
+                    },
+                  },
+                ],
+              },
+            },
+          },
         },
         {
-          id: "slack-action",
-          type: "action",
+          ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "slack",
-            action: "send_message",
+            ...getNodeConfigById("slack-action").data,
             config: {
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
-              message_type: "text"
-            }
-          }
-        }
+              message_type: "text",
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "facebook-trigger", target: "format-message" },
-        { id: "e2-3", source: "format-message", target: "slack-action" }
-      ]
+        { id: "e2-3", source: "format-message", target: "slack-action" },
+      ],
     },
     imageUrl: "https://example.com/images/facebook-to-slack.png",
     createdByUserId: null,
@@ -226,73 +240,70 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "sheets-trigger",
-          type: "trigger",
+          ...getNodeConfigById("sheets-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "google-sheets",
-            event: "new_row",
+            ...getNodeConfigById("sheets-trigger").data,
             config: {
+              ...getNodeConfigById("sheets-trigger").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
-            }
-          }
+              include_fields: ["*"],
+            },
+          },
         },
         {
-          id: "prepare-prompt",
-          type: "function",
+          ...getNodeConfigById("prepare-prompt"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-prompt").data,
             config: {
+              ...getNodeConfigById("prepare-prompt").data.config,
               template: {
-                prompt: "Generate a personalized sales email for {{row.name}} from {{row.company}} interested in {{row.interests}} with a budget of {{row.budget}}. Focus on the benefits of our product for their needs.",
+                prompt:
+                  "Generate a personalized sales email for {{row.name}} from {{row.company}} interested in {{row.interests}} with a budget of {{row.budget}}. Focus on the benefits of our product for their needs.",
                 max_tokens: 500,
-                temperature: 0.7
-              }
-            }
-          }
+                temperature: 0.7,
+              },
+            },
+          },
         },
         {
-          id: "openai-action",
-          type: "action",
+          ...getNodeConfigById("openai-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "openai",
-            action: "generate_completion",
+            ...getNodeConfigById("openai-action").data,
             config: {
+              ...getNodeConfigById("openai-action").data.config,
               api_key: "${openai_api_key}",
               model: "gpt-3.5-turbo",
               prompt: "{{template.prompt}}",
               max_tokens: "{{template.max_tokens}}",
-              temperature: "{{template.temperature}}"
-            }
-          }
+              temperature: "{{template.temperature}}",
+            },
+          },
         },
         {
-          id: "update-sheet",
-          type: "action",
+          ...getNodeConfigById("update-sheet"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "google-sheets",
-            action: "update_row",
+            ...getNodeConfigById("update-sheet").data,
             config: {
+              ...getNodeConfigById("update-sheet").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
-            }
-          }
-        }
+              include_fields: ["*"],
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "sheets-trigger", target: "prepare-prompt" },
         { id: "e2-3", source: "prepare-prompt", target: "openai-action" },
-        { id: "e3-4", source: "openai-action", target: "update-sheet" }
-      ]
+        { id: "e3-4", source: "openai-action", target: "update-sheet" },
+      ],
     },
     imageUrl: "https://example.com/images/sheets-to-openai.png",
     createdByUserId: null,
@@ -308,70 +319,67 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "sheets-trigger",
-          type: "trigger",
+          ...getNodeConfigById("sheets-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "google-sheets",
-            event: "new_row",
+            ...getNodeConfigById("sheets-trigger").data,
             config: {
+              ...getNodeConfigById("sheets-trigger").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
-            }
-          }
+              include_fields: ["*"],
+            },
+          },
         },
         {
-          id: "prepare-prompt",
-          type: "function",
+          ...getNodeConfigById("prepare-prompt"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-prompt").data,
             config: {
+              ...getNodeConfigById("prepare-prompt").data.config,
               template: {
-                prompt: "${prompt_template}\n\nCustomer data:\nName: {{row.name}}\nProduct interest: {{row.product}}\nPain points: {{row.pain_points}}\nBudget: {{row.budget}}",
-              }
-            }
-          }
+                prompt:
+                  "${prompt_template}\n\nCustomer data:\nName: {{row.name}}\nProduct interest: {{row.product}}\nPain points: {{row.pain_points}}\nBudget: {{row.budget}}",
+              },
+            },
+          },
         },
         {
-          id: "claude-action",
-          type: "action",
+          ...getNodeConfigById("claude-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "anthropic",
-            action: "generate_completion",
+            ...getNodeConfigById("claude-action").data,
             config: {
+              ...getNodeConfigById("claude-action").data.config,
               api_key: "${claude_api_key}",
               model: "claude-3-opus-20240229",
               max_tokens: 500,
-              temperature: 0.7
-            }
-          }
+              temperature: 0.7,
+            },
+          },
         },
         {
-          id: "update-sheet",
-          type: "action",
+          ...getNodeConfigById("update-sheet"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "google-sheets",
-            action: "update_row",
+            ...getNodeConfigById("update-sheet").data,
             config: {
+              ...getNodeConfigById("update-sheet").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
-            }
-          }
-        }
+              include_fields: ["*"],
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "sheets-trigger", target: "prepare-prompt" },
         { id: "e2-3", source: "prepare-prompt", target: "claude-action" },
-        { id: "e3-4", source: "claude-action", target: "update-sheet" }
-      ]
+        { id: "e3-4", source: "claude-action", target: "update-sheet" },
+      ],
     },
     imageUrl: "https://example.com/images/sheets-to-claude.png",
     createdByUserId: null,
@@ -387,13 +395,12 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "manual-trigger",
-          type: "trigger",
+          ...getNodeConfigById("manual-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "manual",
-            event: "trigger",
+            ...getNodeConfigById("manual-trigger").data,
             config: {
+              ...getNodeConfigById("manual-trigger").data.config,
               input_fields: [
                 { name: "website_url", type: "string", label: "Website URL" },
                 {
@@ -403,43 +410,41 @@ const templates: InsertWorkflowTemplate[] = [
                 },
               ],
             },
-          }
+          },
         },
         {
-          id: "fetch-website",
-          type: "action",
+          ...getNodeConfigById("fetch-website"),
           position: { x: 400, y: 100 },
           data: {
-            service: "http",
-            action: "get",
+            ...getNodeConfigById("fetch-website").data,
             config: {
+              ...getNodeConfigById("fetch-website").data.config,
               url: "{{trigger.website_url}}",
               response_type: "text",
             },
           },
         },
         {
-          id: "prepare-prompt",
-          type: "function",
+          ...getNodeConfigById("prepare-prompt"),
           position: { x: 700, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-prompt").data,
             config: {
+              ...getNodeConfigById("prepare-prompt").data.config,
               template: {
-                prompt: "Extract the following data points from this website content in JSON format: {{trigger.data_points}}\n\nWebsite content:\n{{http.response}}\n\nRespond with a valid JSON object containing the extracted data.",
-              }
-            }
-          }
+                prompt:
+                  "Extract the following data points from this website content in JSON format: {{trigger.data_points}}\n\nWebsite content:\n{{http.response}}\n\nRespond with a valid JSON object containing the extracted data.",
+              },
+            },
+          },
         },
         {
-          id: "claude-action",
-          type: "action",
+          ...getNodeConfigById("claude-action"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "anthropic",
-            action: "generate_completion",
+            ...getNodeConfigById("claude-action").data,
             config: {
+              ...getNodeConfigById("claude-action").data.config,
               api_key: "${claude_api_key}",
               model: "claude-3-opus-20240229",
               max_tokens: 1000,
@@ -449,30 +454,28 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "parse-json",
-          type: "function",
+          ...getNodeConfigById("parse-json"),
           position: { x: 1300, y: 100 },
           data: {
-            service: "transform",
-            action: "parse_json",
+            ...getNodeConfigById("parse-json").data,
             config: {
+              ...getNodeConfigById("parse-json").data.config,
               operation: "parse_json",
               input: "{{claude.response}}",
             },
           },
         },
         {
-          id: "sheets-action",
-          type: "action",
+          ...getNodeConfigById("sheets-action"),
           position: { x: 1600, y: 100 },
           data: {
-            service: "google-sheets",
-            action: "append_row",
+            ...getNodeConfigById("sheets-action").data,
             config: {
+              ...getNodeConfigById("sheets-action").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
+              include_fields: ["*"],
             },
           },
         },
@@ -492,71 +495,81 @@ const templates: InsertWorkflowTemplate[] = [
   },
   {
     name: "Send Slack Message for New HubSpot Deal",
-    description: "Notify your team in Slack whenever a new deal is created in HubSpot CRM.",
+    description:
+      "Notify your team in Slack whenever a new deal is created in HubSpot CRM.",
     category: "team-notifications",
     tags: ["hubspot", "slack", "crm", "sales"],
     workflowData: {
       nodes: [
         {
-          id: "hubspot-trigger",
-          type: "trigger",
+          ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "hubspot",
-            event: "new_deal",
+            ...(function () {
+              const nodeConfig = getNodeConfigById("hubspot-trigger");
+              if (!nodeConfig)
+                throw new Error('Node config for "hubspot-trigger" not found');
+              return nodeConfig.data;
+            })(),
             config: {
+              ...(function () {
+                const nodeConfig = getNodeConfigById("hubspot-trigger");
+                if (!nodeConfig || !nodeConfig.data)
+                  throw new Error(
+                    'Node config for "hubspot-trigger" not found'
+                  );
+                return nodeConfig.data.config;
+              })(),
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
-              include_properties: ["dealname", "amount", "pipeline"]
-            }
-          }
+              include_properties: ["dealname", "amount", "pipeline"],
+            },
+          },
         },
         {
-          id: "format-message",
-          type: "function",
+          ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("format-message").data,
             config: {
+              ...getNodeConfigById("format-message").data.config,
               template: {
                 blocks: [
                   {
                     type: "section",
                     text: {
                       type: "mrkdwn",
-                      text: ":moneybag: *New Deal Created in HubSpot!*\n>Deal Name: {{deal.dealname}}\n>Amount: {{formatCurrency deal.amount}}\n>Stage: {{deal.dealstage}}\n>Company: {{deal.company}}\n>Owner: {{deal.owner}}"
-                    }
-                  }
-                ]
-              }
-            }
-          }
+                      text: ":moneybag: *New Deal Created in HubSpot!*\n>Deal Name: {{deal.dealname}}\n>Amount: {{formatCurrency deal.amount}}\n>Stage: {{deal.dealstage}}\n>Company: {{deal.company}}\n>Owner: {{deal.owner}}",
+                    },
+                  },
+                ],
+              },
+            },
+          },
         },
         {
-          id: "slack-action",
-          type: "action",
+          ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "slack",
-            action: "send_message",
+            ...getNodeConfigById("slack-action").data,
             config: {
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
-              message_type: "text"
-            }
-          }
-        }
+              message_type: "text",
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "hubspot-trigger", target: "format-message" },
-        { id: "e2-3", source: "format-message", target: "slack-action" }
-      ]
+        { id: "e2-3", source: "format-message", target: "slack-action" },
+      ],
     },
     imageUrl: "https://example.com/images/hubspot-deal-to-slack.png",
     createdByUserId: null,
     isPublished: true,
-    isOfficial: true
+    isOfficial: true,
   },
   {
     name: "Send Slack Message for HubSpot Form Submission",
@@ -567,40 +580,37 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "hubspot-trigger",
-          type: "trigger",
+          ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "hubspot",
-            event: "form_submission",
+            ...getNodeConfigById("hubspot-trigger").data,
             config: {
+              ...getNodeConfigById("hubspot-trigger").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               form_id: "${form_id}",
-            }
-          }
+            },
+          },
         },
         {
-          id: "format-message",
-          type: "function",
+          ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("format-message").data,
             config: {
+              ...getNodeConfigById("format-message").data.config,
               template:
                 ":clipboard: *New HubSpot Form Submission!*\n>Form: ${form_name}\n>Name: {{submission.name}}\n>Email: {{submission.email}}\n>Company: {{submission.company}}\n>Message: {{submission.message}}",
             },
           },
         },
         {
-          id: "slack-action",
-          type: "action",
+          ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "slack",
-            action: "send_message",
+            ...getNodeConfigById("slack-action").data,
             config: {
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
               message_type: "text",
@@ -627,44 +637,49 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "hubspot-trigger",
-          type: "trigger",
+          ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "hubspot",
-            event: "new_contact",
+            ...getNodeConfigById("hubspot-trigger").data,
             config: {
+              ...getNodeConfigById("hubspot-trigger").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
-              include_properties: ["firstname", "lastname", "email", "company", "phone"]
-            }
-          }
+              include_properties: [
+                "firstname",
+                "lastname",
+                "email",
+                "company",
+                "phone",
+              ],
+            },
+          },
         },
         {
-          id: "prepare-task",
-          type: "function",
+          ...getNodeConfigById("prepare-task"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-task").data,
             config: {
+              ...getNodeConfigById("prepare-task").data.config,
               template: {
-                title: "Follow up with new contact: {{contact.firstname}} {{contact.lastname}}",
-                description: "A new contact was created in HubSpot:\n\nName: {{contact.firstname}} {{contact.lastname}}\nEmail: {{contact.email}}\nCompany: {{contact.company}}\nPhone: {{contact.phone}}\n\nFollow up with this contact within ${follow_up_days} days.",
+                title:
+                  "Follow up with new contact: {{contact.firstname}} {{contact.lastname}}",
+                description:
+                  "A new contact was created in HubSpot:\n\nName: {{contact.firstname}} {{contact.lastname}}\nEmail: {{contact.email}}\nCompany: {{contact.company}}\nPhone: {{contact.phone}}\n\nFollow up with this contact within ${follow_up_days} days.",
                 priority: "${priority}",
-                status: "to_do"
-              }
-            }
-          }
+                status: "to_do",
+              },
+            },
+          },
         },
         {
-          id: "clickup-action",
-          type: "action",
+          ...getNodeConfigById("clickup-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "clickup",
-            action: "create_task",
+            ...getNodeConfigById("clickup-action").data,
             config: {
+              ...getNodeConfigById("clickup-action").data.config,
               api_key: "${clickup_api_key}",
               list_id: "${clickup_list_id}",
               name: "{{template.title}}",
@@ -675,13 +690,13 @@ const templates: InsertWorkflowTemplate[] = [
       ],
       edges: [
         { id: "e1-2", source: "hubspot-trigger", target: "prepare-task" },
-        { id: "e2-3", source: "prepare-task", target: "clickup-action" }
-      ]
+        { id: "e2-3", source: "prepare-task", target: "clickup-action" },
+      ],
     },
     imageUrl: "https://example.com/images/hubspot-to-clickup.png",
     createdByUserId: null,
     isPublished: true,
-    isOfficial: true
+    isOfficial: true,
   },
   {
     name: "Update HubSpot CRM Record from Airtable Form",
@@ -692,13 +707,12 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "airtable-trigger",
-          type: "trigger",
+          ...getNodeConfigById("airtable-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "airtable",
-            event: "new_record",
+            ...getNodeConfigById("airtable-trigger").data,
             config: {
+              ...getNodeConfigById("airtable-trigger").data.config,
               api_key: "${airtable_api_key}",
               base_id: "${airtable_base_id}",
               table_id: "${airtable_table_id}",
@@ -706,13 +720,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "search-hubspot",
-          type: "action",
+          ...getNodeConfigById("search-hubspot"),
           position: { x: 400, y: 100 },
           data: {
-            service: "hubspot",
-            action: "search_contact",
+            ...getNodeConfigById("search-hubspot").data,
             config: {
+              ...getNodeConfigById("search-hubspot").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               email: "{{record.email}}",
@@ -720,13 +733,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "prepare-data",
-          type: "function",
+          ...getNodeConfigById("prepare-data"),
           position: { x: 700, y: 100 },
           data: {
-            service: "transform",
-            action: "map_fields",
+            ...getNodeConfigById("prepare-data").data,
             config: {
+              ...getNodeConfigById("prepare-data").data.config,
               mapping: {
                 firstname: "{{record.name}}",
                 company: "{{record.company}}",
@@ -738,13 +750,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "hubspot-action",
-          type: "action",
+          ...getNodeConfigById("hubspot-action"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "hubspot",
-            action: "update_contact",
+            ...getNodeConfigById("hubspot-action").data,
             config: {
+              ...getNodeConfigById("hubspot-action").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               contact_id: "{{search.contact_id}}",
@@ -772,79 +783,93 @@ const templates: InsertWorkflowTemplate[] = [
   },
   {
     name: "Create PandaDoc Document from HubSpot Deal Stage Change",
-    description: "Automatically generate a PandaDoc document when a deal reaches a specific stage in HubSpot CRM.",
+    description:
+      "Automatically generate a PandaDoc document when a deal reaches a specific stage in HubSpot CRM.",
     category: "document-automation",
     tags: ["hubspot", "pandadoc", "crm", "sales", "document"],
     workflowData: {
       nodes: [
         {
-          id: "hubspot-trigger",
-          type: "trigger",
+          ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "hubspot",
-            event: "deal_stage_change",
+            ...getNodeConfigById("hubspot-trigger").data,
             config: {
+              ...getNodeConfigById("hubspot-trigger").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               target_stage: "${deal_stage}",
-              include_properties: ["dealname", "amount", "pipeline", "dealstage", "company", "owner", "contacts"]
-            }
-          }
+              include_properties: [
+                "dealname",
+                "amount",
+                "pipeline",
+                "dealstage",
+                "company",
+                "owner",
+                "contacts",
+              ],
+            },
+          },
         },
         {
-          id: "get-deal-data",
-          type: "action",
+          ...getNodeConfigById("get-deal-data"),
           position: { x: 400, y: 100 },
           data: {
-            service: "hubspot",
-            action: "get_deal",
+            ...getNodeConfigById("get-deal-data").data,
             config: {
+              ...getNodeConfigById("get-deal-data").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               deal_id: "{{trigger.deal_id}}",
               include_associations: true,
-              include_properties: ["dealname", "amount", "pipeline", "dealstage", "company", "owner", "contacts"]
-            }
-          }
+              include_properties: [
+                "dealname",
+                "amount",
+                "pipeline",
+                "dealstage",
+                "company",
+                "owner",
+                "contacts",
+              ],
+            },
+          },
         },
         {
-          id: "create-document",
-          type: "action",
+          ...getNodeConfigById("create-document"),
           position: { x: 700, y: 100 },
           data: {
-            service: "pandadoc",
-            action: "create_document",
+            ...getNodeConfigById("create-document").data,
             config: {
+              ...getNodeConfigById("create-document").data.config,
               api_key: "${pandadoc_api_key}",
               template_id: "${template_id}",
               name: "{{deal.dealname}} - Proposal",
               tokens: {
-                "deal_name": "{{deal.dealname}}",
-                "amount": "{{formatCurrency deal.amount}}",
-                "company": "{{deal.company}}",
-                "owner": "{{deal.owner}}",
-                "stage": "{{deal.dealstage}}"
+                deal_name: "{{deal.dealname}}",
+                amount: "{{formatCurrency deal.amount}}",
+                company: "{{deal.company}}",
+                owner: "{{deal.owner}}",
+                stage: "{{deal.dealstage}}",
               },
               recipients: "{{deal.contacts}}",
               metadata: {
-                "source": "HubSpot",
-                "deal_id": "{{deal.id}}",
-                "stage": "{{deal.dealstage}}"
-              }
-            }
-          }
-        }
+                source: "HubSpot",
+                deal_id: "{{deal.id}}",
+                stage: "{{deal.dealstage}}",
+              },
+            },
+          },
+        },
       ],
       edges: [
         { id: "e1-2", source: "hubspot-trigger", target: "get-deal-data" },
-        { id: "e2-3", source: "get-deal-data", target: "create-document" }
-      ]
+        { id: "e2-3", source: "get-deal-data", target: "create-document" },
+      ],
     },
     imageUrl: "https://example.com/images/hubspot-to-pandadoc.png",
     createdByUserId: null,
     isPublished: true,
-    isOfficial: true
+    isOfficial: true,
   },
   {
     name: "Send Slack Messages for New Pipedrive Activities",
@@ -855,13 +880,12 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "pipedrive-trigger",
-          type: "trigger",
+          ...getNodeConfigById("pipedrive-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "pipedrive",
-            event: "new_activity",
+            ...getNodeConfigById("pipedrive-trigger").data,
             config: {
+              ...getNodeConfigById("pipedrive-trigger").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               types: "${activity_types}",
@@ -869,26 +893,24 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "format-message",
-          type: "function",
+          ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("format-message").data,
             config: {
+              ...getNodeConfigById("format-message").data.config,
               template:
                 ":calendar: *New Pipedrive Activity*\n>Type: {{activity.type}}\n>Title: {{activity.title}}\n>Due Date: {{formatDate activity.due_date}}\n>Deal: {{activity.deal_title}}\n>Person: {{activity.person_name}}\n>Organization: {{activity.org_name}}\n>Assigned to: {{activity.assigned_to_user_name}}",
             },
           },
         },
         {
-          id: "slack-action",
-          type: "action",
+          ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "slack",
-            action: "send_message",
-            config: {
+            ...getNodeConfigById("slack-action").data,
+            config: { 
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
               message_type: "text",
@@ -915,52 +937,49 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "pipedrive-trigger",
-          type: "trigger",
+          ...getNodeConfigById("pipedrive-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "pipedrive",
-            event: "new_deal",
+            ...getNodeConfigById("pipedrive-trigger").data,
             config: {
+              ...getNodeConfigById("pipedrive-trigger").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
             },
           },
         },
         {
-          id: "transform-data",
-          type: "function",
+          ...getNodeConfigById("transform-data"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "map_fields",
+            ...getNodeConfigById("transform-data").data,
             config: {
+              ...getNodeConfigById("transform-data").data.config,
               mapping: {
                 "Deal Title": "{{deal.title}}",
-                "Value": "{{deal.value}}",
-                "Currency": "{{deal.currency}}",
-                "Stage": "{{deal.stage_name}}",
-                "Organization": "{{deal.org_name}}",
+                Value: "{{deal.value}}",
+                Currency: "{{deal.currency}}",
+                Stage: "{{deal.stage_name}}",
+                Organization: "{{deal.org_name}}",
                 "Contact Person": "{{deal.person_name}}",
                 "Expected Close Date": "{{deal.expected_close_date}}",
-                "Owner": "{{deal.owner_name}}",
+                Owner: "{{deal.owner_name}}",
                 "Created Date": "{{deal.add_time}}",
               },
             },
           },
         },
         {
-          id: "sheets-action",
-          type: "action",
+          ...getNodeConfigById("sheets-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "google-sheets",
-            action: "append_row",
+            ...getNodeConfigById("sheets-action").data,
             config: {
+              ...getNodeConfigById("sheets-action").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
+              include_fields: ["*"],
             },
           },
         },
@@ -984,13 +1003,12 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "forms-trigger",
-          type: "trigger",
+          ...getNodeConfigById("forms-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "google-forms",
-            event: "new_response",
+            ...getNodeConfigById("forms-trigger").data,
             config: {
+              ...getNodeConfigById("forms-trigger").data.config,
               form_id: "${form_id}",
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
@@ -998,13 +1016,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "search-person",
-          type: "action",
+          ...getNodeConfigById("search-person"),
           position: { x: 400, y: 100 },
           data: {
-            service: "pipedrive",
-            action: "find_person",
+            ...getNodeConfigById("search-person").data,
             config: {
+              ...getNodeConfigById("search-person").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               email: "{{response.email}}",
@@ -1012,13 +1029,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "create-person",
-          type: "action",
+          ...getNodeConfigById("create-person"),
           position: { x: 700, y: 50 },
           data: {
-            service: "pipedrive",
-            action: "create_person",
+            ...getNodeConfigById("create-person").data,
             config: {
+              ...getNodeConfigById("create-person").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               name: "{{response.name}}",
@@ -1026,15 +1042,15 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "prepare-deal",
-          type: "function",
+          ...getNodeConfigById("prepare-deal"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-deal").data,
             config: {
+              ...getNodeConfigById("prepare-deal").data.config,
               template: {
-                deal_title: "${deal_title_prefix} - {{response.product_interest}}",
+                deal_title:
+                  "${deal_title_prefix} - {{response.product_interest}}",
                 deal_value: "{{response.budget}}",
                 expected_close_date: "{{addDays today 30}}",
               },
@@ -1042,13 +1058,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "create-deal",
-          type: "action",
+          ...getNodeConfigById("create-deal"),
           position: { x: 1300, y: 100 },
           data: {
-            service: "pipedrive",
-            action: "create_deal",
+            ...getNodeConfigById("create-deal").data,
             config: {
+              ...getNodeConfigById("create-deal").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               stage_id: "${stage_id}",
@@ -1059,7 +1074,12 @@ const templates: InsertWorkflowTemplate[] = [
       ],
       edges: [
         { id: "e1-2", source: "forms-trigger", target: "search-person" },
-        { id: "e2-3a", source: "search-person", target: "create-person", label: "If not found" },
+        {
+          id: "e2-3a",
+          source: "search-person",
+          target: "create-person",
+          label: "If not found",
+        },
         { id: "e2-4", source: "search-person", target: "prepare-deal" },
         { id: "e3-4", source: "create-person", target: "prepare-deal" },
         { id: "e4-5", source: "prepare-deal", target: "create-deal" },
@@ -1079,28 +1099,26 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "sheets-trigger",
-          type: "trigger",
+          ...getNodeConfigById("sheets-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "google-sheets",
-            event: "new_row",
+            ...getNodeConfigById("sheets-trigger").data,
             config: {
+              ...getNodeConfigById("sheets-trigger").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
-              include_fields: ["*"]
-            }
+              include_fields: ["*"],
+            },
           },
         },
         {
-          id: "prepare-subscriber",
-          type: "function",
+          ...getNodeConfigById("prepare-subscriber"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "map_fields",
+            ...getNodeConfigById("prepare-subscriber").data,
             config: {
+              ...getNodeConfigById("prepare-subscriber").data.config,
               mapping: {
                 email_address: "{{row.email}}",
                 status: "subscribed",
@@ -1112,16 +1130,15 @@ const templates: InsertWorkflowTemplate[] = [
                 tags: ["${tags}"],
               },
             },
-          }
+          },
         },
         {
-          id: "mailchimp-action",
-          type: "action",
+          ...getNodeConfigById("mailchimp-action"),
           position: { x: 700, y: 100 },
           data: {
-            service: "mailchimp",
-            action: "add_subscriber",
+            ...getNodeConfigById("mailchimp-action").data,
             config: {
+              ...getNodeConfigById("mailchimp-action").data.config,
               api_key: "${mailchimp_api_key}",
               server: "${mailchimp_server}",
               list_id: "${mailchimp_list_id}",
@@ -1133,7 +1150,11 @@ const templates: InsertWorkflowTemplate[] = [
       ],
       edges: [
         { id: "e1-2", source: "sheets-trigger", target: "prepare-subscriber" },
-        { id: "e2-3", source: "prepare-subscriber", target: "mailchimp-action" },
+        {
+          id: "e2-3",
+          source: "prepare-subscriber",
+          target: "mailchimp-action",
+        },
       ],
     },
     imageUrl: "https://example.com/images/sheets-to-mailchimp.png",
@@ -1150,57 +1171,53 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "salesforce-trigger",
-          type: "trigger",
+          ...getNodeConfigById("salesforce-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "salesforce",
-            event: "new_task",
+            ...getNodeConfigById("salesforce-trigger").data,
             config: {
+              ...getNodeConfigById("salesforce-trigger").data.config,
               instance_url: "${salesforce_instance_url}",
               access_token: "${salesforce_access_token}",
-              refresh_token: "${salesforce_refresh_token}"
-            }
-          }
+              refresh_token: "${salesforce_refresh_token}",
+            },
+          },
         },
         {
-          id: "prepare-card",
-          type: "function",
+          ...getNodeConfigById("prepare-card"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-card").data,
             config: {
+              ...getNodeConfigById("prepare-card").data.config,
               template: {
                 name_template: "{{task.subject}}",
                 description_template:
                   "**Description:** {{task.description}}\n\n**Related to:** {{task.related_to_name}}\n\n**Due date:** {{formatDate task.due_date}}\n\n**Salesforce URL:** {{task.url}}",
-              }
-            }
-          }
+              },
+            },
+          },
         },
         {
-          id: "set-due-date",
-          type: "function",
+          ...getNodeConfigById("set-due-date"),
           position: { x: 700, y: 100 },
           data: {
-            service: "transform",
-            action: "map_fields",
+            ...getNodeConfigById("set-due-date").data,
             config: {
+              ...getNodeConfigById("set-due-date").data.config,
               mapping: {
                 due_date: "{{task.due_date}}",
-              }
-            }
-          }
+              },
+            },
+          },
         },
         {
-          id: "trello-action",
-          type: "action",
+          ...getNodeConfigById("trello-action"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "trello",
-            action: "create_card",
+            ...getNodeConfigById("trello-action").data,
             config: {
+              ...getNodeConfigById("trello-action").data.config,
               board_id: "${board_id}",
               list_id: "${list_id}",
               api_key: "${trello_api_key}",
@@ -1232,57 +1249,54 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "salesforce-trigger",
-          type: "trigger",
+          ...getNodeConfigById("salesforce-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "salesforce",
-            event: "new_opportunity",
+            ...getNodeConfigById("salesforce-trigger").data,
             config: {
+              ...getNodeConfigById("salesforce-trigger").data.config,
               instance_url: "${salesforce_instance_url}",
               access_token: "${salesforce_access_token}",
-              refresh_token: "${salesforce_refresh_token}"
-            }
-          }
+              refresh_token: "${salesforce_refresh_token}",
+            },
+          },
         },
         {
-          id: "prepare-task",
-          type: "function",
+          ...getNodeConfigById("prepare-task"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("prepare-task").data,
             config: {
+              ...getNodeConfigById("prepare-task").data.config,
               template: {
-                title_template: "Follow up on opportunity: {{opportunity.name}}",
+                title_template:
+                  "Follow up on opportunity: {{opportunity.name}}",
                 description_template:
                   "A new opportunity was created in Salesforce:\n\nOpportunity: {{opportunity.name}}\nAccount: {{opportunity.account_name}}\nAmount: {{formatCurrency opportunity.amount}}\nStage: {{opportunity.stage}}\nClose Date: {{formatDate opportunity.close_date}}\nOwner: {{opportunity.owner_name}}\n\nNext steps: ${next_steps}",
-              }
-            }
-          }
+              },
+            },
+          },
         },
         {
-          id: "set-due-date",
-          type: "function",
+          ...getNodeConfigById("set-due-date"),
           position: { x: 700, y: 100 },
           data: {
-            service: "transform",
-            action: "map_fields",
+            ...getNodeConfigById("set-due-date").data,
             config: {
+              ...getNodeConfigById("set-due-date").data.config,
               mapping: {
                 due_date: "{{addDays today ${follow_up_days}}}",
-              }
-            }
-          }
+              },
+            },
+          },
         },
         {
-          id: "clickup-action",
-          type: "action",
+          ...getNodeConfigById("clickup-action"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "clickup",
-            action: "create_task",
+            ...getNodeConfigById("clickup-action").data,
             config: {
+              ...getNodeConfigById("clickup-action").data.config,
               api_key: "${clickup_api_key}",
               list_id: "${clickup_list_id}",
               name: "{{template.title_template}}",
@@ -1312,13 +1326,12 @@ const templates: InsertWorkflowTemplate[] = [
     workflowData: {
       nodes: [
         {
-          id: "salesforce-trigger",
-          type: "trigger",
+          ...getNodeConfigById("salesforce-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            service: "salesforce",
-            event: "opportunity_stage_change",
+            ...getNodeConfigById("salesforce-trigger").data,
             config: {
+              ...getNodeConfigById("salesforce-trigger").data.config,
               instance_url: "${salesforce_instance_url}",
               access_token: "${salesforce_access_token}",
               refresh_token: "${salesforce_refresh_token}",
@@ -1327,26 +1340,24 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "format-message",
-          type: "function",
+          ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            service: "transform",
-            action: "template",
+            ...getNodeConfigById("format-message").data,
             config: {
+              ...getNodeConfigById("format-message").data.config,
               template:
                 "{{#if (eq opportunity.stage 'Closed Won')}}\n:tada: *Opportunity Won!*\n{{else}}\n:disappointed: *Opportunity Lost*\n{{/if}}\n\n>Name: {{opportunity.name}}\n>Account: {{opportunity.account_name}}\n>Amount: {{formatCurrency opportunity.amount}}\n>Close Date: {{formatDate opportunity.close_date}}\n>Owner: {{opportunity.owner_name}}\n{{#if opportunity.description}}\n>Notes: {{opportunity.description}}\n{{/if}}",
             },
           },
         },
         {
-          id: "determine-channel",
-          type: "function",
+          ...getNodeConfigById("determine-channel"),
           position: { x: 700, y: 100 },
           data: {
-            service: "logic",
-            action: "conditional",
+            ...getNodeConfigById("determine-channel").data,
             config: {
+              ...getNodeConfigById("determine-channel").data.config,
               if: "{{eq opportunity.stage 'Closed Won'}}",
               then: {
                 channel: "${won_channel_id}",
@@ -1360,13 +1371,12 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
-          id: "slack-action",
-          type: "action",
+          ...getNodeConfigById("slack-action"),
           position: { x: 1000, y: 100 },
           data: {
-            service: "slack",
-            action: "send_message",
+            ...getNodeConfigById("slack-action").data,
             config: {
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "{{logic.channel}}",
               bot_token: "${slack_bot_token}",
               message_type: "text",

@@ -320,14 +320,18 @@ export const workflowTemplates = pgTable("workflow_templates", {
 // Node types table for workflow nodes
 export const nodeTypes = pgTable("node_types", {
   id: serial("id").primaryKey(),
+  nodeId: text("node_id"), // <-- for id
+  type: text("type"), // <-- for type
+  position: jsonb("position"), // <-- for position
+  data: jsonb("data"), // <-- for data (service, action, config, etc.)
   name: text("name").notNull().unique(),
   displayName: text("display_name").notNull(),
-  category: text("category").notNull(), // trigger, action, condition, etc.
+  category: text("category").notNull(),
   description: text("description"),
   icon: text("icon"),
   color: text("color"),
-  inputFields: jsonb("input_fields"), // Schema for the input fields
-  outputFields: jsonb("output_fields"), // Schema for the output fields
+  inputFields: jsonb("input_fields"),
+  outputFields: jsonb("output_fields"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -485,6 +489,10 @@ export const insertWorkflowTemplateSchema = createInsertSchema(
 });
 
 export const insertNodeTypeSchema = createInsertSchema(nodeTypes).pick({
+  nodeId: true,
+  type: true,
+  position: true,
+  data: true,
   name: true,
   displayName: true,
   category: true,

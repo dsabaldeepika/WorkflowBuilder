@@ -1,319 +1,377 @@
-import swaggerJsdoc from 'swagger-jsdoc';
-import { version } from '../package.json';
-import { APP_CONFIG } from '../shared/config';
+import swaggerJsdoc from "swagger-jsdoc";
+import { version } from "../package.json";
+import { APP_CONFIG } from "../shared/config";
 
 /**
  * Swagger definition options
  */
 const options: swaggerJsdoc.Options = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: APP_CONFIG.name + ' API Documentation',
+      title: APP_CONFIG.name + " API Documentation",
       version,
       description: `Complete API documentation for ${APP_CONFIG.name} - ${APP_CONFIG.description}`,
       license: {
-        name: 'Private',
-        url: 'https://pumpflux.io/terms',
+        name: "Private",
+        url: "https://pumpflux.io/terms",
       },
       contact: {
-        name: 'PumpFlux Support',
-        url: 'https://pumpflux.io/support',
-        email: 'support@pumpflux.io',
+        name: "PumpFlux Support",
+        url: "https://pumpflux.io/support",
+        email: "support@pumpflux.io",
       },
     },
     servers: [
       {
-        url: '/',
-        description: 'Current server',
+        url: "/",
+        description: "Current server",
       },
     ],
     components: {
       securitySchemes: {
         cookieAuth: {
-          type: 'apiKey',
-          in: 'cookie',
-          name: 'connect.sid',
+          type: "apiKey",
+          in: "cookie",
+          name: "connect.sid",
         },
       },
       schemas: {
         Error: {
-          type: 'object',
+          type: "object",
           properties: {
             message: {
-              type: 'string',
+              type: "string",
             },
             error: {
-              type: 'string',
+              type: "string",
             },
           },
         },
         // User schema
         User: {
-          type: 'object',
+          type: "object",
           properties: {
             id: {
-              type: 'integer',
-              format: 'int64',
+              type: "integer",
+              format: "int64",
               example: 1,
             },
             email: {
-              type: 'string',
-              format: 'email',
-              example: 'user@example.com',
+              type: "string",
+              format: "email",
+              example: "user@example.com",
             },
             username: {
-              type: 'string',
-              example: 'johndoe',
+              type: "string",
+              example: "johndoe",
             },
             firstName: {
-              type: 'string',
-              example: 'John',
+              type: "string",
+              example: "John",
               nullable: true,
             },
             lastName: {
-              type: 'string',
-              example: 'Doe',
+              type: "string",
+              example: "Doe",
               nullable: true,
             },
             profileImageUrl: {
-              type: 'string',
-              format: 'uri',
+              type: "string",
+              format: "uri",
               nullable: true,
             },
             stripeCustomerId: {
-              type: 'string',
-              example: 'cus_1234567890',
+              type: "string",
+              example: "cus_1234567890",
               nullable: true,
             },
             stripeSubscriptionId: {
-              type: 'string',
-              example: 'sub_1234567890',
+              type: "string",
+              example: "sub_1234567890",
               nullable: true,
             },
             subscriptionTier: {
-              type: 'string',
-              enum: ['free', 'basic', 'professional', 'enterprise'],
-              example: 'free',
+              type: "string",
+              enum: ["free", "basic", "professional", "enterprise"],
+              example: "free",
             },
             subscriptionStatus: {
-              type: 'string',
-              enum: ['active', 'canceled', 'past_due', 'trialing', 'incomplete', 'incomplete_expired'],
-              example: 'active',
+              type: "string",
+              enum: [
+                "active",
+                "canceled",
+                "past_due",
+                "trialing",
+                "incomplete",
+                "incomplete_expired",
+              ],
+              example: "active",
               nullable: true,
             },
             subscriptionPeriodEnd: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
               nullable: true,
             },
             createdAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
             updatedAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
           },
         },
         // Workflow Template schema
         WorkflowTemplate: {
-          type: 'object',
+          type: "object",
           properties: {
             id: {
-              type: 'integer',
-              format: 'int64',
+              type: "integer",
+              format: "int64",
               example: 1,
             },
             name: {
-              type: 'string',
-              example: 'Lead Capture to CRM',
+              type: "string",
+              example: "Lead Capture to CRM",
             },
             description: {
-              type: 'string',
-              example: 'Capture leads from Facebook and add them to your CRM system',
+              type: "string",
+              example:
+                "Capture leads from Facebook and add them to your CRM system",
             },
             category: {
-              type: 'string',
-              example: 'Lead Generation',
+              type: "string",
+              example: "Lead Generation",
             },
             tags: {
-              type: 'array',
+              type: "array",
               items: {
-                type: 'string',
+                type: "string",
               },
-              example: ['facebook', 'crm', 'leads'],
+              example: ["facebook", "crm", "leads"],
             },
             complexity: {
-              type: 'string',
-              enum: ['beginner', 'intermediate', 'advanced'],
-              example: 'beginner',
+              type: "string",
+              enum: ["beginner", "intermediate", "advanced"],
+              example: "beginner",
             },
             templateData: {
-              type: 'object',
-              description: 'JSON representation of the workflow template',
+              type: "object",
+              description: "JSON representation of the workflow template",
             },
             popularity: {
-              type: 'integer',
+              type: "integer",
               example: 120,
             },
             estimatedCompletionTime: {
-              type: 'integer',
+              type: "integer",
               example: 5,
-              description: 'Estimated completion time in minutes',
+              description: "Estimated completion time in minutes",
             },
             thumbnailUrl: {
-              type: 'string',
-              format: 'uri',
+              type: "string",
+              format: "uri",
               nullable: true,
             },
             createdAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
             updatedAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
           },
         },
         // Subscription Plan schema
         SubscriptionPlan: {
-          type: 'object',
+          type: "object",
           properties: {
             id: {
-              type: 'integer',
-              format: 'int64',
+              type: "integer",
+              format: "int64",
               example: 1,
             },
             name: {
-              type: 'string',
-              example: 'Basic Plan',
+              type: "string",
+              example: "Basic Plan",
             },
             tier: {
-              type: 'string',
-              enum: ['free', 'basic', 'professional', 'enterprise'],
-              example: 'basic',
+              type: "string",
+              enum: ["free", "basic", "professional", "enterprise"],
+              example: "basic",
             },
             description: {
-              type: 'string',
-              example: 'Perfect for individuals and small teams',
+              type: "string",
+              example: "Perfect for individuals and small teams",
             },
             priceMonthly: {
-              type: 'number',
-              format: 'float',
+              type: "number",
+              format: "float",
               example: 19.99,
             },
             priceYearly: {
-              type: 'number',
-              format: 'float',
+              type: "number",
+              format: "float",
               example: 199.99,
             },
             stripePriceIdMonthly: {
-              type: 'string',
-              example: 'price_1234567890',
+              type: "string",
+              example: "price_1234567890",
             },
             stripePriceIdYearly: {
-              type: 'string',
-              example: 'price_0987654321',
+              type: "string",
+              example: "price_0987654321",
             },
             maxWorkflows: {
-              type: 'integer',
+              type: "integer",
               example: 10,
             },
             maxWorkspaces: {
-              type: 'integer',
+              type: "integer",
               example: 3,
             },
             maxExecutionsPerMonth: {
-              type: 'integer',
+              type: "integer",
               example: 1000,
             },
             maxTeamMembers: {
-              type: 'integer',
+              type: "integer",
               example: 5,
             },
             features: {
-              type: 'array',
+              type: "array",
               items: {
-                type: 'string',
+                type: "string",
               },
-              example: ['Advanced Integrations', 'Priority Support', 'Workflow Templates'],
+              example: [
+                "Advanced Integrations",
+                "Priority Support",
+                "Workflow Templates",
+              ],
             },
             isActive: {
-              type: 'boolean',
+              type: "boolean",
               example: true,
             },
             createdAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
             updatedAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
           },
         },
         // Workflow schema
         Workflow: {
-          type: 'object',
+          type: "object",
           properties: {
             id: {
-              type: 'integer',
-              format: 'int64',
+              type: "integer",
+              format: "int64",
               example: 1,
             },
             name: {
-              type: 'string',
-              example: 'Customer Onboarding',
+              type: "string",
+              example: "Customer Onboarding",
             },
             description: {
-              type: 'string',
-              example: 'Automate the customer onboarding process',
+              type: "string",
+              example: "Automate the customer onboarding process",
             },
             workflowData: {
-              type: 'object',
-              description: 'JSON representation of the workflow data including nodes and connections',
+              type: "object",
+              description:
+                "JSON representation of the workflow data including nodes and connections",
             },
             userId: {
-              type: 'integer',
-              format: 'int64',
+              type: "integer",
+              format: "int64",
               example: 1,
             },
             workspaceId: {
-              type: 'integer',
-              format: 'int64',
+              type: "integer",
+              format: "int64",
               example: 1,
               nullable: true,
             },
             status: {
-              type: 'string',
-              enum: ['draft', 'active', 'inactive', 'archived'],
-              example: 'active',
+              type: "string",
+              enum: ["draft", "active", "inactive", "archived"],
+              example: "active",
             },
             lastExecutedAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
               nullable: true,
             },
             executionCount: {
-              type: 'integer',
+              type: "integer",
               example: 42,
             },
             schedule: {
-              type: 'string',
-              example: '0 9 * * 1-5', // cron expression for weekdays at 9 AM
+              type: "string",
+              example: "0 9 * * 1-5", // cron expression for weekdays at 9 AM
               nullable: true,
             },
             createdAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
             updatedAt: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
+          },
+        },
+        // NodeType schema
+        NodeType: {
+          type: "object",
+          properties: {
+            id: { type: "integer", format: "int64", example: 1 },
+            nodeId: {
+              type: "string",
+              example: "openai-action",
+              nullable: true,
+            },
+            type: { type: "string", example: "action", nullable: true },
+            position: {
+              type: "object",
+              example: '{"x":200,"y":100}',
+              nullable: true,
+            },
+            data: {
+              type: "object",
+              description: "Full node config object",
+              nullable: true,
+            },
+            name: { type: "string", example: "openai-action" },
+            displayName: { type: "string", example: "OpenAI Action" },
+            category: { type: "string", example: "action" },
+            description: {
+              type: "string",
+              example: "Generate text using OpenAI",
+              nullable: true,
+            },
+            icon: { type: "string", example: "openai", nullable: true },
+            color: { type: "string", example: "#10a37f", nullable: true },
+            inputFields: {
+              type: "object",
+              description: "Input fields schema",
+              nullable: true,
+            },
+            outputFields: {
+              type: "object",
+              description: "Output fields schema",
+              nullable: true,
+            },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
       },
@@ -325,10 +383,136 @@ const options: swaggerJsdoc.Options = {
     ],
   },
   apis: [
-    './server/routes.ts', 
-    './server/routes/*.ts',
-    './server/routes/*-swagger.js'
+    "./server/routes.ts",
+    "./server/routes/*.ts",
+    "./server/routes/*-swagger.js",
   ], // Path to the API routes
 };
+
+/**
+ * @swagger
+ * /api/node-types:
+ *   get:
+ *     summary: Get all node types
+ *     tags: [NodeTypes]
+ *     responses:
+ *       200:
+ *         description: List of all node types
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/NodeType'
+ *   post:
+ *     summary: Create a new node type
+ *     tags: [NodeTypes]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NodeType'
+ *     responses:
+ *       201:
+ *         description: Node type created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NodeType'
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *
+ * /api/node-types/{id}:
+ *   get:
+ *     summary: Get a node type by ID
+ *     tags: [NodeTypes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Numeric ID of the node type
+ *     responses:
+ *       200:
+ *         description: Node type found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NodeType'
+ *       404:
+ *         description: Node type not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   put:
+ *     summary: Update a node type by ID
+ *     tags: [NodeTypes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Numeric ID of the node type
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NodeType'
+ *     responses:
+ *       200:
+ *         description: Node type updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NodeType'
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Node type not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Delete a node type by ID
+ *     tags: [NodeTypes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Numeric ID of the node type
+ *     responses:
+ *       200:
+ *         description: Node type deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       404:
+ *         description: Node type not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 
 export const swaggerSpec = swaggerJsdoc(options);

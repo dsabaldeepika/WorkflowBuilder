@@ -12,9 +12,7 @@ import pool from "./dbPool";
 import fs from "fs";
 import https from "https";
 import path from "path";
-import { initializeTestAuth } from "./auth/init-test-auth";
-import { initializeMockData } from './auth/init-mock-data';
-import { seedDatabase } from './db/seed';
+import { seedDatabase } from "./db/seed";
 
 // Polyfill __dirname for ESM if needed
 import { fileURLToPath } from "url";
@@ -160,8 +158,8 @@ console.log("Starting server...");
 async function initializeServer() {
   try {
     // Initialize mock data in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Running in development mode, initializing test data...');
+    if (process.env.NODE_ENV === "development") {
+      console.log("Running in development mode, initializing test data...");
       await seedDatabase();
     }
 
