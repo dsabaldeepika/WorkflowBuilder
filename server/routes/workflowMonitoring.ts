@@ -8,20 +8,49 @@ const router = express.Router();
 // Get error logs for a workflow
 router.get('/errors', async (req, res) => {
   try {
-    const { workflowId, limit = 100, timeframe = 'day' } = req.query;
+    const { workflowId, limit = 100, timeframe = 'day', category, retryable } = req.query;
     
     // If workflowId is provided, get logs for that specific workflow
     if (workflowId) {
       const logs = await WorkflowLogger.getWorkflowLogs(workflowId as string, Number(limit));
-      return res.json({ errors: logs });
+      
+      // Apply filters if provided
+      let filteredLogs = logs;
+      if (category) {
+        filteredLogs = filteredLogs.filter(log => log.category === category);
+      }
+      if (retryable !== undefined) {
+        filteredLogs = filteredLogs.filter(log => log.retryable === (retryable === 'true'));
+      }
+      
+      return res.json({ 
+        errors: filteredLogs,
+        total: logs.length,
+        filtered: filteredLogs.length
+      });
     }
     
     // Otherwise, get general error stats
     const errorStats = await WorkflowLogger.getErrorStats(timeframe as 'day' | 'week' | 'month');
-    res.json(errorStats);
+    
+    // Add error rate trend
+    const previousStats = await WorkflowLogger.getErrorStats(timeframe as 'day' | 'week' | 'month', true);
+    const trend = {
+      change: ((errorStats.totalErrors - previousStats.totalErrors) / previousStats.totalErrors) * 100,
+      direction: errorStats.totalErrors > previousStats.totalErrors ? 'up' : 'down'
+    };
+    
+    res.json({
+      ...errorStats,
+      trend,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error fetching workflow logs:', error);
-    res.status(500).json({ message: 'Failed to fetch workflow logs' });
+    res.status(500).json({ 
+      message: 'Failed to fetch workflow logs',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

@@ -8,12 +8,6 @@ import { InsertWorkflowTemplate } from "../shared/schema";
 import { getNodeConfigById } from "./seed-nodes";
 import { sql } from "drizzle-orm";
 
-const safeGet = <T, K extends keyof T>(
-  obj: T | null | undefined,
-  key: K,
-  fallback: any = {}
-) => (obj && obj[key] !== undefined ? obj[key] : fallback);
-
 const templates: InsertWorkflowTemplate[] = [
   {
     name: "Save Facebook Lead Ads to Google Sheets",
@@ -27,12 +21,21 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("facebook-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("facebook-trigger"), "data"),
+            ...(function () {
+              const nodeConfig = getNodeConfigById("facebook-trigger");
+              if (!nodeConfig)
+                throw new Error('Node config for "facebook-trigger" not found');
+              return nodeConfig.data;
+            })(),
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("facebook-trigger"), "data"),
-                "config"
-              ),
+              ...(function () {
+                const nodeConfig = getNodeConfigById("facebook-trigger");
+                if (!nodeConfig || !nodeConfig.data)
+                  throw new Error(
+                    'Node config for "facebook-trigger" not found'
+                  );
+                return nodeConfig.data.config;
+              })(),
               form_id: "${form_id}",
               include_fields: ["name", "email", "phone"],
               access_token: "${fb_access_token}",
@@ -40,6 +43,7 @@ const templates: InsertWorkflowTemplate[] = [
           },
         },
         {
+          // Safe null check for transform-data node config
           ...(function () {
             const nodeConfig = getNodeConfigById("transform-data");
             if (!nodeConfig)
@@ -48,9 +52,11 @@ const templates: InsertWorkflowTemplate[] = [
               ...nodeConfig,
               position: { x: 400, y: 100 },
               data: {
-                ...safeGet(nodeConfig, "data"),
+                ...nodeConfig.data,
                 config: {
-                  ...safeGet(safeGet(nodeConfig, "data"), "config"),
+                  ...(nodeConfig.data && nodeConfig.data.config
+                    ? nodeConfig.data.config
+                    : {}),
                   mapping: {
                     "Lead Name": "{{lead.name}}",
                     Email: "{{lead.email}}",
@@ -69,12 +75,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("sheets-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("sheets-action"), "data"),
+            ...getNodeConfigById("sheets-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("sheets-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("sheets-action").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -106,12 +109,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("facebook-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("facebook-trigger"), "data"),
+            ...getNodeConfigById("facebook-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("facebook-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("facebook-trigger").data.config,
               form_id: "${form_id}",
               include_fields: ["name", "email", "phone"],
               access_token: "${fb_access_token}",
@@ -122,12 +122,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-email"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-email"), "data"),
+            ...getNodeConfigById("prepare-email").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-email"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-email").data.config,
               template: {
                 subject: "Welcome to ${company_name}!",
                 body: "Hi {{lead.name}},\n\nThank you for your interest in our products/services. We received your information and will contact you shortly.\n\nBest regards,\n${company_name}",
@@ -140,12 +137,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("gmail-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("gmail-action"), "data"),
+            ...getNodeConfigById("gmail-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("gmail-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("gmail-action").data.config,
               client_id: "${gmail_client_id}",
               client_secret: "${gmail_client_secret}",
               refresh_token: "${gmail_refresh_token}",
@@ -184,12 +178,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("facebook-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("facebook-trigger"), "data"),
+            ...getNodeConfigById("facebook-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("facebook-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("facebook-trigger").data.config,
               form_id: "${form_id}",
               include_fields: ["name", "email", "phone"],
               access_token: "${fb_access_token}",
@@ -200,12 +191,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("format-message"), "data"),
+            ...getNodeConfigById("format-message").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("format-message"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("format-message").data.config,
               template: {
                 blocks: [
                   {
@@ -224,12 +212,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("slack-action"), "data"),
+            ...getNodeConfigById("slack-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("slack-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
               message_type: "text",
@@ -259,12 +244,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("sheets-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("sheets-trigger"), "data"),
+            ...getNodeConfigById("sheets-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("sheets-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("sheets-trigger").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -276,12 +258,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-prompt"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-prompt"), "data"),
+            ...getNodeConfigById("prepare-prompt").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-prompt"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-prompt").data.config,
               template: {
                 prompt:
                   "Generate a personalized sales email for {{row.name}} from {{row.company}} interested in {{row.interests}} with a budget of {{row.budget}}. Focus on the benefits of our product for their needs.",
@@ -295,12 +274,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("openai-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("openai-action"), "data"),
+            ...getNodeConfigById("openai-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("openai-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("openai-action").data.config,
               api_key: "${openai_api_key}",
               model: "gpt-3.5-turbo",
               prompt: "{{template.prompt}}",
@@ -313,12 +289,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("update-sheet"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("update-sheet"), "data"),
+            ...getNodeConfigById("update-sheet").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("update-sheet"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("update-sheet").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -350,12 +323,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("sheets-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("sheets-trigger"), "data"),
+            ...getNodeConfigById("sheets-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("sheets-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("sheets-trigger").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -367,12 +337,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-prompt"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-prompt"), "data"),
+            ...getNodeConfigById("prepare-prompt").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-prompt"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-prompt").data.config,
               template: {
                 prompt:
                   "${prompt_template}\n\nCustomer data:\nName: {{row.name}}\nProduct interest: {{row.product}}\nPain points: {{row.pain_points}}\nBudget: {{row.budget}}",
@@ -384,12 +351,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("claude-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("claude-action"), "data"),
+            ...getNodeConfigById("claude-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("claude-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("claude-action").data.config,
               api_key: "${claude_api_key}",
               model: "claude-3-opus-20240229",
               max_tokens: 500,
@@ -401,12 +365,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("update-sheet"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("update-sheet"), "data"),
+            ...getNodeConfigById("update-sheet").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("update-sheet"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("update-sheet").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -438,12 +399,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("manual-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("manual-trigger"), "data"),
+            ...getNodeConfigById("manual-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("manual-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("manual-trigger").data.config,
               input_fields: [
                 { name: "website_url", type: "string", label: "Website URL" },
                 {
@@ -459,12 +417,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("fetch-website"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("fetch-website"), "data"),
+            ...getNodeConfigById("fetch-website").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("fetch-website"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("fetch-website").data.config,
               url: "{{trigger.website_url}}",
               response_type: "text",
             },
@@ -474,12 +429,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-prompt"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-prompt"), "data"),
+            ...getNodeConfigById("prepare-prompt").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-prompt"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-prompt").data.config,
               template: {
                 prompt:
                   "Extract the following data points from this website content in JSON format: {{trigger.data_points}}\n\nWebsite content:\n{{http.response}}\n\nRespond with a valid JSON object containing the extracted data.",
@@ -491,12 +443,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("claude-action"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("claude-action"), "data"),
+            ...getNodeConfigById("claude-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("claude-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("claude-action").data.config,
               api_key: "${claude_api_key}",
               model: "claude-3-opus-20240229",
               max_tokens: 1000,
@@ -509,12 +458,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("parse-json"),
           position: { x: 1300, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("parse-json"), "data"),
+            ...getNodeConfigById("parse-json").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("parse-json"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("parse-json").data.config,
               operation: "parse_json",
               input: "{{claude.response}}",
             },
@@ -524,12 +470,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("sheets-action"),
           position: { x: 1600, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("sheets-action"), "data"),
+            ...getNodeConfigById("sheets-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("sheets-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("sheets-action").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -563,12 +506,21 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("hubspot-trigger"), "data"),
+            ...(function () {
+              const nodeConfig = getNodeConfigById("hubspot-trigger");
+              if (!nodeConfig)
+                throw new Error('Node config for "hubspot-trigger" not found');
+              return nodeConfig.data;
+            })(),
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("hubspot-trigger"), "data"),
-                "config"
-              ),
+              ...(function () {
+                const nodeConfig = getNodeConfigById("hubspot-trigger");
+                if (!nodeConfig || !nodeConfig.data)
+                  throw new Error(
+                    'Node config for "hubspot-trigger" not found'
+                  );
+                return nodeConfig.data.config;
+              })(),
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               include_properties: ["dealname", "amount", "pipeline"],
@@ -579,12 +531,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("format-message"), "data"),
+            ...getNodeConfigById("format-message").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("format-message"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("format-message").data.config,
               template: {
                 blocks: [
                   {
@@ -603,12 +552,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("slack-action"), "data"),
+            ...getNodeConfigById("slack-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("slack-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
               message_type: "text",
@@ -638,12 +584,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("hubspot-trigger"), "data"),
+            ...getNodeConfigById("hubspot-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("hubspot-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("hubspot-trigger").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               form_id: "${form_id}",
@@ -654,12 +597,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("format-message"), "data"),
+            ...getNodeConfigById("format-message").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("format-message"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("format-message").data.config,
               template:
                 ":clipboard: *New HubSpot Form Submission!*\n>Form: ${form_name}\n>Name: {{submission.name}}\n>Email: {{submission.email}}\n>Company: {{submission.company}}\n>Message: {{submission.message}}",
             },
@@ -669,12 +609,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("slack-action"), "data"),
+            ...getNodeConfigById("slack-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("slack-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
               message_type: "text",
@@ -704,12 +641,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("hubspot-trigger"), "data"),
+            ...getNodeConfigById("hubspot-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("hubspot-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("hubspot-trigger").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               include_properties: [
@@ -726,12 +660,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-task"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-task"), "data"),
+            ...getNodeConfigById("prepare-task").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-task"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-task").data.config,
               template: {
                 title:
                   "Follow up with new contact: {{contact.firstname}} {{contact.lastname}}",
@@ -747,12 +678,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("clickup-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("clickup-action"), "data"),
+            ...getNodeConfigById("clickup-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("clickup-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("clickup-action").data.config,
               api_key: "${clickup_api_key}",
               list_id: "${clickup_list_id}",
               name: "{{template.title}}",
@@ -783,12 +711,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("airtable-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("airtable-trigger"), "data"),
+            ...getNodeConfigById("airtable-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("airtable-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("airtable-trigger").data.config,
               api_key: "${airtable_api_key}",
               base_id: "${airtable_base_id}",
               table_id: "${airtable_table_id}",
@@ -799,12 +724,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("search-hubspot"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("search-hubspot"), "data"),
+            ...getNodeConfigById("search-hubspot").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("search-hubspot"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("search-hubspot").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               email: "{{record.email}}",
@@ -815,12 +737,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-data"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-data"), "data"),
+            ...getNodeConfigById("prepare-data").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-data"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-data").data.config,
               mapping: {
                 firstname: "{{record.name}}",
                 company: "{{record.company}}",
@@ -835,12 +754,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("hubspot-action"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("hubspot-action"), "data"),
+            ...getNodeConfigById("hubspot-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("hubspot-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("hubspot-action").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               contact_id: "{{search.contact_id}}",
@@ -878,12 +794,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("hubspot-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("hubspot-trigger"), "data"),
+            ...getNodeConfigById("hubspot-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("hubspot-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("hubspot-trigger").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               target_stage: "${deal_stage}",
@@ -903,12 +816,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("get-deal-data"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("get-deal-data"), "data"),
+            ...getNodeConfigById("get-deal-data").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("get-deal-data"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("get-deal-data").data.config,
               api_key: "${hubspot_api_key}",
               portal_id: "${portal_id}",
               deal_id: "{{trigger.deal_id}}",
@@ -929,12 +839,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("create-document"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("create-document"), "data"),
+            ...getNodeConfigById("create-document").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("create-document"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("create-document").data.config,
               api_key: "${pandadoc_api_key}",
               template_id: "${template_id}",
               name: "{{deal.dealname}} - Proposal",
@@ -977,12 +884,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("pipedrive-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("pipedrive-trigger"), "data"),
+            ...getNodeConfigById("pipedrive-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("pipedrive-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("pipedrive-trigger").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               types: "${activity_types}",
@@ -993,12 +897,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("format-message"), "data"),
+            ...getNodeConfigById("format-message").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("format-message"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("format-message").data.config,
               template:
                 ":calendar: *New Pipedrive Activity*\n>Type: {{activity.type}}\n>Title: {{activity.title}}\n>Due Date: {{formatDate activity.due_date}}\n>Deal: {{activity.deal_title}}\n>Person: {{activity.person_name}}\n>Organization: {{activity.org_name}}\n>Assigned to: {{activity.assigned_to_user_name}}",
             },
@@ -1008,12 +909,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("slack-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("slack-action"), "data"),
-            config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("slack-action"), "data"),
-                "config"
-              ),
+            ...getNodeConfigById("slack-action").data,
+            config: { 
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "${channel_id}",
               bot_token: "${slack_bot_token}",
               message_type: "text",
@@ -1043,12 +941,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("pipedrive-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("pipedrive-trigger"), "data"),
+            ...getNodeConfigById("pipedrive-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("pipedrive-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("pipedrive-trigger").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
             },
@@ -1058,12 +953,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("transform-data"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("transform-data"), "data"),
+            ...getNodeConfigById("transform-data").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("transform-data"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("transform-data").data.config,
               mapping: {
                 "Deal Title": "{{deal.title}}",
                 Value: "{{deal.value}}",
@@ -1082,12 +974,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("sheets-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("sheets-action"), "data"),
+            ...getNodeConfigById("sheets-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("sheets-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("sheets-action").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -1118,12 +1007,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("forms-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("forms-trigger"), "data"),
+            ...getNodeConfigById("forms-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("forms-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("forms-trigger").data.config,
               form_id: "${form_id}",
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
@@ -1134,12 +1020,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("search-person"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("search-person"), "data"),
+            ...getNodeConfigById("search-person").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("search-person"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("search-person").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               email: "{{response.email}}",
@@ -1150,12 +1033,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("create-person"),
           position: { x: 700, y: 50 },
           data: {
-            ...safeGet(getNodeConfigById("create-person"), "data"),
+            ...getNodeConfigById("create-person").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("create-person"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("create-person").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               name: "{{response.name}}",
@@ -1166,12 +1046,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-deal"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-deal"), "data"),
+            ...getNodeConfigById("prepare-deal").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-deal"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-deal").data.config,
               template: {
                 deal_title:
                   "${deal_title_prefix} - {{response.product_interest}}",
@@ -1185,12 +1062,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("create-deal"),
           position: { x: 1300, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("create-deal"), "data"),
+            ...getNodeConfigById("create-deal").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("create-deal"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("create-deal").data.config,
               api_key: "${pipedrive_api_key}",
               domain: "${pipedrive_domain}",
               stage_id: "${stage_id}",
@@ -1229,12 +1103,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("sheets-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("sheets-trigger"), "data"),
+            ...getNodeConfigById("sheets-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("sheets-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("sheets-trigger").data.config,
               spreadsheet_id: "${spreadsheet_id}",
               sheet_name: "${sheet_name}",
               range: "A1:Z1000",
@@ -1246,12 +1117,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-subscriber"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-subscriber"), "data"),
+            ...getNodeConfigById("prepare-subscriber").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-subscriber"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-subscriber").data.config,
               mapping: {
                 email_address: "{{row.email}}",
                 status: "subscribed",
@@ -1269,12 +1137,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("mailchimp-action"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("mailchimp-action"), "data"),
+            ...getNodeConfigById("mailchimp-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("mailchimp-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("mailchimp-action").data.config,
               api_key: "${mailchimp_api_key}",
               server: "${mailchimp_server}",
               list_id: "${mailchimp_list_id}",
@@ -1310,12 +1175,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("salesforce-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("salesforce-trigger"), "data"),
+            ...getNodeConfigById("salesforce-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("salesforce-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("salesforce-trigger").data.config,
               instance_url: "${salesforce_instance_url}",
               access_token: "${salesforce_access_token}",
               refresh_token: "${salesforce_refresh_token}",
@@ -1326,12 +1188,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-card"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-card"), "data"),
+            ...getNodeConfigById("prepare-card").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-card"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-card").data.config,
               template: {
                 name_template: "{{task.subject}}",
                 description_template:
@@ -1344,12 +1203,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("set-due-date"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("set-due-date"), "data"),
+            ...getNodeConfigById("set-due-date").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("set-due-date"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("set-due-date").data.config,
               mapping: {
                 due_date: "{{task.due_date}}",
               },
@@ -1360,12 +1216,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("trello-action"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("trello-action"), "data"),
+            ...getNodeConfigById("trello-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("trello-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("trello-action").data.config,
               board_id: "${board_id}",
               list_id: "${list_id}",
               api_key: "${trello_api_key}",
@@ -1400,12 +1253,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("salesforce-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("salesforce-trigger"), "data"),
+            ...getNodeConfigById("salesforce-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("salesforce-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("salesforce-trigger").data.config,
               instance_url: "${salesforce_instance_url}",
               access_token: "${salesforce_access_token}",
               refresh_token: "${salesforce_refresh_token}",
@@ -1416,12 +1266,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("prepare-task"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("prepare-task"), "data"),
+            ...getNodeConfigById("prepare-task").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("prepare-task"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("prepare-task").data.config,
               template: {
                 title_template:
                   "Follow up on opportunity: {{opportunity.name}}",
@@ -1435,12 +1282,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("set-due-date"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("set-due-date"), "data"),
+            ...getNodeConfigById("set-due-date").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("set-due-date"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("set-due-date").data.config,
               mapping: {
                 due_date: "{{addDays today ${follow_up_days}}}",
               },
@@ -1451,12 +1295,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("clickup-action"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("clickup-action"), "data"),
+            ...getNodeConfigById("clickup-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("clickup-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("clickup-action").data.config,
               api_key: "${clickup_api_key}",
               list_id: "${clickup_list_id}",
               name: "{{template.title_template}}",
@@ -1489,12 +1330,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("salesforce-trigger"),
           position: { x: 100, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("salesforce-trigger"), "data"),
+            ...getNodeConfigById("salesforce-trigger").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("salesforce-trigger"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("salesforce-trigger").data.config,
               instance_url: "${salesforce_instance_url}",
               access_token: "${salesforce_access_token}",
               refresh_token: "${salesforce_refresh_token}",
@@ -1506,12 +1344,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("format-message"),
           position: { x: 400, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("format-message"), "data"),
+            ...getNodeConfigById("format-message").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("format-message"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("format-message").data.config,
               template:
                 "{{#if (eq opportunity.stage 'Closed Won')}}\n:tada: *Opportunity Won!*\n{{else}}\n:disappointed: *Opportunity Lost*\n{{/if}}\n\n>Name: {{opportunity.name}}\n>Account: {{opportunity.account_name}}\n>Amount: {{formatCurrency opportunity.amount}}\n>Close Date: {{formatDate opportunity.close_date}}\n>Owner: {{opportunity.owner_name}}\n{{#if opportunity.description}}\n>Notes: {{opportunity.description}}\n{{/if}}",
             },
@@ -1521,12 +1356,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("determine-channel"),
           position: { x: 700, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("determine-channel"), "data"),
+            ...getNodeConfigById("determine-channel").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("determine-channel"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("determine-channel").data.config,
               if: "{{eq opportunity.stage 'Closed Won'}}",
               then: {
                 channel: "${won_channel_id}",
@@ -1543,12 +1375,9 @@ const templates: InsertWorkflowTemplate[] = [
           ...getNodeConfigById("slack-action"),
           position: { x: 1000, y: 100 },
           data: {
-            ...safeGet(getNodeConfigById("slack-action"), "data"),
+            ...getNodeConfigById("slack-action").data,
             config: {
-              ...safeGet(
-                safeGet(getNodeConfigById("slack-action"), "data"),
-                "config"
-              ),
+              ...getNodeConfigById("slack-action").data.config,
               channel_id: "{{logic.channel}}",
               bot_token: "${slack_bot_token}",
               message_type: "text",

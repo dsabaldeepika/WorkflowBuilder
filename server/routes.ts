@@ -17,13 +17,13 @@ import contactRoutes from "./routes/contactRoutes";
 import demoRequestRoutes from "./routes/demoRequestRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import templateRoutes from "./routes/templateRoutes";
+import messagingRoutes from "./routes/messagingRoutes";
+import messageRoutes from "./routes/messageRoutes";
+import webhookRoutes from "./routes/webhookRoutes";
 import facebookRoutes from "./auth/facebook.routes";
 import googleRoutes from "./auth/google.routes";
 import authRoutes from "./auth/auth.routes";
 import nodeTypeRouter from "./routes/nodeType";
-// import { setupAuth, isAuthenticated } from "./replitAuth";
-// Authentication bypass instead of Replit Auth
-// import { pool } from "./db"; // REMOVE: not used and not exported
 import { swaggerSpec } from "./swagger";
 import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
 import path from "path";
@@ -114,6 +114,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", demoRequestRoutes); // Demo scheduling requests
   app.use("/api/subscriptions", subscriptionRoutes); // Subscription and billing management
   app.use("/api", templateRoutes); // Workflow template gallery and categories
+  app.use("/api/messaging", messagingRoutes); // Messaging platform integrations
+  app.use("/api/messages", messageRoutes); // Message handling and tracking
+  app.use("/api/webhooks", webhookRoutes); // Webhook event handling
   app.use("/api/auth", facebookRoutes);
   app.use("/api/auth", googleRoutes);
   app.use("/api/auth", authRoutes);
@@ -582,6 +585,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       500:
    *         description: Server error
    */
+  /**
+   * @swagger
+   * /api/monitoring/errors:
+   *   get:
+   *     summary: Get workflow error statistics
+   *     description: Retrieve error statistics and trends for workflows
+   *     tags: [Monitoring]
+   *     parameters:
+   *       - in: query
+   *         name: timeframe
+   *         schema:
+   *           type: string
+   *           enum: [day, week, month]
+   *         description: Time period for error statistics
+   *       - in: query
+   *         name: workflowId
+   *         schema:
+   *           type: integer
+   *         description: Optional workflow ID to filter errors
+   *     responses:
+   *       200:
+   *         description: Error statistics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 totalErrors:
+   *                   type: integer
+   *                 errorCategories:
+   *                   type: object
+   *                   additionalProperties:
+   *                     type: integer
+   *                 retryableErrors:
+   *                   type: integer
+   *                 trend:
+   *                   type: object
+   *                   properties:
+   *                     change:
+   *                       type: number
+   *                     direction:
+   *                       type: string
+   *                       enum: [up, down]
+   *       500:
+   *         description: Server error
+   */
+
+  /**
+   * @swagger
+   * /api/monitoring/workflow/{id}/health:
+   *   get:
+   *     summary: Get workflow health metrics
+   *     description: Retrieve detailed health metrics for a specific workflow
+   *     tags: [Monitoring]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Workflow ID
+   *     responses:
+   *       200:
+   *         description: Health metrics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status:
+   *                   type: string
+   *                   enum: [healthy, degraded, error]
+   *                 successRate:
+   *                   type: number
+   *                 avgExecutionTime:
+   *                   type: number
+   *                 errorRate:
+   *                   type: number
+   *                 nodeHealth:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       nodeId:
+   *                         type: string
+   *                       status:
+   *                         type: string
+   *                       successRate:
+   *                         type: number
+   *                       errorCount:
+   *                         type: integer
+   *       404:
+   *         description: Workflow not found
+   *       500:
+   *         description: Server error
+   */
+
+  /**
+   * @swagger
+   * /api/workflows/{id}/retry:
+   *   post:
+   *     summary: Retry a failed workflow execution
+   *     description: Attempt to retry a failed workflow execution with configurable options
+   *     tags: [Workflows]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Workflow execution ID
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               retryConfig:
+   *                 type: object
+   *                 properties:
+   *                   maxAttempts:
+   *                     type: integer
+   *                   backoffMultiplier:
+   *                     type: number
+   *                   initialDelay:
+   *                     type: integer
+   *               fromNodeId:
+   *                 type: string
+   *                 description: Optional node ID to retry from
+   *     responses:
+   *       200:
+   *         description: Retry initiated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 executionId:
+   *                   type: string
+   *                 status:
+   *                   type: string
+   *                   enum: [pending, running]
+   *       404:
+   *         description: Workflow execution not found
+   *       500:
+   *         description: Server error
+   */
+
   app.get("/api/workflows/:id/optimization-suggestions", async (req, res) => {
     try {
       const workflowId = parseInt(req.params.id);

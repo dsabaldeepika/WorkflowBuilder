@@ -133,8 +133,9 @@ interface RetryOperationOptions<T> {
   context: WorkflowLogContext;
   category?: keyof typeof ERROR_CATEGORIES;
   retryConfig?: Partial<RetryConfig>;
-  onBeforeRetry?: (error: Error, attempt: number, backoffTime: number) => Promise<void> | void;
-  onFinalFailure?: (error: Error, attempts: number) => Promise<void> | void;
+  onBeforeRetry?: (error: Error, attempts: number, backoffTime: number) => Promise<void>;
+  onFinalFailure?: (error: Error, attempts: number) => Promise<void>;
+  errorClassifier?: (error: Error) => keyof typeof ERROR_CATEGORIES | null;
 }
 
 /**
@@ -156,7 +157,8 @@ class RetryManager {
     category = 'UNKNOWN',
     retryConfig = {},
     onBeforeRetry,
-    onFinalFailure
+    onFinalFailure,
+    errorClassifier
   }: RetryOperationOptions<T>): Promise<T> {
     // Merge configurations
     const config = { ...this.config, ...retryConfig };
@@ -165,30 +167,36 @@ class RetryManager {
     
     while (true) {
       try {
-        // Attempt the operation
+        attempts++;
         return await operation();
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         lastError = error;
-        attempts++;
+        
+        // Try to classify the error if a classifier is provided
+        if (errorClassifier) {
+          const classifiedCategory = errorClassifier(error);
+          if (classifiedCategory) {
+            category = classifiedCategory;
+          }
+        }
         
         // Determine if we should retry
         const shouldRetry = shouldRetryError(error, category, attempts, config);
         const backoffTime = calculateBackoffTime(attempts, config);
         
-        // Log the error
-        WorkflowLogger.logError({
+        // Log the error with enhanced context
+        await WorkflowLogger.logError({
           error,
           category,
           context: {
             ...context,
-            attempt: attempts
+            attempt: attempts,
+            nextRetryIn: shouldRetry ? backoffTime : undefined
           },
           retryable: shouldRetry,
           retryIn: shouldRetry ? backoffTime : 0,
-          suggestion: shouldRetry 
-            ? `Will retry in ${Math.round(backoffTime / 1000)} seconds (attempt ${attempts}/${config.maxRetries})`
-            : `Operation failed after ${attempts} attempts, no further retries.`
+          suggestion: this.generateErrorSuggestion(error, category, attempts, shouldRetry)
         });
         
         // If we should retry, wait and try again
@@ -207,9 +215,29 @@ class RetryManager {
           await onFinalFailure(error, attempts);
         }
         
-        throw error; // Re-throw the last error
+        // Enhance error message with context before throwing
+        error.message = `[${category}] ${error.message} (after ${attempts} attempts)`;
+        throw error;
       }
     }
+  }
+  
+  /**
+   * Generate a helpful suggestion for resolving the error
+   */
+  private generateErrorSuggestion(
+    error: Error, 
+    category: keyof typeof ERROR_CATEGORIES,
+    attempts: number,
+    canRetry: boolean
+  ): string {
+    const baseMessage = RetryManager.generateErrorMessage(error, category, attempts);
+    
+    if (!canRetry) {
+      return `${baseMessage} This error cannot be retried automatically. Please check your configuration and try manually.`;
+    }
+    
+    return baseMessage;
   }
   
   /**

@@ -405,13 +405,13 @@ export default function WorkflowMonitoring({ className = '' }: WorkflowMonitorin
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredErrorLogs.length > 0 ? (
+              <div className="space-y-4">                {filteredErrorLogs.length > 0 ? (
                   filteredErrorLogs.map(log => (
-                    <div key={log.id} className={`border rounded-md p-4 ${categoryColors[log.category]?.border}`}>
+                  <div key={log.id} className={`border rounded-md p-4 ${categoryColors[log.category]?.border}`}>
                       <div className="flex items-start gap-3">
                         <div className={`p-2 rounded-md ${categoryColors[log.category]?.bg}`}>
                           <AlertCircle className={`h-5 w-5 ${categoryColors[log.category]?.text}`} />
+                          {log.retryable && <Badge className="mt-2 bg-green-100 text-green-800">Retryable</Badge>}
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between flex-wrap">

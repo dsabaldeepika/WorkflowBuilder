@@ -1,6 +1,5 @@
 import { db } from "../server/db";
 import { sql } from "drizzle-orm";
-// Drizzle ORM does not have a TypeScript schema for home_stats, so use raw SQL for inserts
 
 async function main() {
   // Drop and recreate the home_stats table
@@ -40,12 +39,14 @@ async function main() {
     },
   ];
 
-  // Insert seed data using raw SQL for type safety
+  // Insert seed data (idempotent, type-safe, null-safe)
   for (const stat of homeStats) {
-    await db.execute(sql`
-      INSERT INTO home_stats (id, label, value, icon)
-      VALUES (${stat.id}, ${stat.label}, ${stat.value ?? 0}, ${stat.icon ?? ''})
-    `);
+    await db.insertInto('home_stats').values({
+      id: stat.id,
+      label: stat.label,
+      value: stat.value ?? 0,
+      icon: stat.icon ?? '',
+    }).onConflictDoNothing();
   }
 
   console.log("Seeded home_stats table.");

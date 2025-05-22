@@ -1,6 +1,11 @@
 import { WorkflowLogger, type WorkflowLogContext } from './workflowLogger';
 import { RetryManager, type RetryConfig } from './retryManager';
 import { v4 as uuidv4 } from 'uuid';
+import { ERROR_CATEGORIES, type ExecutionContext, type ExecutionResult, type TaskResult } from '../types/workflow';
+import { EventEmitter } from 'events';
+
+// Generate a unique execution ID
+const generateExecutionId = () => uuidv4();
 
 /**
  * Interface for workflow task
@@ -40,16 +45,17 @@ interface WorkflowDefinition {
 }
 
 /**
- * Interface for task execution result
+ * Interface for workflow execution
  */
-interface TaskResult {
-  taskId: string;
-  success: boolean;
+interface WorkflowExecution {
+  id: string;
+  workflowId: string;
+  status: WorkflowExecutionStatus;
   startTime: Date;
-  endTime: Date;
-  output?: any;
-  error?: Error;
-  attempts?: number;
+  endTime?: Date;
+  taskResults: Record<string, TaskResult>;
+  variables: Record<string, any>;
+  context: WorkflowLogContext;
 }
 
 /**
@@ -62,20 +68,6 @@ enum WorkflowExecutionStatus {
   COMPLETED = 'completed',
   FAILED = 'failed',
   CANCELLED = 'cancelled'
-}
-
-/**
- * Interface for workflow execution
- */
-interface WorkflowExecution {
-  id: string;
-  workflowId: string;
-  status: WorkflowExecutionStatus;
-  startTime: Date;
-  endTime?: Date;
-  taskResults: Record<string, TaskResult>;
-  variables: Record<string, any>;
-  context: WorkflowLogContext;
 }
 
 /**
@@ -115,308 +107,378 @@ const mockAppConnectors: Record<string, any> = {
 /**
  * WorkflowExecutor class to execute workflow definitions with error handling and retries
  */
-class WorkflowExecutor {
+class WorkflowExecutor extends EventEmitter {
   private retryManager: RetryManager;
-  
-  constructor(customRetryConfig?: Partial<RetryConfig>) {
-    this.retryManager = new RetryManager(customRetryConfig);
+  private activeExecutions: Map<string, {
+    startTime: Date;
+    metrics: {
+      taskDurations: Record<string, number>;
+      retryAttempts: Record<string, number>;
+      errorCounts: Record<string, number>;
+    };
+  }>;
+
+  constructor() {
+    super();
+    this.retryManager = new RetryManager({
+      maxRetries: 3,
+      initialBackoff: 1000,
+      maxBackoff: 30000,
+      retryableCategories: [
+        'CONNECTION',
+        'TIMEOUT',
+        'RATE_LIMIT'
+      ]
+    });
+    this.activeExecutions = new Map();
   }
-  
+
   /**
-   * Execute a workflow definition
+   * Execute a workflow with error handling and monitoring
    */
-  async executeWorkflow(workflow: WorkflowDefinition, initialVariables: Record<string, any> = {}): Promise<WorkflowExecution> {
-    const executionId = uuidv4();
-    const startTime = new Date();
-    
-    // Setup execution context
-    const execution: WorkflowExecution = {
-      id: executionId,
+  async executeWorkflow(workflow: WorkflowDefinition, context: ExecutionContext): Promise<ExecutionResult> {
+    const executionId = generateExecutionId();
+    const workflowContext: WorkflowLogContext = {
       workflowId: workflow.id,
-      status: WorkflowExecutionStatus.RUNNING,
-      startTime,
-      taskResults: {},
-      variables: { ...initialVariables },
-      context: {
-        workflowId: workflow.id,
+      executionId,
+      userId: context.userId
+    };
+
+    // Initialize execution metrics
+    this.activeExecutions.set(executionId, {
+      startTime: new Date(),
+      metrics: {
+        taskDurations: {},
+        retryAttempts: {},
+        errorCounts: {}
+      }
+    });
+
+    try {
+      // Start execution monitoring
+      await this.startExecutionMonitoring(workflow, executionId);
+
+      // Execute each task with retries and monitoring
+      const taskResults: Record<string, TaskResult> = {};
+      
+      for (const task of workflow.tasks) {
+        const taskStartTime = new Date();
+        try {
+          await this.executeTaskWithRetries(task, workflow, executionId, context);
+          
+          const taskDuration = new Date().getTime() - taskStartTime.getTime();
+          this.updateMetrics(executionId, task.id, 'duration', taskDuration);
+          
+          taskResults[task.id] = {
+            taskId: task.id,
+            status: 'completed',
+            startTime: taskStartTime.toISOString(),
+            endTime: new Date().toISOString(),
+            metrics: {
+              duration: taskDuration,
+              retryAttempts: this.getMetric(executionId, task.id, 'retryAttempts')
+            }
+          };
+        } catch (error) {
+          const taskError = error instanceof Error ? error : new Error('Unknown error');
+          const errorCategory = this.classifyError(taskError);
+          
+          this.updateMetrics(executionId, task.id, 'error', errorCategory);
+          
+          // Handle task failure based on workflow configuration
+          if (workflow.errorHandling?.continueOnError) {
+            taskResults[task.id] = {
+              taskId: task.id,
+              status: 'failed',
+              startTime: taskStartTime.toISOString(),
+              endTime: new Date().toISOString(),
+              error: {
+                message: taskError.message,
+                category: errorCategory,
+                retryable: this.isRetryableError(taskError),
+                attemptCount: this.getMetric(executionId, task.id, 'retryAttempts')
+              }
+            };
+            continue;
+          }
+          
+          throw error; // Re-throw to fail the workflow if continueOnError is false
+        }
+      }
+
+      // Log successful completion with metrics
+      const executionData = this.activeExecutions.get(executionId);
+      const totalDuration = executionData ? new Date().getTime() - executionData.startTime.getTime() : 0;
+
+      WorkflowLogger.logInfo({
+        message: 'Workflow completed successfully',
+        context: {
+          ...workflowContext,
+          metrics: {
+            duration: totalDuration,
+            taskResults: Object.keys(taskResults).length
+          }
+        }
+      });
+
+      const result: ExecutionResult = {
         executionId,
-        userId: workflow.createdBy
-      }
-    };
-    
-    try {
-      // Log workflow execution start
-      WorkflowLogger.logInfo({
-        message: `Starting workflow execution: ${workflow.name}`,
-        context: execution.context,
-        data: { 
-          tasks: workflow.tasks.length,
-          initialVariables: Object.keys(initialVariables)
+        status: 'completed',
+        startTime: context.startTime,
+        endTime: new Date().toISOString(),
+        taskResults,
+        metrics: {
+          totalDuration,
+          taskDurations: executionData?.metrics.taskDurations || {},
+          retryAttempts: executionData?.metrics.retryAttempts || {},
+          errorCounts: executionData?.metrics.errorCounts || {}
         }
-      });
-      
-      // Build dependency graph to find tasks that can run
-      const taskDependencies = this.buildDependencyGraph(workflow.tasks);
-      const completedTasks = new Set<string>();
-      const failedTasks = new Set<string>();
-      
-      // Keep processing until all tasks are complete or we can't proceed
-      while (completedTasks.size < workflow.tasks.length) {
-        const executableTasks = workflow.tasks.filter(task => {
-          // Skip completed and failed tasks
-          if (completedTasks.has(task.id) || failedTasks.has(task.id)) {
-            return false;
-          }
-          
-          // Check if all dependencies are complete
-          const dependencies = taskDependencies[task.id] || [];
-          return dependencies.every(depId => completedTasks.has(depId));
-        });
-        
-        // If no tasks can be executed, we're either done or blocked
-        if (executableTasks.length === 0) {
-          // Check if we have any tasks left that haven't been processed
-          const remainingTasks = workflow.tasks.filter(task => 
-            !completedTasks.has(task.id) && !failedTasks.has(task.id)
-          );
-          
-          if (remainingTasks.length > 0) {
-            // Blocked by failed dependency
-            throw new Error('Workflow execution blocked due to failed task dependencies');
-          }
-          
-          break; // All tasks processed
-        }
-        
-        // Execute tasks in parallel where possible
-        // For demonstration, we'll keep it simple and execute one by one
-        for (const task of executableTasks) {
-          try {
-            const result = await this.executeTask(task, execution, workflow);
-            execution.taskResults[task.id] = result;
-            
-            if (result.success) {
-              completedTasks.add(task.id);
-              
-              // Update variables with task output
-              if (result.output) {
-                execution.variables[`tasks.${task.id}.output`] = result.output;
-              }
-            } else {
-              failedTasks.add(task.id);
-              
-              // Check if we should continue on error
-              if (!workflow.errorHandling?.continueOnError) {
-                throw new Error(`Task ${task.name} failed and continueOnError is false`);
-              }
-            }
-          } catch (error) {
-            failedTasks.add(task.id);
-            
-            // Check if we should continue on error
-            if (!workflow.errorHandling?.continueOnError) {
-              throw error;
-            }
-          }
-        }
-      }
-      
-      // Check if all tasks completed successfully
-      const allTasksSuccessful = workflow.tasks.every(task => 
-        completedTasks.has(task.id)
-      );
-      
-      execution.status = allTasksSuccessful 
-        ? WorkflowExecutionStatus.COMPLETED 
-        : WorkflowExecutionStatus.FAILED;
-      
+      };
+
+      this.emit('workflowCompleted', result);
+      return result;
+
     } catch (error) {
-      execution.status = WorkflowExecutionStatus.FAILED;
-      
+      const errorInstance = error instanceof Error ? error : new Error('Unknown error');
+      const errorCategory = this.classifyError(errorInstance);
+
+      // Log workflow failure with detailed context
       WorkflowLogger.logError({
-        error: error as Error,
-        category: 'SYSTEM',
-        context: execution.context,
-        suggestion: 'Check workflow configuration and task dependencies'
-      });
-    } finally {
-      execution.endTime = new Date();
-      
-      // Log workflow execution end
-      WorkflowLogger.logInfo({
-        message: `Workflow execution ${execution.status}: ${workflow.name}`,
-        context: execution.context,
-        data: { 
-          duration: execution.endTime.getTime() - execution.startTime.getTime(),
-          status: execution.status
-        }
-      });
-    }
-    
-    return execution;
-  }
-  
-  /**
-   * Execute a single task with retries
-   */
-  private async executeTask(
-    task: WorkflowTask, 
-    execution: WorkflowExecution,
-    workflow: WorkflowDefinition
-  ): Promise<TaskResult> {
-    const startTime = new Date();
-    const taskContext: WorkflowLogContext = {
-      ...execution.context,
-      nodeId: task.id,
-      stepName: task.name,
-      appName: task.appId,
-      operation: task.action
-    };
-    
-    try {
-      // Log task execution start
-      WorkflowLogger.logInfo({
-        message: `Executing task: ${task.name}`,
-        context: taskContext
-      });
-      
-      // Process input variables (replace templates etc.)
-      const processedInput = this.processTaskInput(task, execution.variables);
-      
-      // Determine error category based on task type
-      const errorCategory = task.appId ? 'CONNECTION' : 'SYSTEM';
-      
-      // Execute the task with retries
-      const result = await this.retryManager.executeWithRetry({
-        operation: async () => {
-          // Check if we have a connector for this app
-          if (task.appId && task.action) {
-            const connector = mockAppConnectors[task.appId];
-            if (!connector) {
-              throw new Error(`App connector not found for app ID: ${task.appId}`);
-            }
-            
-            // Call the app connector
-            return await connector.performAction(task.action, processedInput);
-          }
-          
-          // Handle basic task types
-          switch (task.type) {
-            case 'code':
-              // Normally would execute custom code here
-              return { success: true, data: { result: 'Code executed' } };
-              
-            case 'transformer':
-              // Transform data
-              return { success: true, data: processedInput };
-              
-            case 'conditional':
-              // Evaluate a condition
-              return { success: true, result: true };
-              
-            default:
-              throw new Error(`Unknown task type: ${task.type}`);
-          }
-        },
-        context: taskContext,
+        error: errorInstance,
         category: errorCategory,
-        retryConfig: workflow.retryConfig,
-        onBeforeRetry: (error, attempt, backoffTime) => {
-          // Notify about retry
-          WorkflowLogger.logWarning({
-            message: `Retrying task ${task.name} after error: ${error.message}`,
-            context: taskContext,
-            data: { attempt, backoffTime }
-          });
+        context: {
+          ...workflowContext,
+          metrics: this.getExecutionMetrics(executionId)
         },
-        onFinalFailure: (error, attempts) => {
-          // Generate user-friendly error message
-          const userMessage = RetryManager.generateErrorMessage(error, errorCategory, attempts);
-          
-          // Log final failure with user-friendly message
-          WorkflowLogger.logError({
-            error,
-            category: errorCategory,
-            context: taskContext,
-            suggestion: userMessage
-          });
-          
-          // Check if we should send a notification
-          if (workflow.errorHandling?.notifyOnError) {
-            // In a real app, send notification here
-            console.log(`[NOTIFICATION] Task ${task.name} failed: ${userMessage}`);
+        suggestion: this.getErrorSuggestion(errorInstance, errorCategory)
+      });
+
+      const result: ExecutionResult = {
+        executionId,
+        status: 'failed',
+        startTime: context.startTime,
+        endTime: new Date().toISOString(),
+        error: errorInstance.message,
+        metrics: this.getExecutionMetrics(executionId)
+      };
+
+      this.emit('workflowFailed', result);
+      return result;
+
+    } finally {
+      // Stop execution monitoring and cleanup
+      await this.stopExecutionMonitoring(executionId);
+      this.activeExecutions.delete(executionId);
+    }
+  }
+
+  /**
+   * Execute a task with retries and error handling
+   */
+  private async executeTaskWithRetries(
+    task: WorkflowTask,
+    workflow: WorkflowDefinition,
+    executionId: string,
+    context: ExecutionContext
+  ): Promise<void> {
+    const taskContext: WorkflowLogContext = {
+      workflowId: workflow.id,
+      executionId,
+      nodeId: task.id,
+      userId: context.userId,
+      stepName: task.name
+    };
+
+    await this.retryManager.executeWithRetry({
+      operation: () => this.executeTask(task, workflow, executionId),
+      context: taskContext,
+      errorClassifier: this.classifyError,
+      onBeforeRetry: async (error, attempts, backoffTime) => {
+        this.updateMetrics(executionId, task.id, 'retryAttempts', attempts);
+        
+        WorkflowLogger.logInfo({
+          message: `Retrying task execution`,
+          context: {
+            ...taskContext,
+            attempt: attempts,
+            nextRetryIn: backoffTime,
+            errorDetails: {
+              message: error.message,
+              category: this.classifyError(error)
+            }
           }
+        });
+
+        this.emit('taskRetry', {
+          taskId: task.id,
+          executionId,
+          attempt: attempts,
+          error: error.message,
+          nextRetryIn: backoffTime
+        });
+      },
+      onFinalFailure: async (error, attempts) => {
+        if (workflow.errorHandling?.notifyOnFailure) {
+          await this.notifyTaskFailure(task, workflow, error, attempts);
         }
-      });
-      
-      const endTime = new Date();
-      
-      // Log successful task completion
-      WorkflowLogger.logInfo({
-        message: `Task completed successfully: ${task.name}`,
-        context: taskContext,
-        data: { 
-          duration: endTime.getTime() - startTime.getTime(),
-          outputKeys: result ? Object.keys(result) : []
-        }
-      });
-      
-      return {
-        taskId: task.id,
-        success: true,
-        startTime,
-        endTime,
-        output: result
-      };
-    } catch (error) {
-      const endTime = new Date();
-      
-      return {
-        taskId: task.id,
-        success: false,
-        startTime,
-        endTime,
-        error: error instanceof Error ? error : new Error(String(error))
-      };
-    }
-  }
-  
-  /**
-   * Process task input by replacing variable references
-   */
-  private processTaskInput(task: WorkflowTask, variables: Record<string, any>): Record<string, any> {
-    if (!task.input) return {};
-    
-    const result: Record<string, any> = {};
-    
-    for (const [key, value] of Object.entries(task.input)) {
-      if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
-        // Extract variable name
-        const varName = value.substring(2, value.length - 2).trim();
-        result[key] = variables[varName] !== undefined ? variables[varName] : null;
-      } else if (typeof value === 'object' && value !== null) {
-        // Recursively process nested objects
-        result[key] = this.processTaskInput({ ...task, input: value as Record<string, any> }, variables);
-      } else {
-        // Use the value as is
-        result[key] = value;
       }
-    }
-    
-    return result;
+    });
   }
-  
+
   /**
-   * Build a map of task IDs to their dependencies
+   * Classify errors to determine retry strategy
    */
-  private buildDependencyGraph(tasks: WorkflowTask[]): Record<string, string[]> {
-    const graph: Record<string, string[]> = {};
-    
-    for (const task of tasks) {
-      graph[task.id] = task.dependencies || [];
+  private classifyError(error: Error): keyof typeof ERROR_CATEGORIES {
+    if (error.message?.includes('ECONNRESET') || 
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('socket hang up')) {
+      return 'CONNECTION';
     }
-    
-    return graph;
+
+    if (error.message?.includes('rate limit') ||
+        error.message?.includes('quota exceeded')) {
+      return 'RATE_LIMIT';
+    }
+
+    if (error.message?.includes('validation failed') ||
+        error.message?.includes('invalid input')) {
+      return 'VALIDATION';
+    }
+
+    if (error.message?.includes('unauthorized') ||
+        error.message?.includes('forbidden')) {
+      return 'AUTH';
+    }
+
+    if (error.message?.includes('timeout')) {
+      return 'TIMEOUT';
+    }
+
+    if (error.message?.includes('business rule') ||
+        error.message?.includes('workflow logic')) {
+      return 'BUSINESS';
+    }
+
+    return 'UNKNOWN';
+  }
+
+  /**
+   * Check if an error is retryable based on its category
+   */
+  private isRetryableError(error: Error): boolean {
+    const category = this.classifyError(error);
+    return ['CONNECTION', 'TIMEOUT', 'RATE_LIMIT'].includes(category);
+  }
+
+  /**
+   * Get suggestions for error resolution
+   */
+  private getErrorSuggestion(error: Error, category: keyof typeof ERROR_CATEGORIES): string {
+    const suggestions: Record<keyof typeof ERROR_CATEGORIES, string> = {
+      CONNECTION: 'Check network connectivity and external service status',
+      TIMEOUT: 'Consider increasing timeout values or optimizing the operation',
+      VALIDATION: 'Verify input data format and requirements',
+      RATE_LIMIT: 'Implement rate limiting or request throttling',
+      AUTH: 'Verify credentials and permissions',
+      SYSTEM: 'Check system resources and configuration',
+      BUSINESS: 'Review business rules and workflow logic',
+      UNKNOWN: 'Check logs for more details and contact support if needed'
+    };
+
+    return suggestions[category] || suggestions.UNKNOWN;
+  }
+
+  /**
+   * Update execution metrics
+   */
+  private updateMetrics(executionId: string, taskId: string, metricType: string, value: number): void {
+    const execution = this.activeExecutions.get(executionId);
+    if (!execution) return;
+
+    switch (metricType) {
+      case 'duration':
+        execution.metrics.taskDurations[taskId] = value;
+        break;
+      case 'retryAttempts':
+        execution.metrics.retryAttempts[taskId] = (execution.metrics.retryAttempts[taskId] || 0) + 1;
+        break;
+      case 'error':
+        execution.metrics.errorCounts[taskId] = (execution.metrics.errorCounts[taskId] || 0) + 1;
+        break;
+    }
+  }
+
+  /**
+   * Get metric value for a task
+   */
+  private getMetric(executionId: string, taskId: string, metricType: string): number {
+    const execution = this.activeExecutions.get(executionId);
+    if (!execution) return 0;
+
+    switch (metricType) {
+      case 'retryAttempts':
+        return execution.metrics.retryAttempts[taskId] || 0;
+      case 'errorCount':
+        return execution.metrics.errorCounts[taskId] || 0;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Get all metrics for an execution
+   */
+  private getExecutionMetrics(executionId: string) {
+    const execution = this.activeExecutions.get(executionId);
+    if (!execution) return {};
+
+    const totalDuration = new Date().getTime() - execution.startTime.getTime();
+    return {
+      totalDuration,
+      ...execution.metrics
+    };
+  }
+
+  /**
+   * Start monitoring a workflow execution
+   */
+  private async startExecutionMonitoring(workflow: WorkflowDefinition, executionId: string): Promise<void> {
+    // Initialize monitoring for the execution
+    this.emit('workflowStarted', {
+      workflowId: workflow.id,
+      executionId,
+      startTime: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Stop monitoring a workflow execution
+   */
+  private async stopExecutionMonitoring(executionId: string): Promise<void> {
+    this.emit('workflowEnded', {
+      executionId,
+      endTime: new Date().toISOString(),
+      metrics: this.getExecutionMetrics(executionId)
+    });
+  }
+
+  /**
+   * Notify about task failure
+   */
+  private async notifyTaskFailure(
+    task: WorkflowTask,
+    workflow: WorkflowDefinition,
+    error: Error,
+    attempts: number
+  ): Promise<void> {
+    // Implementation would depend on notification system
+    this.emit('taskFailed', {
+      workflowId: workflow.id,
+      taskId: task.id,
+      error: error.message,
+      attempts,
+      timestamp: new Date().toISOString()
+    });
   }
 }
 

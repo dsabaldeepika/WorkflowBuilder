@@ -1,6 +1,8 @@
-import fs from 'fs';
+import fs, { createReadStream } from 'fs';
 import path from 'path';
 import { createLogger, format, transports } from 'winston';
+import { createInterface } from 'readline';
+import { strict as assert } from 'assert';
 
 // Define error levels for our workflow system
 const LOG_LEVELS = {
@@ -79,6 +81,12 @@ interface WorkflowLogContext {
   stepName?: string;
   appName?: string;
   operation?: string;
+  nextRetryIn?: number;
+  errorDetails?: {
+    code?: string;
+    statusCode?: number;
+    type?: string;
+  };
 }
 
 interface ErrorLogOptions {
@@ -94,6 +102,12 @@ interface InfoLogOptions {
   message: string;
   context: WorkflowLogContext;
   data?: any;
+}
+
+interface QueryOptions {
+  level?: string;
+  from?: Date;
+  limit?: number;
 }
 
 class WorkflowLogger {
@@ -169,15 +183,85 @@ class WorkflowLogger {
   /**
    * Get error statistics for a dashboard
    */
-  static async getErrorStats(timeframe: 'day' | 'week' | 'month' = 'day'): Promise<any> {
-    // In a real implementation, this would analyze logs and return statistics
-    // For now, we'll return a placeholder
-    return {
-      totalErrors: 0,
-      byCategory: {},
-      mostCommon: [],
-      recentErrors: []
-    };
+  static async getErrorStats(timeframe: 'day' | 'week' | 'month' = 'day', comparePrevious: boolean = false): Promise<any> {
+    const startDate = new Date();
+    switch (timeframe) {
+      case 'day':
+        startDate.setHours(startDate.getHours() - 24);
+        break;
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+    }
+
+    try {
+      // Read error logs from file
+      const logDir = path.join(process.cwd(), 'logs');
+      const errorLogPath = path.join(logDir, 'error.log');
+      
+      const logs = await new Promise<any[]>((resolve, reject) => {
+        const errorLogs: any[] = [];
+        createReadStream(errorLogPath)
+        const rl = createInterface({ input: createReadStream(errorLogPath) });
+        rl.on('line', (line: string) => {
+            try {
+              const log = JSON.parse(line);
+              if (new Date(log.timestamp) >= startDate) {
+                errorLogs.push(log);
+              }
+            } catch (e) {
+              // Skip malformed lines
+            }
+          })
+          .on('close', () => resolve(errorLogs))
+          .on('error', reject);
+      });
+
+      // Calculate statistics
+      const errorsByCategory: Record<string, number> = {};
+      const errorsByMessage: Record<string, number> = {};
+      const recentErrors: any[] = [];
+
+      logs.forEach((log: any) => {
+        // Track category counts
+        const category = log.category || ERROR_CATEGORIES.UNKNOWN;
+        errorsByCategory[category] = (errorsByCategory[category] || 0) + 1;
+        
+        // Track message frequency
+        const message = log.message || 'Unknown error';
+        errorsByMessage[message] = (errorsByMessage[message] || 0) + 1;
+
+        // Keep track of recent errors
+        recentErrors.push({
+          timestamp: log.timestamp,
+          message: message,
+          category: category,
+          workflowId: log.workflowId,
+          nodeId: log.nodeId,
+          suggestion: log.suggestion,
+          retryable: log.retryable
+        });
+      });
+
+      // Sort and limit most common errors
+      const mostCommon = Object.entries(errorsByMessage)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10)
+        .map(([message, count]) => ({ message, count }));
+
+      return {
+        totalErrors: logs.length,
+        byCategory: errorsByCategory,
+        mostCommon,
+        recentErrors: recentErrors.slice(-100).reverse() // Last 100 errors, most recent first
+      };
+    } catch (error) {
+      console.error('Error fetching error statistics:', error);
+      throw new Error('Failed to fetch error statistics');
+    }
   }
 }
 
@@ -187,5 +271,6 @@ export {
   ERROR_CATEGORIES, 
   type WorkflowLogContext,
   type ErrorLogOptions,
-  type InfoLogOptions
+  type InfoLogOptions,
+  type QueryOptions
 };
