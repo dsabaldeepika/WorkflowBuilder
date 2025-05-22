@@ -316,23 +316,12 @@ export function TemplateWorkflowSetup({
   const { loadWorkflowFromTemplate, saveWorkflow, nodes, edges } =
     useWorkflowStore();
 
-  // Fetch template details with proper error handling
+  // Fetch template details
   const {
     data: template,
     isLoading: isTemplateLoading,
     error: templateError,
-  } = useQuery<WorkflowTemplate>({
-    queryKey: ["/api/workflow/templates", templateId],
-    queryFn: async () => {
-      if (!templateId) throw new Error("Template ID is required");
-      const res = await fetch(`/api/workflow/templates/${templateId}`);
-      if (!res.ok) {
-        throw new Error(`Failed to fetch template: ${res.statusText}`);
-      }
-      return res.json();
-    },
-    enabled: !!templateId,
-  });
+  } = useTemplate(templateId);
 
   // Fetch node types from backend
   const {

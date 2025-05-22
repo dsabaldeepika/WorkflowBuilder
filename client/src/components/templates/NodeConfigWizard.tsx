@@ -52,9 +52,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { useQuery, useQueries } from "@tanstack/react-query";
 
-// Import all available connector components
-import { GoogleSheetsConnector } from "@/components/integration/GoogleSheetsConnector";
-import { ConnectionManager } from "@/components/integration/ConnectionManager";
 // Add more imports for other connectors as you create them, e.g.:
 // import { GmailConnector } from "@/components/integration/GmailConnector";
 // import { SlackConnector } from "@/components/integration/SlackConnector";
@@ -103,10 +100,13 @@ const isValidNode = (node: Node<NodeData>): boolean => {
   );
 };
 
-// Helper function to fetch node type definition by node id
-async function fetchNodeTypeById(nodeId: string) {
-  const res = await fetch(`/api/node-types/${encodeURIComponent(nodeId)}`);
-  if (!res.ok) throw new Error(`Failed to fetch node type for ${nodeId}`);
+// Helper to fetch node type definition by backend node type id (prefer backendId if present)
+async function fetchNodeTypeByBackendId(node: Node<NodeData>) {
+  // Prefer backendId if present in node.data
+  const backendId = node.data?.backendId;
+  const idToFetch = backendId || node.id;
+  const res = await fetch(`/api/node-types/${encodeURIComponent(idToFetch)}`);
+  if (!res.ok) throw new Error(`Failed to fetch node type for ${idToFetch}`);
   return res.json();
 }
 
@@ -129,13 +129,17 @@ export function NodeConfigWizard({
     new Set(nodes.map((node) => node.id).filter(Boolean))
   );
 
-  // Fetch node type definitions for each unique node id
+  // Fetch node type definitions for each unique node (prefer backendId)
   const nodeTypeQueries = useQueries({
-    queries: uniqueNodeIds.map((id) => ({
-      queryKey: ["/api/node-types", id],
-      queryFn: () => fetchNodeTypeById(id),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    })),
+    queries: uniqueNodeIds.map((id) => {
+      const node = nodes.find((n) => n.id === id);
+      return {
+        queryKey: ["/api/node-types", id, node?.data?.backendId],
+        queryFn: () =>
+          node ? fetchNodeTypeByBackendId(node) : Promise.reject("Node not found"),
+        staleTime: 5 * 60 * 1000,
+      };
+    }),
   });
 
   // Map of node id to node type definition
@@ -407,6 +411,39 @@ export function NodeConfigWizard({
     return null;
   };
 
+  // Helper to render the icon (backend-driven: URL, SVG, or fallback)
+  const renderIcon = (nodeTypeDef: any) => {
+    if (!nodeTypeDef) return <Layers className="h-6 w-6 text-gray-600" />;
+    if (nodeTypeDef.icon && typeof nodeTypeDef.icon === "string") {
+      // If icon is a URL or SVG string
+      if (nodeTypeDef.icon.startsWith("http") || nodeTypeDef.icon.startsWith("/")) {
+        return (
+          <img
+            src={nodeTypeDef.icon}
+            alt={nodeTypeDef.name || "icon"}
+            className="h-6 w-6 object-contain"
+          />
+        );
+      }
+      // If icon is an SVG string
+      if (nodeTypeDef.icon.startsWith("<svg")) {
+        return (
+          <span
+            className="h-6 w-6 inline-block"
+            dangerouslySetInnerHTML={{ __html: nodeTypeDef.icon }}
+          />
+        );
+      }
+    }
+    // Fallback to iconComponentMap or default
+    if (iconComponentMap[nodeTypeDef.service]) {
+      return React.createElement(iconComponentMap[nodeTypeDef.service], {
+        className: "h-6 w-6 text-gray-600",
+      });
+    }
+    return <Layers className="h-6 w-6 text-gray-600" />;
+  };
+
   // Get current node
   const currentNode = configNodes[currentStep];
   // Use backend node type definition
@@ -475,18 +512,7 @@ export function NodeConfigWizard({
           {/* Service Information */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="flex items-center gap-3">
-              {/* Use backend icon if available, else fallback to iconComponentMap, else Layers */}
-              {nodeTypeDef.icon ? (
-                React.createElement(nodeTypeDef.icon, {
-                  className: "h-6 w-6 text-gray-600",
-                })
-              ) : iconComponentMap[nodeTypeDef.service] ? (
-                React.createElement(iconComponentMap[nodeTypeDef.service], {
-                  className: "h-6 w-6 text-gray-600",
-                })
-              ) : (
-                <Layers className="h-6 w-6 text-gray-600" />
-              )}
+              {renderIcon(nodeTypeDef)}
               <div>
                 <h3 className="font-medium text-gray-900">
                   {nodeTypeDef.name}

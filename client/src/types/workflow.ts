@@ -119,18 +119,21 @@ export interface Workflow {
 
 // Workflow template definitions
 export interface WorkflowTemplate {
-  id: string;
+  id: number;
   name: string;
-  description: string;
+  description: string | null;
   category: string;
-  workflowData: {
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  isOfficial: boolean;
+  imageUrl: string | null;
+  popularity: number;
+  createdAt: string;
+  updatedAt: string;
+  workflowData?: {
     nodes: Node<NodeData>[];
     edges: Edge[];
   };
-  image?: string;
-  useCases?: string[];
-  requirements?: string[];
-  documentation?: string;
 }
 
 // Node template definitions for custom node templates

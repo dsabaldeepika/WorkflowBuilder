@@ -192,15 +192,20 @@ export async function runMigrations() {
  * @returns A boolean indicating if the table exists
  */
 async function checkTableExists(tableName: string): Promise<boolean> {
-  const result = await db.execute(sql`
-    SELECT EXISTS (
-      SELECT FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      AND table_name = ${tableName}
-    )
-  `);
+  try {
+    const result = await db.execute(sql`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+      ) as table_exists
+    `);
 
-  return result.rows[0]?.exists === true;
+    return result.rows?.[0]?.table_exists || false;
+  } catch (error) {
+    console.error('Error checking if table exists:', error);
+    return false;
+  }
 }
 
 /**

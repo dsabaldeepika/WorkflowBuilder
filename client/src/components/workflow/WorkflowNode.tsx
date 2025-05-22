@@ -91,7 +91,22 @@ export default function WorkflowNode({
                 Optimized
               </Badge>
             )}
-
+            {data.backendId && (
+              <Badge
+                variant="secondary"
+                className="mr-2 text-xs bg-blue-50 text-blue-700 border-blue-200"
+              >
+                ID: {data.backendId}
+              </Badge>
+            )}
+            {data.service && (
+              <Badge
+                variant="secondary"
+                className="mr-2 text-xs bg-gray-50 text-gray-700 border-gray-200"
+              >
+                {data.service}
+              </Badge>
+            )}
             <WorkflowStateIndicator state={state} size="sm" />
           </div>
         </CardHeader>
@@ -106,6 +121,16 @@ export default function WorkflowNode({
               {data.nodeType && (
                 <Badge variant="outline" className="mr-1">
                   {data.nodeType}
+                </Badge>
+              )}
+              {data.event && (
+                <Badge variant="outline" className="mr-1">
+                  {data.event}
+                </Badge>
+              )}
+              {data.action && (
+                <Badge variant="outline" className="mr-1">
+                  {data.action}
                 </Badge>
               )}
             </div>

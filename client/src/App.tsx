@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ROUTES } from "@shared/config";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,12 +22,12 @@ const WorkflowBuilder = lazy(() => import("@/pages/workflow-builder"));
 const Login = lazy(() => import("@/pages/login"));
 const Signup = lazy(() => import("@/pages/signup"));
 const Dashboard = lazy(() => import("@/pages/dashboard-new"));
+const TemplateSetupPage = lazy(() => import("@/pages/template-setup-page"));
 const Callback = lazy(() => import("@/pages/auth/callback"));
 const WorkflowAnimationsDemo = lazy(() => import("@/pages/workflow-animations-demo"));
 const WorkflowMonitoring = lazy(() => import("@/pages/workflow-monitoring"));
 const HealthDashboardPage = lazy(() => import("@/pages/health-dashboard-page"));
 const TemplatesPage = lazy(() => import("@/pages/templates-page"));
-const TemplateSetupPage = lazy(() => import("@/pages/template-setup-page"));
 const TemplateDetailPage = lazy(() => import("@/pages/template-detail-page"));
 const PricingPage = lazy(() => import("@/pages/pricing-page"));
 const AccountBillingPage = lazy(() => import("@/pages/account-billing-page"));
@@ -100,12 +101,33 @@ const PageLoader = () => (
 );
 
 function Router() {
-  // Define a wrapper component that handles lazy loading
-  const LazyRouteComponent = ({ Component }: { Component: React.ComponentType<any> }) => (
-    <Suspense fallback={<PageLoader />}>
-      <Component />
-    </Suspense>
-  );
+  // Define a wrapper component that handles lazy loading, error boundaries, and auth protection
+  const LazyRouteComponent = ({ Component, requiresAuth = true }: { Component: React.ComponentType<any>, requiresAuth?: boolean }) => {
+    const { isAuthenticated, isLoading } = useAuth();
+    const [, navigate] = useLocation();
+    
+    useEffect(() => {
+      if (requiresAuth && !isLoading && !isAuthenticated) {
+        navigate('/login');
+      }
+    }, [isLoading, isAuthenticated, navigate, requiresAuth]);
+    
+    if (isLoading) {
+      return <PageLoader />;
+    }
+    
+    if (requiresAuth && !isAuthenticated) {
+      return null;
+    }
+    
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <Component />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  };
   
   return (
     <Switch>
@@ -160,7 +182,7 @@ function Router() {
       </Route>
       
       <Route path="/template-setup/:id">
-        <ProtectedRoute component={TemplateSetupPage} />
+        <LazyRouteComponent Component={TemplateSetupPage} requiresAuth={true} />
       </Route>
       
       <Route path={ROUTES.pricing}>
