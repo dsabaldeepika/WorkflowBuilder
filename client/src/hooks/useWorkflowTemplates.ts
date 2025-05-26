@@ -7,13 +7,19 @@ export interface WorkflowTemplate {
   name: string;
   description: string | null;
   category: string;
+  tags: string[] | null;
+  difficulty: string;
+  workflowData: unknown;
   nodes: Node<NodeData>[];
   edges: Edge[];
   isOfficial: boolean;
   imageUrl: string | null;
   popularity: number;
+  createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  isPublic: boolean;
+  version: string;
 }
 
 export function useTemplates() {
@@ -31,55 +37,38 @@ export function useTemplate(id: string | number) {
   return useQuery<WorkflowTemplate>({
     queryKey: ['/api/workflow/templates', id],
     queryFn: async () => {
-      const res = await fetch(`/api/workflow/templates/${id}`);
-      if (!res.ok) throw new Error(`Failed to fetch template with id ${id}`);
-      
-      const template = await res.json();
-      
-      // Parse nodes and edges if they're strings
-      if (typeof template.nodes === 'string') {
-        template.nodes = JSON.parse(template.nodes);
-      }
-      if (typeof template.edges === 'string') {
-        template.edges = JSON.parse(template.edges);
-      }
-      
-      // Map backend node data to frontend format
-      template.nodes = await Promise.all(template.nodes.map(async (node: any) => {
-        let nodeData = { ...node.data };
+      try {
+        const res = await fetch(`/api/workflow/templates/${id}`);
+        if (!res.ok) throw new Error(`Failed to fetch template with id ${id}`);
         
-        // If node has a nodeTypeId, fetch its configuration
-        if (node.data?.nodeTypeId) {
-          try {
-            const typeRes = await fetch(`/api/node-types/${node.data.nodeTypeId}`);
-            if (typeRes.ok) {
-              const nodeType = await typeRes.json();
-              nodeData = {
-                ...nodeData,
-                label: nodeType.displayName,
-                description: nodeType.description,
-                icon: nodeType.icon,
-                category: nodeType.category,
-                inputFields: nodeType.inputFields,
-                outputFields: nodeType.outputFields,
-                backendId: node.data.nodeTypeId
-              };
-            }
-          } catch (error) {
-            console.error(`Error fetching node type ${node.data.nodeTypeId}:`, error);
-          }
-        }
-
+        const template = await res.json();
+        
+        // Ensure all required fields have default values
         return {
-          ...node,
-          data: nodeData,
-          type: node.type || 'default',
-          position: node.position || { x: 0, y: 0 }
+          id: template.id,
+          name: template.name || 'Untitled Template',
+          description: template.description || null,
+          category: template.category || 'uncategorized',
+          tags: template.tags || null,
+          difficulty: template.difficulty || 'beginner',
+          workflowData: template.workflowData || null,
+          nodes: Array.isArray(template.nodes) ? template.nodes : [],
+          edges: Array.isArray(template.edges) ? template.edges : [],
+          isOfficial: template.isOfficial || false,
+          imageUrl: template.imageUrl || null,
+          popularity: template.popularity || 0,
+          createdBy: template.createdBy || null,
+          createdAt: template.createdAt || new Date().toISOString(),
+          updatedAt: template.updatedAt || new Date().toISOString(),
+          isPublic: template.isPublic || false,
+          version: template.version || '1.0.0'
         };
-      }));
-
-      return template;
-    }
+      } catch (error) {
+        console.error('Error fetching template:', error);
+        throw error;
+      }
+    },
+    retry: 1
   });
 }
 

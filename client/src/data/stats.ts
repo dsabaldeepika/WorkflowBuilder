@@ -1,29 +1,14 @@
 // src/data/stats.ts
-export async function fetchHomeStats() {
-  // Fetch from backend API
-  const res = await fetch("/api/home-stats");
-  if (!res.ok) throw new Error("Failed to fetch home stats");
-  const stats = await res.json();
-  // Parse and normalize values for UI
+import { HomeStats } from '@/types/stats';
+import { apiRequest } from '@/lib/queryClient';
+
+export async function fetchHomeStats(): Promise<HomeStats> {
+  const stats = await apiRequest<HomeStats>('/api/home-stats');
   return {
-    implementationSpeed:
-      stats.implementationSpeed ||
-      stats["implementationSpeed"] ||
-      stats["implementation_speed"] ||
-      "-",
-    customerSatisfaction: Number(
-      stats.customerSatisfaction ||
-        stats["customerSatisfaction"] ||
-        stats["customer_satisfaction"] ||
-        0
-    ),
-    integrations: Number(
-      stats.integrations ||
-        stats["integrations"] ||
-        stats["integration_count"] ||
-        0
-    ),
-    roi: stats.roi || stats["roi"] || stats["roi_period"] || "-",
+    implementationSpeed: stats.implementationSpeed || '-',
+    customerSatisfaction: Number(stats.customerSatisfaction || 0),
+    integrations: Number(stats.integrations || 0),
+    roi: stats.roi || '-',
   };
 }
 

@@ -1,107 +1,193 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { NodeConfig, NodeConfigSchema, validateNodeConfig } from '@/types/workflow';
+import { toast } from '@/hooks/use-toast';
 
-export interface NodeConfig {
-  nodeTypeId: number;
-  name: string;
-  displayName: string;
-  category: string;
-  description: string | null;
-  icon: string | null;
-  color: string | null;
-  inputFields: any;
-  outputFields: any;
-  workflowId: number | null;
-  templateId: number | null;
-  createdAt: string;
-  updatedAt: string;
+interface UseNodeConfigOptions {
+  workflowId?: number;
+  templateId?: number;
+  nodeId?: string;
 }
 
-export function useNodeConfig(nodeId: string | number) {
-  return useQuery<NodeConfig>({
-    queryKey: ['/api/node-config', nodeId],
+interface NodeConfigResponse {
+  configs: NodeConfig[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export function useNodeConfig({ workflowId, templateId, nodeId }: UseNodeConfigOptions = {}) {
+  const queryClient = useQueryClient();
+
+  // Fetch all node configurations
+  const {
+    data: nodeConfigs,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useQuery<NodeConfigResponse>({
+    queryKey: ['/api/node-config', { workflowId, templateId, nodeId }],
     queryFn: async () => {
-      const res = await fetch(`/api/node-config/${nodeId}`);
-      if (!res.ok) throw new Error(`Failed to fetch node config for id ${nodeId}`);
-      return res.json();
+      try {
+        const params = new URLSearchParams();
+        if (workflowId) params.append('workflowId', workflowId.toString());
+        if (templateId) params.append('templateId', templateId.toString());
+        if (nodeId) params.append('nodeId', nodeId);
+
+        const res = await fetch(`/api/node-config?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch node configurations');
+        }
+
+        const data = await res.json();
+        return {
+          configs: data.configs.map((config: unknown) => validateNodeConfig(config)),
+          total: data.total,
+          page: data.page,
+          pageSize: data.pageSize
+        };
+      } catch (error) {
+        console.error('Error fetching node configs:', error);
+        throw error;
+      }
     }
   });
-}
 
-export function useNodeConfigs(workflowId?: number) {
-  return useQuery<NodeConfig[]>({
-    queryKey: ['/api/node-config', { workflowId }],
-    queryFn: async () => {
-      const url = workflowId 
-        ? `/api/node-config?workflowId=${workflowId}`
-        : '/api/node-config';
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch node configs');
-      return res.json();
-    },
-    enabled: !workflowId || !!workflowId // Only fetch if workflowId is undefined or truthy
-  });
-}
+  // Create a new node configuration
+  const createMutation = useMutation({
+    mutationFn: async (newConfig: Partial<NodeConfig>) => {
+      try {
+        const res = await fetch('/api/node-config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newConfig),
+        });
 
-export function useCreateNodeConfig() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (data: Partial<NodeConfig>) => {
-      const res = await fetch('/api/node-config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (!res.ok) throw new Error('Failed to create node config');
-      return res.json();
+        if (!res.ok) {
+          throw new Error('Failed to create node configuration');
+        }
+
+        const data = await res.json();
+        return validateNodeConfig(data);
+      } catch (error) {
+        console.error('Error creating node config:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/node-config'] });
-    },
-  });
-}
-
-export function useUpdateNodeConfig() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<NodeConfig> }) => {
-      const res = await fetch(`/api/node-config/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+      toast({
+        title: 'Success',
+        description: 'Node configuration created successfully',
       });
-      
-      if (!res.ok) throw new Error('Failed to update node config');
-      return res.json();
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/node-config'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/node-config', variables.id] });
-    },
-  });
-}
-
-export function useDeleteNodeConfig() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/node-config/${id}`, {
-        method: 'DELETE',
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create node configuration',
+        variant: 'destructive',
       });
-      
-      if (!res.ok) throw new Error('Failed to delete node config');
-      return res.json();
-    },
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/node-config'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/node-config', id] });
     },
   });
+
+  // Update an existing node configuration
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, config }: { id: string; config: Partial<NodeConfig> }) => {
+      try {
+        const res = await fetch(`/api/node-config/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(config),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update node configuration');
+        }
+
+        const data = await res.json();
+        return validateNodeConfig(data);
+      } catch (error) {
+        console.error('Error updating node config:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/node-config'] });
+      toast({
+        title: 'Success',
+        description: 'Node configuration updated successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update node configuration',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete a node configuration
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        const res = await fetch(`/api/node-config/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to delete node configuration');
+        }
+      } catch (error) {
+        console.error('Error deleting node config:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/node-config'] });
+      toast({
+        title: 'Success',
+        description: 'Node configuration deleted successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete node configuration',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Validate a node configuration
+  const validateConfig = (config: unknown) => {
+    try {
+      return NodeConfigSchema.parse(config);
+    } catch (error) {
+      console.error('Node configuration validation error:', error);
+      return null;
+    }
+  };
+
+  return {
+    nodeConfigs: nodeConfigs?.configs || [],
+    total: nodeConfigs?.total || 0,
+    page: nodeConfigs?.page || 1,
+    pageSize: nodeConfigs?.pageSize || 10,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    createConfig: createMutation.mutate,
+    updateConfig: updateMutation.mutate,
+    deleteConfig: deleteMutation.mutate,
+    validateConfig,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
 }

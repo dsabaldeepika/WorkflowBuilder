@@ -65,7 +65,39 @@ router.get('/workflow-templates/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Template not found' });
     }
 
-    res.json(template);
+    // Ensure workflowData is properly structured
+    let nodes = [];
+    let edges = [];
+
+    if (template.workflowData) {
+      try {
+        const data = typeof template.workflowData === 'string' 
+          ? JSON.parse(template.workflowData)
+          : template.workflowData;
+          
+        nodes = Array.isArray(data.nodes) ? data.nodes : [];
+        edges = Array.isArray(data.edges) ? data.edges : [];
+      } catch (err) {
+        console.error('Error parsing workflow data:', err);
+      }
+    }
+
+    // Structure the response according to the WorkflowTemplate interface
+    const structuredTemplate = {
+      ...template,
+      nodes,
+      edges,
+      tags: template.tags || [],
+      difficulty: template.difficulty || 'beginner',
+      workflowData: {
+        nodes,
+        edges
+      },
+      createdBy: template.createdByUserId || null,
+      isOfficial: template.isOfficial || false
+    };
+
+    res.json(structuredTemplate);
   } catch (error) {
     console.error('Error fetching workflow template:', error);
     res.status(500).json({ message: 'Failed to fetch workflow template' });

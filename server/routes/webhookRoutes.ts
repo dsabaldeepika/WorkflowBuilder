@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
-import { webhookEvents, messagingIntegrations } from '../schema';
+import { webhookEvents, messagingIntegrations } from '@shared/schema';
 import { z } from 'zod';
 
 const router = Router();

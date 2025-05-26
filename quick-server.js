@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 // Create a simple Express server
 const app = express();
-const port = 3000; // Use a different port to avoid conflicts
+const port = 3100; // Use a different port to avoid conflicts
 
 // Enable CORS for all routes
 app.use(cors());

@@ -28,6 +28,7 @@ import { WorkflowNodePicker } from './WorkflowNodePicker';
 import { AgentBuilder } from '../agent/AgentBuilder';
 import { WorkflowSuggestions } from './WorkflowSuggestions';
 import { Clock, Plus, Sparkles } from 'lucide-react';
+import { useNodeTypeByName } from '@/hooks/useNodeTypes';
 
 /**
  * Optimizations for 5,000+ user scalability:
@@ -282,108 +283,74 @@ function WorkflowCanvasContent({ readOnly = false }: WorkflowCanvasContentProps)
     }
   }, [schedule, setShowGuide, setOnboardingSteps, setCurrentStepIndex, setShowNodePicker]);
   
-  // Handle node selection from the picker
-  const handleSelectNode = useCallback((nodeType: string, category: NodeCategory) => {
-    console.log('Creating node:', nodeType, category);
-    // Create a node at a fixed position in the viewport
-    
-    // Add performance optimization debug logging
-    performance.mark('node-creation-start');
-    const centerX = 250;
-    const centerY = 150;
-    
-    // Get a unique ID for the new node
-    const newNodeId = `node-${Date.now()}`;
-    
-    // Set node data based on type
-    let nodeData: NodeData = {
-      label: 'New Node',
-      description: 'Node description',
-      category: category,
-      icon: '📋',
-      state: 'default' as WorkflowState,
-      inputs: {},
-      outputs: {},
-    };
-    
-    // Customize based on node type
-    if (nodeType.startsWith('google-sheets')) {
-      nodeData.label = 'Google Sheets';
-      nodeData.icon = '📊';
-      nodeData.description = nodeType.includes('add-row') 
-        ? 'Add a row to Google Sheets' 
-        : nodeType.includes('get-rows')
-          ? 'Get rows from Google Sheets'
-          : nodeType.includes('update-row')
-            ? 'Update a row in Google Sheets'
-            : 'Google Sheets action';
-    } else if (nodeType.startsWith('slack')) {
-      nodeData.label = 'Slack';
-      nodeData.icon = '💬';
-      nodeData.description = nodeType.includes('send-message')
-        ? 'Send a message to Slack'
-        : 'Slack action';
-    } else if (nodeType.startsWith('schedule')) {
-      nodeData.label = 'Schedule';
-      nodeData.icon = '⏰';
-      nodeData.description = nodeType.includes('once')
-        ? 'Run once at a specific time'
-        : nodeType.includes('interval')
-          ? 'Run at intervals'
-          : 'Run on a schedule';
-    } else if (nodeType === 'webhook') {
-      nodeData.label = 'Webhook';
-      nodeData.icon = '🌐';
-      nodeData.description = 'Triggered by an HTTP request';
-    } else if (nodeType === 'filter') {
-      nodeData.label = 'Filter';
-      nodeData.icon = '🔍';
-      nodeData.description = 'Filter data based on conditions';
-    } else if (nodeType === 'code') {
-      nodeData.label = 'Code';
-      nodeData.icon = '🧩';
-      nodeData.description = 'Run custom code';
-    } else if (nodeType === 'delay') {
-      nodeData.label = 'Delay';
-      nodeData.icon = '⏱️';
-      nodeData.description = 'Add a delay between steps';
-    } else if (nodeType.startsWith('openai')) {
-      nodeData.label = 'OpenAI';
-      nodeData.icon = '🤖';
-      nodeData.description = nodeType.includes('generate-text')
-        ? 'Generate text with AI'
-        : nodeType.includes('create-image')
-          ? 'Generate an image with AI'
-          : 'AI-powered action';
+  // Add a state to hold loading state for node creation
+  const [isCreatingNode, setIsCreatingNode] = useState(false);
+
+  // Refactored handleSelectNode to use backend-driven node type definitions
+  const handleSelectNode = useCallback(async (nodeType: string, category: NodeCategory) => {
+    setIsCreatingNode(true);
+    try {
+      // Fetch node type definition from backend
+      const res = await fetch(`/api/node-types/by-name/${encodeURIComponent(nodeType)}`);
+      let nodeTypeDef = null;
+      if (res.ok) {
+        nodeTypeDef = await res.json();
+      }
+
+      // Get a unique ID for the new node
+      const newNodeId = `node-${Date.now()}`;
+      const centerX = 250;
+      const centerY = 150;
+
+      // Use backend definition if available, else fallback to minimal defaults
+      let nodeData: NodeData = nodeTypeDef ? {
+        label: nodeTypeDef.displayName || nodeTypeDef.name || 'New Node',
+        description: nodeTypeDef.description || '',
+        category: nodeTypeDef.category || category,
+        icon: nodeTypeDef.icon || '📋',
+        state: 'default' as WorkflowState,
+        inputs: {},
+        outputs: {},
+        backendId: nodeTypeDef.id,
+        config: nodeTypeDef.defaultConfig || {},
+        inputFields: nodeTypeDef.inputFields || [],
+        outputFields: nodeTypeDef.outputFields || [],
+        nodeType: nodeTypeDef.type || nodeType,
+      } : {
+        label: 'New Node',
+        description: 'Node description',
+        category: category,
+        icon: '📋',
+        state: 'default' as WorkflowState,
+        inputs: {},
+        outputs: {},
+        nodeType: nodeType,
+      };
+
+      // Add a new node at the center of the viewport
+      const newNode = {
+        id: newNodeId,
+        type: 'default',
+        position: { x: centerX - 75, y: centerY - 40 },
+        data: nodeData,
+      };
+
+      setNodes([...nodes, newNode as Node<NodeData>]);
+      setSelectedNode(newNodeId);
+      toast({
+        title: 'Node Added',
+        description: `A new ${nodeData.label} node has been added to the workflow.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create node from backend definition.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingNode(false);
     }
-    
-    // Add a new node at the center of the viewport
-    const newNode = {
-      id: newNodeId,
-      type: 'default', // Use the custom node type
-      position: { x: centerX - 75, y: centerY - 40 },
-      data: nodeData,
-    };
-    
-    setNodes([...nodes, newNode as Node<NodeData>]);
-    setSelectedNode(newNodeId); // Select the newly created node
-    
-    // Show toast notification
-    toast({
-      title: 'Node Added',
-      description: `A new ${nodeData.label} node has been added to the workflow.`,
-    });
-    
-    // Complete performance measurement for node creation
-    performance.mark('node-creation-end');
-    performance.measure('node-creation', 'node-creation-start', 'node-creation-end');
-    
-    // Log performance data for analysis
-    const nodeMeasure = performance.getEntriesByName('node-creation')[0];
-    if (nodeMeasure && nodeMeasure.duration > 50) {
-      console.log(`⚠️ Performance warning: Node creation took ${nodeMeasure.duration.toFixed(2)}ms`);
-    }
-  }, [reactFlowInstance, setNodes, setSelectedNode, toast]);
+  }, [setNodes, setSelectedNode, toast, nodes]);
   
   // Optimized handler for adding nodes from suggestions
   const handleAddNodeFromSuggestion = useCallback((nodeType: string) => {

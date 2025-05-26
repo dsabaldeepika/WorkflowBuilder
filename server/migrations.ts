@@ -26,7 +26,7 @@ export async function runMigrations() {
     if (!workflowCategoriesExists) {
       console.log("Creating workflow_template_categories table");
       await db.execute(sql`
-        CREATE TABLE workflow_template_categories (
+        CREATE TABLE IF NOT EXISTS workflow_template_categories (
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL UNIQUE,
           display_name TEXT NOT NULL,
@@ -49,7 +49,7 @@ export async function runMigrations() {
     if (!workflowTemplatesExists) {
       console.log("Creating workflow_templates table");
       await db.execute(sql`
-        CREATE TABLE workflow_templates (
+        CREATE TABLE IF NOT EXISTS workflow_templates (
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL,
           description TEXT,
@@ -77,7 +77,7 @@ export async function runMigrations() {
     if (!nodeTypesExists) {
       console.log("Creating node_types table");
       await db.execute(sql`
-        CREATE TABLE node_types (
+        CREATE TABLE IF NOT EXISTS node_types (
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL UNIQUE,
           display_name TEXT NOT NULL,
@@ -99,7 +99,7 @@ export async function runMigrations() {
     if (!appIntegrationsExists) {
       console.log("Creating app_integrations table");
       await db.execute(sql`
-        CREATE TABLE app_integrations (
+        CREATE TABLE IF NOT EXISTS app_integrations (
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL UNIQUE,
           display_name TEXT NOT NULL,
@@ -124,7 +124,7 @@ export async function runMigrations() {
     if (!userAppCredentialsExists) {
       console.log("Creating user_app_credentials table");
       await db.execute(sql`
-        CREATE TABLE user_app_credentials (
+        CREATE TABLE IF NOT EXISTS user_app_credentials (
           id SERIAL PRIMARY KEY,
           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           app_integration_id INTEGER NOT NULL REFERENCES app_integrations(id),
@@ -146,7 +146,7 @@ export async function runMigrations() {
     if (!workflowNodeExecutionsExists) {
       console.log("Creating workflow_node_executions table");
       await db.execute(sql`
-        CREATE TABLE workflow_node_executions (
+        CREATE TABLE IF NOT EXISTS workflow_node_executions (
           id SERIAL PRIMARY KEY,
           workflow_run_id INTEGER NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
           node_id TEXT NOT NULL,

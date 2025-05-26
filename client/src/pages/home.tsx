@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { ContactFormDialog } from "@/components/dialogs/ContactFormDialog";
 import { TemplateRequestDialog } from "@/components/dialogs/TemplateRequestDialog";
 import { DemoRequestDialog } from "@/components/dialogs/DemoRequestDialog";
+import { testimonials } from '@/data/testimonials';
 
 export default function Home() {
   return (
@@ -389,34 +390,27 @@ export default function Home() {
                   {/* Testimonial */}
                   <div className="hidden lg:block bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-10 lg:p-12">
                     <div className="h-full flex flex-col justify-center">
-                      <div className="mb-6">
-                        <svg
-                          className="h-8 w-8 text-blue-300 mb-4"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                        >
-                          <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 01-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 01-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z" />
-                        </svg>
-
-                        <p className="text-xl font-medium leading-relaxed mb-6">
-                          PumpFlux saved our team over 30 hours per week by
-                          automating our customer onboarding process. The ROI
-                          was immediate and the implementation was surprisingly
-                          simple.
-                        </p>
-
-                        <div className="flex items-center">
-                          <div className="h-12 w-12 rounded-full bg-blue-500 flex items-center justify-center text-lg font-bold mr-4">
-                            JD
-                          </div>
-                          <div>
-                            <h4 className="font-bold">Jane Doe</h4>
-                            <p className="text-blue-200">
-                              CTO, TechSolutions Inc.
-                            </p>
+                      {testimonials.map((t, idx) => (
+                        <div className="mb-6" key={idx}>
+                          <svg
+                            className="h-8 w-8 text-blue-300 mb-4"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 01-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 01-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z" />
+                          </svg>
+                          <p className="text-xl font-medium leading-relaxed mb-6">{t.quote}</p>
+                          <div className="flex items-center">
+                            <div className="h-12 w-12 rounded-full bg-blue-500 flex items-center justify-center text-lg font-bold mr-4">
+                              {t.avatar}
+                            </div>
+                            <div>
+                              <h4 className="font-bold">{t.name}</h4>
+                              <p className="text-blue-200">{t.title}, {t.company}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>

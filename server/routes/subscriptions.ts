@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
 // import { isAuthenticated } from "../replitAuth";
-import { SubscriptionTier } from "../../shared/schema";
+import { SubscriptionTier } from "@shared/schema";
 import { STRIPE_CONFIG, API_ENDPOINTS } from "../../shared/config";
 
 // BYPASS: Create a bypass for the authentication middleware
@@ -13,7 +13,7 @@ const bypassAuth = (req: Request, res: Response, next: NextFunction) => {
     username: 'demo_user',
     email: 'demo@example.com',
     role: 'admin',
-    subscriptionTier: SubscriptionTier.PRO
+    subscriptionTier: SubscriptionTier.PROFESSIONAL
   };
   (req as any).isAuthenticated = () => true;
   next();
@@ -250,7 +250,7 @@ subscriptionsRouter.post("/webhook", async (req, res) => {
         if (userId) {
           // @ts-ignore Bypassing type issues for now
           await storage.updateUserSubscription(userId, {
-            tier: SubscriptionTier.PRO, // Default to PRO
+            tier: SubscriptionTier.PROFESSIONAL, // Default to PROFESSIONAL
             status: subscription.status,
             // @ts-ignore Access current_period_end property
             periodEnd: new Date((subscription.current_period_end || 0) * 1000)
@@ -341,7 +341,7 @@ subscriptionsRouter.post("/cancel", bypassAuth, async (req: any, res) => {
     // Update user record
     // @ts-ignore Bypassing type issues for now
     await storage.updateUserSubscription(userId, {
-      tier: SubscriptionTier.PRO, // Default to PRO until end date
+      tier: SubscriptionTier.PROFESSIONAL, // Default to PROFESSIONAL until end date
       status: subscription.status,
       // @ts-ignore Access current_period_end property 
       periodEnd: new Date((subscription.current_period_end || 0) * 1000)

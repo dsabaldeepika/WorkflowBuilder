@@ -13,6 +13,20 @@ import fs from "fs";
 import https from "https";
 import path from "path";
 import { seedDatabase } from "./db/seed";
+import morgan from 'morgan';
+import logger, { stream, logRequest, logError } from './utils/logger';
+import { WebSocketServer, WebSocket } from 'ws';
+import { WS_CONFIG } from '../shared/websocket-config';
+import {
+  MessageRateLimiter,
+  validateMessage,
+  sendMessage,
+  broadcastMessage,
+  isConnectionAlive,
+  closeConnection,
+  type WebSocketClient,
+  type WebSocketMessage
+} from './utils/WebSocketUtils';
 
 // Polyfill __dirname for ESM if needed
 import { fileURLToPath } from "url";
@@ -29,6 +43,15 @@ process.on("uncaughtException", (err) => {
 });
 
 const app = express();
+
+// Add logging middleware
+app.use(morgan('combined', { stream }));
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  logRequest(req, 'Incoming request');
+  next();
+});
 
 // Apply compression middleware to reduce bandwidth usage
 app.use(
@@ -83,12 +106,13 @@ app.use("/api/auth", authLimiter);
 app.use("/auth/oauth", oauthLimiter);
 app.use("/api/", apiLimiter);
 
-// Add security headers
+// Add security headers with logging
 app.use((req, res, next) => {
+  logger.debug('Setting security headers');
   // Set Content Security Policy to be more permissive for development
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.replit.dev wss://*.replit.dev;"
+    "default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.replit.dev wss://*.replit.dev ws://localhost:* wss://localhost:*;"
   );
 
   // Enable iframe embedding
@@ -155,6 +179,22 @@ app.use((req, res, next) => {
 
 console.log("Starting server...");
 
+// Define WebSocket message types
+type WebSocketMessage = {
+  type: string;
+  payload: any;
+  clientId?: string;
+  timestamp?: number;
+};
+
+// Define client information type
+type ClientInfo = {
+  ws: WebSocket;
+  ip: string;
+  connectedAt: Date;
+  secure?: boolean;
+};
+
 async function initializeServer() {
   try {
     // Initialize mock data in development
@@ -165,50 +205,266 @@ async function initializeServer() {
 
     // Run database migrations
     await runMigrations();
-
     const server = await registerRoutes(app);
 
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
-      console.error("Server error:", err);
-      res.status(status).json({ message });
-      // Don't rethrow the error as it will crash the server
+    // Create WebSocket server instance
+    const wss = new WebSocketServer({ 
+      server,
+      path: WS_CONFIG.path 
     });
 
-    // importantly only setup vite in development and after
-    // setting up all the other routes so the catch-all route
-    // doesn't interfere with the other routes
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
+    // Initialize rate limiter
+    const rateLimiter = new MessageRateLimiter();
+
+    // Keep track of connected clients
+    const clients: Map<string, WebSocketClient> = new Map();
+
+    // Set up heartbeat interval
+    const heartbeatInterval = setInterval(() => {
+      clients.forEach((client, clientId) => {
+        if (!isConnectionAlive(client.ws)) {
+          closeConnection(client.ws, 1000, 'Connection timeout');
+          clients.delete(clientId);
+          rateLimiter.removeClient(clientId);
+        } else {
+          sendMessage(client.ws, WS_CONFIG.messageTypes.PING, { timestamp: Date.now() });
+        }
+      });
+    }, WS_CONFIG.timeouts.heartbeat);
+
+    // WebSocket connection handling
+    wss.on('connection', (ws, req) => {
+      const clientId = Math.random().toString(36).substring(2, 9);
+      const clientIp = req.socket.remoteAddress || 'unknown';
+      console.log(`New WebSocket connection from ${clientIp} (ID: ${clientId})`);
+
+      // Store client information
+      clients.set(clientId, {
+        ws,
+        ip: clientIp,
+        connectedAt: new Date()
+      });
+
+      // Send welcome message
+      sendMessage(ws, WS_CONFIG.messageTypes.CONNECTION, {
+        clientId,
+        timestamp: Date.now()
+      });
+
+      ws.on('message', (message) => {
+        try {
+          // Rate limit check
+          if (!rateLimiter.isAllowed(clientId)) {
+            return sendMessage(ws, WS_CONFIG.messageTypes.ERROR, {
+              message: 'Rate limit exceeded',
+              code: 429
+            });
+          }
+
+          const data = JSON.parse(message.toString());
+          
+          // Validate message format
+          if (!validateMessage(data)) {
+            return sendMessage(ws, WS_CONFIG.messageTypes.ERROR, {
+              message: 'Invalid message format',
+              code: 400
+            });
+          }
+
+          console.log('Received:', data);
+          
+          // Handle different message types
+          switch (data.type) {
+            case WS_CONFIG.messageTypes.PING:
+              sendMessage(ws, WS_CONFIG.messageTypes.PONG, {
+                timestamp: Date.now()
+              });
+              break;
+
+            case WS_CONFIG.messageTypes.NODE_UPDATE:
+              broadcastMessage(clients, WS_CONFIG.messageTypes.NODE_UPDATE, {
+                ...data.payload,
+                timestamp: Date.now()
+              }, clientId);
+              break;
+
+            case WS_CONFIG.messageTypes.EDGE_UPDATE:
+              broadcastMessage(clients, WS_CONFIG.messageTypes.EDGE_UPDATE, {
+                ...data.payload,
+                timestamp: Date.now()
+              }, clientId);
+              break;
+
+            case WS_CONFIG.messageTypes.WORKFLOW_UPDATE:
+              broadcastMessage(clients, WS_CONFIG.messageTypes.WORKFLOW_UPDATE, {
+                ...data.payload,
+                timestamp: Date.now()
+              }, clientId);
+              break;
+
+            case WS_CONFIG.messageTypes.CURSOR_POSITION:
+              broadcastMessage(clients, WS_CONFIG.messageTypes.CURSOR_POSITION, {
+                ...data.payload,
+                clientId,
+                timestamp: Date.now()
+              }, clientId);
+              break;
+
+            default:
+              sendMessage(ws, WS_CONFIG.messageTypes.ERROR, {
+                message: `Unknown message type: ${data.type}`,
+                code: 400
+              });
+          }
+        } catch (error) {
+          console.error('WebSocket message error:', error);
+          sendMessage(ws, WS_CONFIG.messageTypes.ERROR, {
+            message: 'Invalid message format',
+            code: 400
+          });
+        }
+      });
+
+      ws.on('close', () => {
+        console.log(`Client ${clientId} disconnected`);
+        clients.delete(clientId);
+        rateLimiter.removeClient(clientId);
+        
+        // Notify other clients
+        broadcastMessage(clients, WS_CONFIG.messageTypes.DISCONNECT, {
+          clientId,
+          timestamp: Date.now()
+        });
+      });
+
+      ws.on('error', (error) => {
+        console.error(`WebSocket error from ${clientId}:`, error);
+        clients.delete(clientId);
+        rateLimiter.removeClient(clientId);
+      });
+    });
+
+    // Error handler for WebSocket server
+    wss.on('error', (error) => {
+      console.error('WebSocket server error:', error);
+    });
+
+    // Cleanup on server shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM signal received: closing WebSocket server');
+      clearInterval(heartbeatInterval);
+      wss.close(() => {
+        console.log('WebSocket server closed');
+      });
+    });
 
     // HTTPS dev server setup using mkcert certificates
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV === "development") {
       const keyPath = path.resolve(__dirname, "../certs/localhost-key.pem");
       const certPath = path.resolve(__dirname, "../certs/localhost.pem");
       if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
         const key = fs.readFileSync(keyPath);
         const cert = fs.readFileSync(certPath);
-        https.createServer({ key, cert }, app).listen(3443, () => {
-          console.log("HTTPS dev server running on https://localhost:3443");
+        const httpsServer = https.createServer({ key, cert }, app);
+        
+        // Create WSS server for HTTPS
+        const wssSecure = new WebSocketServer({ 
+          server: httpsServer,
+          path: WS_CONFIG.path
         });
-      } else {
-        app.listen(3000, () => {
-          console.log(
-            "HTTP dev server running on http://localhost:3000 (certs missing)"
-          );
+        
+        // Apply same handlers to secure WebSocket server
+        wssSecure.on('connection', (ws, req) => {
+          const clientId = Math.random().toString(36).substring(2, 9);
+          const clientIp = req.socket.remoteAddress || 'unknown';
+          console.log(`New secure WebSocket connection from ${clientIp} (ID: ${clientId})`);
+          
+          clients.set(clientId, {
+            ws,
+            ip: clientIp,
+            connectedAt: new Date(),
+            secure: true
+          });
+
+          // Send welcome message
+          ws.send(JSON.stringify({
+            type: 'connection_established',
+            payload: {
+              clientId,
+              secure: true,
+              timestamp: Date.now()
+            }
+          }));
+
+          ws.on('message', (message) => {
+            try {
+              const data: WebSocketMessage = JSON.parse(message.toString());
+              console.log('Received:', data);
+              
+              const enrichedMessage = {
+                ...data,
+                clientId,
+                timestamp: Date.now()
+              };
+
+              switch (data.type) {
+                case 'node_update':
+                case 'edge_update':
+                case 'workflow_update':
+                  broadcastMessage(clients, enrichedMessage, clientId);
+                  break;
+                case 'ping':
+                  ws.send(JSON.stringify({
+                    type: 'pong',
+                    payload: { timestamp: Date.now() }
+                  }));
+                  break;
+                default:
+                  console.warn(`Unknown message type: ${data.type}`);
+              }
+            } catch (error) {
+              console.error('WebSocket message error:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                payload: {
+                  message: 'Invalid message format',
+                  timestamp: Date.now()
+                }
+              }));
+            }
+          });
+
+          ws.on('close', () => {
+            console.log(`Secure client ${clientId} disconnected`);
+            clients.delete(clientId);
+            
+            // Notify other clients about disconnection
+            broadcastMessage(clients, {
+              type: 'client_disconnected',
+              payload: { clientId },
+              timestamp: Date.now()
+            });
+          });
+
+          ws.on('error', (error) => {
+            console.error(`Secure WebSocket error from ${clientId}:`, error);
+            clients.delete(clientId);
+          });
+        });
+        
+        // Start HTTPS server
+        httpsServer.listen(WS_CONFIG.securePort, () => {
+          console.log(`HTTPS server running on port ${WS_CONFIG.securePort}`);
         });
       }
-    } else {
-      server.listen(5000, "0.0.0.0", () => {
-        log("Server running at http://localhost:5000");
-        console.log("Server running at http://localhost:5000"); // Ensure always visible
-      });
     }
+
+    // Start HTTP server
+    server.listen(WS_CONFIG.port, "0.0.0.0", () => {
+      console.log(`Server running at http://0.0.0.0:${WS_CONFIG.port}`);
+    });
+
+    return server;
   } catch (err) {
     console.error("SERVER STARTUP ERROR:", err);
     if (err instanceof Error && err.stack) {
@@ -218,4 +474,19 @@ async function initializeServer() {
   }
 }
 
+// Error handling middleware with logging
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logError(err, {
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+  });
+
+  res.status(500).json({
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
+  });
+});
+
+// Start the server only via initializeServer
 initializeServer();

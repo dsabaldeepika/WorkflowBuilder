@@ -1,5 +1,5 @@
 import { Node, Edge } from "reactflow";
-import { NodeData } from "@/store/useWorkflowStore";
+import { z } from "zod";
 
 // App definitions
 export interface App {
@@ -106,36 +106,6 @@ export interface ScheduleOptions {
   lastRun?: string;
 }
 
-// Workflow definitions
-export interface Workflow {
-  id: string;
-  name: string;
-  nodes: Node<NodeData>[];
-  edges: Edge[];
-  createdAt: string;
-  updatedAt: string;
-  schedule?: ScheduleOptions;
-}
-
-// Workflow template definitions
-export interface WorkflowTemplate {
-  id: number;
-  name: string;
-  description: string | null;
-  category: string;
-  nodes: Node<NodeData>[];
-  edges: Edge[];
-  isOfficial: boolean;
-  imageUrl: string | null;
-  popularity: number;
-  createdAt: string;
-  updatedAt: string;
-  workflowData?: {
-    nodes: Node<NodeData>[];
-    edges: Edge[];
-  };
-}
-
 // Node template definitions for custom node templates
 export interface NodeTemplate {
   id: string;
@@ -234,3 +204,234 @@ export interface PerformanceIssue {
   message: string;
   suggestion: string;
 }
+
+// Zod Schemas
+export const NodeDataSchema = z.object({
+  label: z.string(),
+  nodeType: z.string().optional(),
+  category: z.enum([
+    "trigger",
+    "action",
+    "condition",
+    "data",
+    "integration",
+    "agent",
+    "transformer",
+    "custom",
+    "automation",
+    "ai",
+    "messaging",
+    "crm",
+    "social",
+    "ecommerce",
+    "utility"
+  ]).optional(),
+  icon: z.string().optional(),
+  description: z.string().optional(),
+  config: z.record(z.any()).optional(),
+  state: z.enum(["idle", "running", "success", "error", "warning"]).optional(),
+  backendId: z.number().optional(),
+  inputFields: z.array(
+    z.object({
+      name: z.string(),
+      type: z.string(),
+      required: z.boolean().optional(),
+      description: z.string().optional(),
+      defaultValue: z.any().optional(),
+      validation: z.object({
+        type: z.string(),
+        min: z.number().optional(),
+        max: z.number().optional(),
+        pattern: z.string().optional(),
+        options: z.array(z.any()).optional()
+      }).optional()
+    })
+  ).optional(),
+  outputFields: z.array(
+    z.object({
+      name: z.string(),
+      type: z.string(),
+      description: z.string().optional()
+    })
+  ).optional(),
+  service: z.string().optional(),
+  event: z.string().optional(),
+  action: z.string().optional(),
+  sourceConnectionStatus: z.enum(["success", "error", "pending"]).optional(),
+  targetConnectionStatus: z.enum(["success", "error", "pending"]).optional(),
+  connectionValidated: z.boolean().optional(),
+  ports: z.array(
+    z.object({
+      id: z.string(),
+      type: z.enum(["input", "output"]),
+      dataType: z.string(),
+      required: z.boolean().optional(),
+      allowedConnections: z.array(z.string()).optional(),
+      validation: z.object({
+        type: z.string(),
+        rules: z.array(z.string()).optional()
+      }).optional()
+    })
+  ).optional(),
+  position: z.object({
+    x: z.number(),
+    y: z.number()
+  }).optional(),
+  edges: z.array(z.any()).optional(),
+  name: z.string().optional(),
+  displayName: z.string().optional(),
+  color: z.string().optional(),
+  iconUrl: z.string().optional(),
+  metadata: z.record(z.any()).optional()
+});
+
+export const NodeConfigSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  displayName: z.string(),
+  description: z.string().nullable(),
+  category: z.string(),
+  type: z.string(),
+  icon: z.string().nullable(),
+  color: z.string().nullable(),
+  service: z.string().optional(),
+  version: z.string(),
+  author: z.string().optional(),
+  inputFields: z.array(
+    z.object({
+      name: z.string(),
+      type: z.string(),
+      label: z.string().optional(),
+      description: z.string().optional(),
+      required: z.boolean().optional(),
+      defaultValue: z.any().optional(),
+      validation: z.object({
+        type: z.string(),
+        min: z.number().optional(),
+        max: z.number().optional(),
+        pattern: z.string().optional(),
+        options: z.array(z.any()).optional()
+      }).optional()
+    })
+  ),
+  outputFields: z.array(
+    z.object({
+      name: z.string(),
+      type: z.string(),
+      description: z.string().optional()
+    })
+  ),
+  configuration: z.record(z.any()).optional(),
+  metadata: z.record(z.any()).optional()
+});
+
+export const NodeTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  category: z.enum([
+    "trigger",
+    "action",
+    "condition",
+    "data",
+    "integration",
+    "agent",
+    "transformer",
+    "custom",
+    "automation",
+    "ai",
+    "messaging",
+    "crm",
+    "social",
+    "ecommerce",
+    "utility"
+  ]),
+  nodeType: z.enum([
+    "trigger",
+    "action",
+    "condition",
+    "data",
+    "integration",
+    "agent",
+    "transformer",
+    "connector",
+    "api"
+  ]),
+  icon: z.string(),
+  configuration: z.record(z.any()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  isFavorite: z.boolean(),
+  isCustom: z.boolean(),
+  inputs: z.record(z.any()).optional(),
+  outputs: z.record(z.any()).optional(),
+  ports: z.array(
+    z.object({
+      id: z.string(),
+      type: z.enum(["input", "output"]),
+      dataType: z.string(),
+      required: z.boolean().optional(),
+      allowedConnections: z.array(z.string()).optional()
+    })
+  ).optional()
+});
+
+export const WorkflowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  nodes: z.array(z.any()),
+  edges: z.array(z.any()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  schedule: z.object({
+    enabled: z.boolean(),
+    frequency: z.string(),
+    runCount: z.number()
+  }).optional(),
+  version: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  metadata: z.record(z.any()).optional()
+});
+
+export const WorkflowTemplateSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  category: z.string(),
+  nodes: z.array(z.any()),
+  edges: z.array(z.any()),
+  isOfficial: z.boolean(),
+  imageUrl: z.string().nullable(),
+  popularity: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  workflowData: z.object({
+    nodes: z.array(z.any()),
+    edges: z.array(z.any())
+  }).optional(),
+  version: z.string().optional(),
+  author: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  metadata: z.record(z.any()).optional()
+});
+
+// Type definitions from schemas
+export type NodeData = z.infer<typeof NodeDataSchema>;
+export type NodeConfig = z.infer<typeof NodeConfigSchema>;
+export type Workflow = z.infer<typeof WorkflowSchema>;
+export type WorkflowTemplate = z.infer<typeof WorkflowTemplateSchema>;
+
+// Validation helper functions
+export const validateNodeData = (data: unknown) => NodeDataSchema.parse(data);
+export const validateNodeConfig = (config: unknown) => NodeConfigSchema.parse(config);
+export const validateNodeTemplate = (template: unknown) => NodeTemplateSchema.parse(template);
+export const validateWorkflow = (workflow: unknown) => WorkflowSchema.parse(workflow);
+export const validateWorkflowTemplate = (template: unknown) => WorkflowTemplateSchema.parse(template);
+
+// Type guards
+export const isNodeData = (data: unknown): data is NodeData => NodeDataSchema.safeParse(data).success;
+export const isNodeConfig = (config: unknown): config is NodeConfig => NodeConfigSchema.safeParse(config).success;
+export const isNodeTemplate = (template: unknown): template is NodeTemplate => NodeTemplateSchema.safeParse(template).success;
+export const isWorkflow = (workflow: unknown): workflow is Workflow => WorkflowSchema.safeParse(workflow).success;
+export const isWorkflowTemplate = (template: unknown): template is WorkflowTemplate => WorkflowTemplateSchema.safeParse(template).success;

@@ -28,6 +28,7 @@ import { swaggerSpec } from "./swagger";
 import { SubscriptionTier, SUBSCRIPTION_LIMITS } from "@shared/config";
 import path from "path";
 import fs from "fs";
+import { WebSocket, WebSocketServer } from 'ws';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup middleware
@@ -1453,6 +1454,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
+  // Create HTTP server
   const httpServer = createServer(app);
+  
+  // Create WebSocket server attached to our HTTP server
+  const wss = new WebSocketServer({ 
+    server: httpServer,
+    path: '/ws'
+  });
+
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('New WebSocket connection established');
+
+    ws.on('message', (message: string) => {
+      try {
+        const data = JSON.parse(message);
+        console.log('Received WebSocket message:', data);
+        // Handle different message types here
+        if (data.type === 'node_update') {
+          // Broadcast node updates to all connected clients
+          wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data));
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error handling WebSocket message:', err);
+      }
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+
+    ws.on('close', () => {
+      console.log('Client disconnected');
+    });
+  });
+
+  // Return HTTP server for starting
   return httpServer;
-}
+};

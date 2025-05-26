@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
     // Update the URL hosts to match Replit
     const hostname = req.hostname;
     const modified = data
-      .replace('http://localhost:3000', `https://${hostname}:3000`)
+      .replace('http://localhost:3000', `https://${hostname}:3100`)
       .replace('http://localhost:3001', `https://${hostname}:3001`);
     
     res.send(modified);

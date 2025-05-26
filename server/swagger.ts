@@ -374,6 +374,15 @@ const options: swaggerJsdoc.Options = {
             updatedAt: { type: "string", format: "date-time" },
           },
         },
+        HomeStats: {
+          type: "object",
+          properties: {
+            implementationSpeed: { type: "string", example: "10x Faster" },
+            customerSatisfaction: { type: "number", example: 97 },
+            integrations: { type: "number", example: 500 },
+            roi: { type: "string", example: "ROI in Under 30 Days" },
+          },
+        },
       },
     },
     security: [
@@ -513,6 +522,18 @@ const options: swaggerJsdoc.Options = {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *
+ * /api/home-stats:
+ *   get:
+ *     summary: Get home page statistics
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Home page statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HomeStats'
  */
 
 export const swaggerSpec = swaggerJsdoc(options);

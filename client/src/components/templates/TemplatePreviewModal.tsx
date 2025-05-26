@@ -12,6 +12,9 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkflowTemplate } from "@shared/schema";
 import { Clock, Tag, FileCode, DraftingCompass, LayoutDashboard, Image, Info } from "lucide-react";
+import logger from "@/utils/logger";
+import { useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 // Import template preview images
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
@@ -32,64 +35,207 @@ export function TemplatePreviewModal({
   template,
   onUseTemplate,
 }: TemplatePreviewModalProps) {
+  const { toast } = useToast();
+
+  // Log component mount and unmount with error handling
+  useEffect(() => {
+    try {
+      if (isOpen && template) {
+        logger.component.mount("TemplatePreviewModal", {
+          templateId: template.id,
+          templateName: template.name
+        });
+      }
+      return () => {
+        if (template) {
+          logger.component.unmount("TemplatePreviewModal");
+        }
+      };
+    } catch (error) {
+      logger.error("Error in component lifecycle", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId: template?.id }
+      );
+    }
+  }, [isOpen, template]);
+
   if (!template) return null;
   
-  // Extract nodes and edges data from the template
-  const nodes = template.nodes ? JSON.parse(template.nodes as string) : [];
-  const edges = template.edges ? JSON.parse(template.edges as string) : [];
+  // Extract nodes and edges data from the template with safe parsing
+  let nodes = [];
+  let edges = [];
   
-  // Get complexity badge color
-  const getComplexityColor = (complexity: string) => {
-    switch (complexity) {
-      case 'simple': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'complex': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  try {
+    if (template.workflowData) {
+      logger.debug("Parsing template workflow data", {
+        templateId: template.id,
+        dataType: typeof template.workflowData
+      });
+
+      const data = typeof template.workflowData === 'string' 
+        ? JSON.parse(template.workflowData)
+        : template.workflowData;
+      
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid workflow data format');
+      }
+
+      nodes = Array.isArray(data.nodes) ? data.nodes : [];
+      edges = Array.isArray(data.edges) ? data.edges : [];
+
+      logger.debug("Successfully parsed workflow data", {
+        templateId: template.id,
+        nodesCount: nodes.length,
+        edgesCount: edges.length,
+        nodeTypes: nodes.map((n: { type: string }) => n.type)
+      });
+    }
+  } catch (error) {
+    logger.error("Error parsing workflow data", 
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        templateId: template.id,
+        workflowData: template.workflowData,
+        dataType: typeof template.workflowData
+      }
+    );
+    nodes = [];
+    edges = [];
+  }
+  
+  // Get difficulty badge color with error handling
+  const getDifficultyColor = (difficulty: string) => {
+    try {
+      switch (difficulty.toLowerCase()) {
+        case 'beginner': return 'bg-green-100 text-green-800';
+        case 'intermediate': return 'bg-yellow-100 text-yellow-800';
+        case 'advanced': return 'bg-red-100 text-red-800';
+        default: 
+          logger.warn("Unknown difficulty level", { difficulty });
+          return 'bg-gray-100 text-gray-800';
+      }
+    } catch (error) {
+      logger.error("Error getting difficulty color", 
+        error instanceof Error ? error : new Error(String(error)),
+        { difficulty }
+      );
+      return 'bg-gray-100 text-gray-800';
     }
   };
   
-  // Get the preview image based on template name or ID
+  // Get the preview image with error handling
   const getTemplatePreviewImage = (template: WorkflowTemplate) => {
-    // Match template with preview image based on ID or name
-    
-    // Special case matching for template ID 13 (Pipedrive to Google Sheets)
-    if (template.id === 13 || 
-        (template.name && (
-          template.name.toLowerCase().includes('pipedrive') || 
-          (template.name.toLowerCase().includes('google') && template.name.toLowerCase().includes('sheet'))
-        ))
-    ) {
-      return pipedriveToGoogleSheetsPreview;
+    try {
+      logger.debug("Getting template preview image", {
+        templateId: template.id,
+        templateName: template.name
+      });
+
+      // Match template with preview image based on ID or name
+      if (template.id === 13 || 
+          (template.name && (
+            template.name.toLowerCase().includes('pipedrive') || 
+            (template.name.toLowerCase().includes('google') && template.name.toLowerCase().includes('sheet'))
+          ))
+      ) {
+        logger.debug("Using Pipedrive to Google Sheets preview image", { templateId: template.id });
+        return pipedriveToGoogleSheetsPreview;
+      }
+      
+      // Match by keywords in template name
+      const templateName = template.name.toLowerCase();
+      
+      if (templateName.includes('facebook') && (templateName.includes('hubspot') || templateName.includes('lead'))) {
+        logger.debug("Using Facebook to Hubspot preview image", { templateId: template.id });
+        return facebookToHubspotPreview;
+      } else if (templateName.includes('customer') && templateName.includes('follow')) {
+        logger.debug("Using Customer Follow-up preview image", { templateId: template.id });
+        return customerFollowUpPreview;
+      }
+      
+      // Default placeholder for any other templates
+      logger.debug("Using default template preview image", { templateId: template.id });
+      return defaultTemplatePreview;
+    } catch (error) {
+      logger.error("Error getting template preview image", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId: template.id, templateName: template.name }
+      );
+      return defaultTemplatePreview;
     }
-    
-    // Match by keywords in template name
-    const templateName = template.name.toLowerCase();
-    
-    if (templateName.includes('facebook') && (templateName.includes('hubspot') || templateName.includes('lead'))) {
-      return facebookToHubspotPreview;
-    } else if (templateName.includes('customer') && templateName.includes('follow')) {
-      return customerFollowUpPreview;
-    }
-    
-    // Default placeholder for any other templates
-    return defaultTemplatePreview;
   };
   
+  // Format node type count with error handling
   const formatNodeTypeCount = (nodes: any[]) => {
-    const typeCount: Record<string, number> = {};
-    
-    nodes.forEach(node => {
-      const type = node.type || 'unknown';
-      typeCount[type] = (typeCount[type] || 0) + 1;
-    });
-    
-    return Object.entries(typeCount).map(([type, count]) => (
-      `${count} ${type}${count > 1 ? 's' : ''}`
-    )).join(', ');
+    try {
+      const typeCount: Record<string, number> = {};
+      
+      nodes.forEach(node => {
+        const type = node.type || 'unknown';
+        typeCount[type] = (typeCount[type] || 0) + 1;
+      });
+      
+      const formattedCount = Object.entries(typeCount).map(([type, count]) => (
+        `${count} ${type}${count > 1 ? 's' : ''}`
+      )).join(', ');
+
+      logger.debug("Node type count formatted", {
+        templateId: template.id,
+        typeCount,
+        formattedCount
+      });
+
+      return formattedCount;
+    } catch (error) {
+      logger.error("Error formatting node type count", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId: template.id, nodesCount: nodes.length }
+      );
+      return 'Unknown';
+    }
+  };
+
+  // Handle template use with error handling
+  const handleUseTemplateClick = () => {
+    try {
+      logger.info("Template selected from preview", {
+        templateId: template.id,
+        templateName: template.name,
+        nodesCount: nodes.length,
+        edgesCount: edges.length
+      });
+
+      onUseTemplate(template);
+    } catch (error) {
+      logger.error("Error handling template use", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId: template.id }
+      );
+      toast({
+        title: "Error",
+        description: "Failed to use template. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Handle dialog close with error handling
+  const handleClose = () => {
+    try {
+      logger.debug("Closing template preview", {
+        templateId: template.id
+      });
+      onClose();
+    } catch (error) {
+      logger.error("Error closing template preview", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId: template.id }
+      );
+    }
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">{template.name}</DialogTitle>
@@ -101,14 +247,9 @@ export function TemplatePreviewModal({
         <div className="mt-4">
           {/* Template Details Section */}
           <div className="flex flex-wrap gap-3 items-center mb-6">
-            <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
-              {template.complexity || 'medium'} complexity
+            <Badge variant="secondary" className={`${getDifficultyColor(template.difficulty)} capitalize`}>
+              {template.difficulty}
             </Badge>
-            
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Clock className="h-4 w-4 mr-1" />
-              <span>{template.estimatedDuration || 'Unknown duration'}</span>
-            </div>
             
             <div className="flex items-center text-sm text-muted-foreground">
               <DraftingCompass className="h-4 w-4 mr-1" />
@@ -305,11 +446,11 @@ export function TemplatePreviewModal({
         </div>
         
         <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button 
-            onClick={() => onUseTemplate(template)}
+            onClick={handleUseTemplateClick}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             Configure & Use Template

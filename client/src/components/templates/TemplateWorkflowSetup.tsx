@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { WorkflowTemplate } from "@shared/schema";
@@ -86,6 +86,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { useTemplate } from "@/hooks/useWorkflowTemplates";
+import { WS_CONFIG } from '@shared/websocket-config';
+
+// Initialize WebSocket connection
+const getWebSocketUrl = () => {
+  const location = window.location;
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = WS_CONFIG.host || location.hostname;
+  const port = location.protocol === 'https:' ? WS_CONFIG.securePort : WS_CONFIG.port;
+  
+  return `${protocol}//${host}${port ? `:${port}` : ''}${WS_CONFIG.path}`;
+};
 
 interface TemplateWorkflowSetupProps {
   templateId: string;
@@ -297,44 +309,252 @@ export function NodeTypeCrudModal({
   );
 }
 
+interface WebSocketConfig {
+  reconnect: {
+    enabled: boolean;
+    initialDelay: number;
+    maxDelay: number;
+    multiplier: number;
+    maxAttempts: number;
+  };
+}
+
+interface WebSocketMessage {
+  type: string;
+  payload: any;
+  clientId?: string;
+  timestamp?: number;
+}
+
+/**
+ * WebSocket connection manager class
+ */
+class WebSocketManager {
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private clientId: string | null = null;
+  
+  constructor(
+    private url: string,
+    private onMessage: (data: WebSocketMessage) => void,
+    private onError: (error: Error) => void,
+    private config: WebSocketConfig['reconnect'] = WS_CONFIG.reconnect
+  ) {}
+
+  connect() {
+    try {
+      this.ws = new WebSocket(this.url);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.reconnectAttempts = 0;
+        this.startHeartbeat();
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data: WebSocketMessage = JSON.parse(event.data);
+          
+          // Handle different message types
+          switch (data.type) {
+            case 'connection_established':
+              this.clientId = data.payload.clientId;
+              console.log(`Connection established with ID: ${this.clientId}`);
+              break;
+              
+            case 'pong':
+              // Heartbeat response received
+              break;
+              
+            case 'error':
+              console.error('Server error:', data.payload);
+              this.onError(new Error(data.payload.message));
+              break;
+              
+            case 'client_disconnected':
+              // Handle other client disconnection
+              console.log(`Client ${data.payload.clientId} disconnected`);
+              break;
+              
+            default:
+              // Pass message to handler
+              this.onMessage(data);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      this.ws.onclose = (event) => {
+        console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
+        this.stopHeartbeat();
+        this.attemptReconnect();
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.onError(new Error('WebSocket connection error'));
+        this.attemptReconnect();
+      };
+    } catch (error) {
+      console.error('Error creating WebSocket:', error);
+      this.attemptReconnect();
+    }
+  }
+
+  private startHeartbeat() {
+    // Send ping every 30 seconds to keep connection alive
+    this.heartbeatInterval = setInterval(() => {
+      this.send({
+        type: 'ping',
+        payload: { timestamp: Date.now() }
+      });
+    }, 30000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  private attemptReconnect() {
+    if (!this.config.enabled) return;
+    
+    if (this.config.maxAttempts > 0 && this.reconnectAttempts >= this.config.maxAttempts) {
+      console.log('Max reconnection attempts reached');
+      this.onError(new Error('Failed to reconnect after maximum attempts'));
+      return;
+    }
+
+    const delay = Math.min(
+      this.config.initialDelay * Math.pow(this.config.multiplier, this.reconnectAttempts),
+      this.config.maxDelay
+    );
+
+    console.log(`Attempting to reconnect in ${delay}ms...`);
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect();
+    }, delay);
+  }
+
+  send(data: Omit<WebSocketMessage, 'clientId' | 'timestamp'>) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      const message: WebSocketMessage = {
+        ...data,
+        clientId: this.clientId || undefined,
+        timestamp: Date.now()
+      };
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.warn('WebSocket is not connected. Message not sent:', data);
+      this.onError(new Error('WebSocket is not connected'));
+    }
+  }
+
+  close() {
+    this.stopHeartbeat();
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    if (this.ws) {
+      this.ws.close(1000, 'Client disconnecting');
+      this.ws = null;
+    }
+  }
+}
+
 export function TemplateWorkflowSetup({
   templateId,
 }: TemplateWorkflowSetupProps) {
+  // Initialize WebSocket URL
+  const getWebSocketUrl = () => {
+    const location = window.location;
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = WS_CONFIG.host || location.hostname;
+    const port = location.protocol === 'https:' ? WS_CONFIG.securePort : WS_CONFIG.port;
+    
+    return `${protocol}//${host}${port ? `:${port}` : ''}${WS_CONFIG.path}`;
+  };
+
+  // State hooks - consolidated at top
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [wsUrl] = useState(getWebSocketUrl());
   const [credentials, setCredentials] = useState<Credentials>({});
   const [workflowName, setWorkflowName] = useState("");
   const [workflowDescription, setWorkflowDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [credentialsComplete, setCredentialsComplete] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [expandedNodes, setExpandedNodes] = useState<{
-    [nodeId: string]: boolean;
-  }>({});
   const [showCrudModal, setShowCrudModal] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
-  const { loadWorkflowFromTemplate, saveWorkflow, nodes, edges } =
-    useWorkflowStore();
+  // WebSocket manager ref
+  const wsManager = useRef<WebSocketManager | null>(null);
 
-  // Fetch template details
-  const {
-    data: template,
-    isLoading: isTemplateLoading,
-    error: templateError,
-  } = useTemplate(templateId);
+  // Setup WebSocket connection
+  useEffect(() => {
+    if (!wsManager.current) {
+      wsManager.current = new WebSocketManager(
+        wsUrl,
+        (data) => {
+          // Handle incoming messages
+          if (data.type === 'node_update') {
+            // Update node state
+          } else if (data.type === 'error') {
+            toast({
+              variant: "destructive",
+              title: "Server Error",
+              description: data.message
+            });
+          }
+        },
+        (error) => {
+          toast({
+            variant: "destructive",
+            title: "WebSocket Error",
+            description: "Connection error occurred. Attempting to reconnect..."
+          });
+        }
+      );
+      
+      wsManager.current.connect();
+    }
+    
+    return () => {
+      if (wsManager.current) {
+        wsManager.current.close();
+        wsManager.current = null;
+      }
+    };
+  }, [wsUrl, toast]);
 
-  // Fetch node types from backend
-  const {
-    data: nodeTypes,
-    isLoading: isNodeTypesLoading,
-    error: nodeTypesError,
-  } = useQuery({
+  // Store hooks
+  const { loadWorkflowFromTemplate, saveWorkflow, nodes, edges } = useWorkflowStore();
+
+  // Query hooks
+  const { data: template, isLoading: isTemplateLoading, error: templateError } = useTemplate(templateId);
+  const { data: nodeTypes, isLoading: isNodeTypesLoading } = useQuery({
     queryKey: ["/api/node-types"],
     queryFn: async () => {
       const res = await fetch("/api/node-types");
       if (!res.ok) throw new Error("Failed to fetch node types");
       return res.json();
     },
+    enabled: !!templateId,
   });
 
   // Type guard for workflow data
@@ -381,44 +601,113 @@ export function TemplateWorkflowSetup({
     []
   );
 
-  // Extract workflow data with proper type checking
-  const workflowData =
-    template?.workflowData && isWorkflowData(template.workflowData)
-      ? template.workflowData
-      : { nodes: [], edges: [] };
+  // Show loading state
+  if (isTemplateLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading template...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const templateNodes = workflowData.nodes;
-  const templateEdges = workflowData.edges;
-  const safeTemplateNodes = sanitizeNodes(templateNodes);
+  // Show error state
+  if (templateError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg
+              className="h-12 w-12 mx-auto"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Template</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            {templateError instanceof Error ? templateError.message : 'Failed to load template'}
+          </p>
+          <button
+            onClick={() => navigate('/templates')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          >
+            Return to Templates
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure template exists
+  if (!template) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Template Not Found</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            The requested template could not be found.
+          </p>
+          <button
+            onClick={() => navigate('/templates')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          >
+            Return to Templates
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Extract workflow data with proper type checking and default values
+  const templateNodes = template?.nodes || [];
+  const templateEdges = template?.edges || [];
+  const sanitized = sanitizeNodes(Array.isArray(templateNodes) ? templateNodes : []);
+  const safeTemplateNodes = Array.isArray(sanitized) ? sanitized : [];
 
   // Fetch node type definitions for each node by node_id
   const nodeTypeQueries = useQueries({
     queries: safeTemplateNodes.map((node) => ({
-      queryKey: ["/api/node-types/by-node-id", node.id],
+      queryKey: ["/api/workflow/node-types/by-node-id", node.id],
       queryFn: async () => {
-        const res = await fetch(
-          `/api/node-types/by-node-id/${encodeURIComponent(node.id)}`
-        );
-        if (!res.ok)
-          throw new Error(`Failed to fetch node type for node_id ${node.id}`);
-        return res.json();
+        try {
+          const res = await fetch(
+            `/api/workflow/node-types/by-node-id/${encodeURIComponent(node.id)}`
+          );
+          if (!res.ok)
+            throw new Error(`Failed to fetch node type for node_id ${node.id}`);
+          return res.json();
+        } catch (error) {
+          console.error(`Error fetching node type for ${node.id}:`, error);
+          return null; // Return null for failed requests
+        }
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1, // Only retry once
     })),
-  });
+  );
 
   // Map of node id to node type definition
   const nodeTypeDefs: Record<string, any> = {};
   nodeTypeQueries.forEach((q, idx) => {
-    if (q.data && safeTemplateNodes[idx]) {
+    if (q.data && safeTemplateNodes[idx] && safeTemplateNodes[idx].id) {
       nodeTypeDefs[safeTemplateNodes[idx].id] = q.data;
     }
   });
 
   // Helper to find node type definition by node id
   const getNodeTypeDef = (nodeId: string | undefined) => {
-    if (!nodeId) return undefined;
-    return nodeTypeDefs[nodeId];
+    if (!nodeId) return null;
+    return nodeTypeDefs[nodeId] || null;
   };
 
   // Extract required credentials from the template
@@ -426,91 +715,33 @@ export function TemplateWorkflowSetup({
     if (!template) return;
 
     // Prepare workflow name using template name as a base
-    setWorkflowName(`${template.name} Workflow`);
-    setWorkflowDescription(template.description || "");
+    setWorkflowName(`${template.name || 'New'} Workflow`);
+    setWorkflowDescription(template.description || '');
 
     // Load the workflow data into the store and initialize config for the wizard
     if (templateNodes && templateEdges !== undefined) {
       try {
-        const parsedNodes =
-          typeof templateNodes === "string"
-            ? JSON.parse(templateNodes)
-            : templateNodes;
-
-        let parsedEdges: Edge[];
-        if (typeof templateEdges === "string") {
-          parsedEdges = JSON.parse(templateEdges);
-        } else {
-          parsedEdges = templateEdges;
-        }
-
-        // ** Add console log here to inspect backend node structure **
-        console.log("Backend template nodes structure:", parsedNodes);
+        const parsedNodes = Array.isArray(templateNodes) ? templateNodes : [];
+        const parsedEdges = Array.isArray(templateEdges) ? templateEdges : [];
 
         // Map backend node structure to frontend Node<NodeData> structure
         const frontendNodes: Node<NodeData>[] = parsedNodes.map(
           (backendNode: any) => {
-            // Extract core properties
-            const nodeId = backendNode.id;
-            const nodeType = backendNode.type || "default"; // Use backend type, fallback to default
-            const nodePosition = backendNode.position || { x: 0, y: 0 }; // Default position
+            // Extract core properties with safe defaults
+            const nodeId = backendNode?.id || crypto.randomUUID();
+            const nodeType = backendNode?.type || 'default';
+            const nodePosition = backendNode?.position || { x: 0, y: 0 };
 
             // Extract and infer data properties based on data.name
-            const backendData = backendNode.data || {};
-            // Use label from backendData if present, else fallback to name, then id, then 'Unnamed Node'
-            const dataLabel =
-              backendData.label || backendData.name || nodeId || "Unnamed Node";
-
-            let dataService = "";
-            let dataEvent = "";
-            let dataAction = "";
-            const dataConfig = backendNode.config || backendData.config || {}; // Preserve existing config if any
-
-            // Infer service, event, and action based on backendNodeName (data.name)
-            const lowerCaseName = backendData.name?.toLowerCase() || "";
-
-            if (
-              lowerCaseName.includes("google sheets") ||
-              lowerCaseName.includes("sheet")
-            ) {
-              dataService = "google-sheets";
-              if (lowerCaseName.includes("new row")) dataEvent = "new_row";
-              if (
-                lowerCaseName.includes("write result") ||
-                lowerCaseName.includes("write row")
-              )
-                dataAction = "write_row";
-              // Add more Google Sheets events/actions as needed
-            } else if (
-              lowerCaseName.includes("claude") ||
-              lowerCaseName.includes("openai") ||
-              lowerCaseName.includes("completion")
-            ) {
-              dataService = "openai"; // Map Claude to OpenAI service in frontend
-              if (lowerCaseName.includes("completion"))
-                dataAction = "completion";
-              // Add more OpenAI actions as needed
-            } else if (lowerCaseName.includes("slack")) {
-              dataService = "slack";
-              if (lowerCaseName.includes("send message"))
-                dataAction = "send_message";
-              // Add more Slack actions as needed
-            } else if (lowerCaseName.includes("salesforce")) {
-              dataService = "salesforce";
-              // Add Salesforce events/actions as needed based on name
-            } else if (lowerCaseName.includes("clickup")) {
-              dataService = "clickup";
-              // Add ClickUp events/actions as needed based on name
-            }
-            // Add more service inferences here based on keywords in data.name
+            const backendData = backendNode?.data || {};
+            const dataLabel = backendData.label || backendData.name || nodeId || 'Unnamed Node';
 
             const nodeData: NodeData = {
               label: dataLabel,
-              service: dataService,
-              event: dataEvent,
-              action: dataAction,
-              config: dataConfig,
-              // Include any other necessary data properties here
+              service: backendData.service || '',
+              event: backendData.event || '',
+              action: backendData.action || '',
+              config: backendNode?.config || backendData.config || {},
             };
 
             return {
@@ -518,7 +749,6 @@ export function TemplateWorkflowSetup({
               type: nodeType,
               position: nodePosition,
               data: nodeData,
-              // Include any other necessary top-level node properties here
             };
           }
         );
@@ -526,11 +756,11 @@ export function TemplateWorkflowSetup({
         const safeParsedNodes = sanitizeNodes(frontendNodes);
         loadWorkflowFromTemplate(safeParsedNodes, parsedEdges);
       } catch (err) {
-        console.error("Error loading workflow template:", err);
+        console.error('Error loading workflow template:', err);
         toast({
-          title: "Error loading template",
-          description: "Failed to parse workflow data. Please try again.",
-          variant: "destructive",
+          title: 'Error loading template',
+          description: 'Failed to parse workflow data. Please try again.',
+          variant: 'destructive',
         });
       }
     }
@@ -710,30 +940,54 @@ export function TemplateWorkflowSetup({
     return Math.min(progress, 100);
   }, [workflowName, credentialsComplete, credentials]);
 
-  // Render loading state
-  if (isTemplateLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // WebSocket initialization and cleanup
+  const wsRef = useRef<WebSocketManager | null>(null);
 
-  // Render error state
-  if (templateError) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <Alert variant="destructive">
-          <AlertTitle>Error Loading Template</AlertTitle>
-          <AlertDescription>
-            {templateError instanceof Error
-              ? templateError.message
-              : "Failed to load template"}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const handleWebSocketMessage = (data: WebSocketMessage) => {
+      // Handle different message types
+      switch (data.type) {
+        case 'node_update':
+          // Handle node updates
+          break;
+        case 'edge_update':
+          // Handle edge updates
+          break;
+        case 'workflow_update':
+          // Handle workflow updates
+          break;
+        default:
+          console.warn(`Unhandled message type: ${data.type}`);
+      }
+    };
+
+    const handleWebSocketError = (error: Error) => {
+      toast({
+        title: "WebSocket Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    };
+
+    // Initialize WebSocket connection
+    if (!wsRef.current) {
+      wsRef.current = new WebSocketManager(
+        wsUrl,
+        handleWebSocketMessage,
+        handleWebSocketError
+      );
+      
+      wsRef.current.connect();
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [wsUrl, toast]);
 
   // Render the template setup UI
   return (

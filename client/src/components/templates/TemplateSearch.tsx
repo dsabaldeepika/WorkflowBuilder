@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Card, 
@@ -36,13 +36,15 @@ import {
   List,
   Calendar,
   Info,
-  Check
+  Check,
+  AlertCircle
 } from "lucide-react";
 import { TemplateFavoriteButton } from './TemplateFavoriteButton';
 import { TemplateIntegrationGuide } from './TemplateIntegrationGuide';
 import { useToast } from '@/hooks/use-toast';
 import { ContactFormDialog } from '@/components/dialogs/ContactFormDialog';
 import { TemplateRequestDialog } from '@/components/dialogs/TemplateRequestDialog';
+import logger from '@/utils/logger';
 
 // Import template preview images
 import defaultTemplatePreview from "@/assets/templates/workflow-template-placeholder.svg";
@@ -65,10 +67,10 @@ const CATEGORIES = [
 ];
 
 const COMPLEXITY_OPTIONS = [
-  { value: 'all', label: 'All Complexity' },
-  { value: 'simple', label: 'Simple' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'complex', label: 'Complex' }
+  { value: 'all', label: 'All Difficulty' },
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' }
 ];
 
 const SORT_OPTIONS = [
@@ -89,6 +91,116 @@ export function TemplateSearch() {
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Log component mount
+  useEffect(() => {
+    logger.component.mount("TemplateSearch", {
+      initialFilters: {
+        searchTerm,
+        selectedCategory,
+        selectedComplexity,
+        sortBy,
+        showFavoritesOnly
+      }
+    });
+    return () => {
+      logger.component.unmount("TemplateSearch");
+    };
+  }, []);
+
+  // Handle favorite toggle with error handling
+  const handleFavoriteToggle = async (templateId: number, initialFavorited: boolean) => {
+    try {
+      logger.debug("Attempting to toggle template favorite", {
+        templateId,
+        initialFavorited,
+        currentFavorites: favoriteIds
+      });
+
+      const newFavorites = initialFavorited
+        ? [...favoriteIds, templateId]
+        : favoriteIds.filter(id => id !== templateId);
+      
+      // Save to localStorage with error handling
+      try {
+        localStorage.setItem('favoriteTemplates', JSON.stringify(newFavorites));
+        logger.debug("Successfully saved favorites to localStorage", {
+          templateId,
+          newFavoriteCount: newFavorites.length
+        });
+      } catch (storageError) {
+        logger.error("Failed to save favorites to localStorage", 
+          storageError instanceof Error ? storageError : new Error(String(storageError)),
+          { templateId, newFavorites }
+        );
+        toast({
+          title: "Error",
+          description: "Failed to save favorite status. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setFavoriteIds(newFavorites);
+      
+      logger.info("Template favorite status updated", {
+        templateId,
+        initialFavorited,
+        newFavoriteCount: newFavorites.length
+      });
+    } catch (error) {
+      logger.error("Unexpected error toggling template favorite", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId, initialFavorited }
+      );
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load favorites from localStorage with error handling
+  useEffect(() => {
+    try {
+      logger.debug("Attempting to load favorites from localStorage");
+      const savedFavorites = localStorage.getItem('favoriteTemplates');
+      
+      if (savedFavorites) {
+        try {
+          const favorites = JSON.parse(savedFavorites);
+          if (!Array.isArray(favorites)) {
+            throw new Error('Invalid favorites data format');
+          }
+          
+          logger.info("Successfully loaded favorites from localStorage", {
+            favoriteCount: favorites.length
+          });
+          setFavoriteIds(favorites);
+        } catch (parseError) {
+          logger.error("Failed to parse favorites from localStorage", 
+            parseError instanceof Error ? parseError : new Error(String(parseError)),
+            { savedFavorites }
+          );
+          // Reset favorites if data is corrupted
+          localStorage.removeItem('favoriteTemplates');
+          setFavoriteIds([]);
+        }
+      } else {
+        logger.debug("No saved favorites found in localStorage");
+      }
+    } catch (error) {
+      logger.error("Unexpected error loading favorites", 
+        error instanceof Error ? error : new Error(String(error))
+      );
+      toast({
+        title: "Error",
+        description: "Failed to load favorite templates. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
   // Build the query string based on filters
   const buildQueryString = () => {
     const params = new URLSearchParams();
@@ -107,39 +219,139 @@ export function TemplateSearch() {
     
     params.append('sort', sortBy);
     
-    return params.toString();
+    const queryString = params.toString();
+    logger.debug("Built query string", { queryString, filters: { searchTerm, selectedCategory, selectedComplexity, sortBy } });
+    return queryString;
   };
 
-  // Load favorites from localStorage
-  useEffect(() => {
-    const savedFavorites = localStorage.getItem('favoriteTemplates');
-    if (savedFavorites) {
-      try {
-        const favorites = JSON.parse(savedFavorites);
-        setFavoriteIds(favorites);
-      } catch (e) {
-        console.error('Error parsing favorites from localStorage:', e);
-        setFavoriteIds([]);
-      }
-    }
-  }, []);
-  
   // Fetch templates with filters
-  const { data: templates, isLoading, isError } = useQuery<WorkflowTemplate[]>({
+  const { data: templates, isLoading, isError, error, refetch } = useQuery<WorkflowTemplate[]>({
     queryKey: ['/api/workflow/templates', searchTerm, selectedCategory, selectedComplexity, sortBy],
     queryFn: async () => {
-      const queryStr = buildQueryString();
-      const url = `/api/workflow/templates${queryStr ? `?${queryStr}` : ''}`;
-      return fetch(url).then(res => res.json());
-    }
+      try {
+        const queryStr = buildQueryString();
+        const url = `/api/workflow/templates${queryStr ? `?${queryStr}` : ''}`;
+        
+        logger.api.request("GET", url);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const error = new Error(errorData.message || 'Failed to fetch templates');
+          logger.api.error("GET", url, error);
+          throw error;
+        }
+        
+        const data = await response.json();
+        
+        // Validate the response data
+        if (!Array.isArray(data)) {
+          const error = new Error('Invalid template data received');
+          logger.api.error("GET", url, error);
+          throw error;
+        }
+        
+        logger.api.response("GET", url, response.status, { templateCount: data.length });
+        return data;
+      } catch (error) {
+        logger.error("Error fetching templates", error instanceof Error ? error : new Error(String(error)));
+        throw error;
+      }
+    },
+    retry: 3,
+    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
   
-  // Filter templates by favorites if the option is selected
-  const filteredTemplates = templates ? (
-    showFavoritesOnly 
-      ? templates.filter(template => favoriteIds.includes(template.id))
-      : templates
-  ) : [];
+  // Monitor and log filter changes
+  useEffect(() => {
+    try {
+      logger.state.change(
+        "TemplateSearch",
+        "FILTERS_CHANGED",
+        {
+          searchTerm: "",
+          selectedCategory: "all",
+          selectedComplexity: "all",
+          sortBy: "name",
+          showFavoritesOnly: false
+        },
+        {
+          searchTerm,
+          selectedCategory,
+          selectedComplexity,
+          sortBy,
+          showFavoritesOnly
+        }
+      );
+    } catch (error) {
+      logger.error("Error logging filter changes", 
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
+  }, [searchTerm, selectedCategory, selectedComplexity, sortBy, showFavoritesOnly]);
+
+  // Filter templates with error handling
+  const getFilteredTemplates = useCallback(() => {
+    try {
+      if (!templates) return [];
+
+      logger.debug("Filtering templates", {
+        totalTemplates: templates.length,
+        filters: {
+          showFavoritesOnly,
+          searchTerm,
+          selectedCategory,
+          selectedComplexity
+        }
+      });
+
+      let filtered = [...templates];
+
+      // Apply filters
+      if (showFavoritesOnly) {
+        filtered = filtered.filter(template => favoriteIds.includes(template.id));
+      }
+
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase().trim();
+        filtered = filtered.filter(template => 
+          template.name.toLowerCase().includes(searchLower) ||
+          (template.description?.toLowerCase() || '').includes(searchLower) ||
+          template.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+        );
+      }
+
+      if (selectedCategory !== 'all') {
+        filtered = filtered.filter(template => template.category === selectedCategory);
+      }
+
+      if (selectedComplexity !== 'all') {
+        filtered = filtered.filter(template => template.difficulty === selectedComplexity);
+      }
+
+      logger.debug("Templates filtered", {
+        totalTemplates: templates.length,
+        filteredCount: filtered.length,
+        filters: {
+          showFavoritesOnly,
+          searchTerm,
+          selectedCategory,
+          selectedComplexity
+        }
+      });
+
+      return filtered;
+    } catch (error) {
+      logger.error("Error filtering templates", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templatesCount: templates?.length }
+      );
+      return [];
+    }
+  }, [templates, showFavoritesOnly, searchTerm, selectedCategory, selectedComplexity, favoriteIds]);
+
+  // Apply filters and memoize results
+  const filteredTemplates = useMemo(() => getFilteredTemplates(), [getFilteredTemplates]);
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
@@ -150,13 +362,38 @@ export function TemplateSearch() {
     }
   };
   
-  const handleUseTemplate = (template: WorkflowTemplate) => {
-    toast({
-      title: "Template selected",
-      description: `Preparing "${template.name}" template for setup...`,
-    });
-    // Navigate to the new template setup page
-    window.location.href = `/template-setup/${template.id}`;
+  // Handle template use with error handling
+  const handleUseTemplate = async (template: WorkflowTemplate) => {
+    try {
+      logger.info("Initiating template setup", {
+        templateId: template.id,
+        templateName: template.name
+      });
+
+      toast({
+        title: "Template selected",
+        description: `Preparing "${template.name}" template for setup...`,
+      });
+
+      // Log navigation attempt
+      logger.debug("Navigating to template setup page", {
+        templateId: template.id,
+        url: `/template-setup/${template.id}`
+      });
+
+      // Navigate to the new template setup page
+      window.location.href = `/template-setup/${template.id}`;
+    } catch (error) {
+      logger.error("Failed to initiate template setup", 
+        error instanceof Error ? error : new Error(String(error)),
+        { templateId: template.id, templateName: template.name }
+      );
+      toast({
+        title: "Error",
+        description: "Failed to load template setup. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Get appropriate preview image based on template name and ID
@@ -217,6 +454,107 @@ export function TemplateSearch() {
   };
   
   const categoryCounts = getCategoryCounts();
+
+  // Get complexity badge color based on difficulty
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty.toLowerCase()) {
+      case 'beginner': return 'bg-green-100 text-green-800';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
+      case 'advanced': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Show loading state with logging
+  if (isLoading) {
+    logger.debug("Templates loading state active");
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Keep the search filters visible while loading */}
+            <div className="mb-8">
+              {/* ... existing search filters ... */}
+            </div>
+            
+            {/* Loading skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-md p-6 animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state with logging
+  if (isError) {
+    logger.error("Template loading error", 
+      error instanceof Error ? error : new Error(String(error))
+    );
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-7xl mx-auto text-center">
+            <div className="bg-white rounded-xl shadow-md p-8 max-w-lg mx-auto">
+              <div className="text-red-500 mb-4">
+                <AlertCircle className="h-12 w-12 mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Templates</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {error instanceof Error ? error.message : 'Failed to load templates'}
+              </p>
+              <Button onClick={() => refetch()} className="mx-auto">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state with logging
+  if (filteredTemplates.length === 0) {
+    logger.debug("No templates found matching filters", {
+      filters: {
+        searchTerm,
+        selectedCategory,
+        selectedComplexity,
+        showFavoritesOnly
+      }
+    });
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-7xl mx-auto text-center">
+            <div className="bg-white rounded-xl shadow-md p-8 max-w-lg mx-auto">
+              <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Templates Found</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Try adjusting your search filters or browse all templates.
+              </p>
+              <Button onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('all');
+                setSelectedComplexity('all');
+                setSortBy('name');
+                setShowFavoritesOnly(false);
+              }} variant="outline" className="mx-auto">
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50">
@@ -440,34 +778,6 @@ export function TemplateSearch() {
           </div>
         )}
         
-        {/* Loading state */}
-        {isLoading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin h-12 w-12 border-4 border-primary/30 border-t-primary rounded-full" />
-            <span className="ml-3 text-lg text-gray-700">Loading amazing templates...</span>
-          </div>
-        )}
-        
-        {/* Error state */}
-        {isError && (
-          <div className="text-center py-16 bg-red-50 rounded-xl border border-red-100">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileBadge className="h-8 w-8 text-red-600" />
-            </div>
-            <h3 className="text-xl font-bold text-red-800 mb-2">Failed to load templates</h3>
-            <p className="text-red-600 mb-4 max-w-md mx-auto">
-              We encountered an error while loading the templates. Please try again later or contact support if the issue persists.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => window.location.reload()}
-              className="border-red-300 text-red-700 hover:bg-red-50"
-            >
-              Try Again
-            </Button>
-          </div>
-        )}
-        
         {/* Template grid */}
         {!isLoading && filteredTemplates.length > 0 && (
           <>
@@ -506,86 +816,57 @@ export function TemplateSearch() {
             
             {/* Grid View */}
             {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredTemplates.map((template) => (
-                  <Card key={template.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 border-gray-200 overflow-hidden group">
-                    {/* Image Preview */}
-                    <div className="relative h-48 bg-gradient-to-tr from-indigo-50 to-blue-50 overflow-hidden">
-                      <img 
-                        src={getTemplatePreviewImage(template)}
-                        alt={`${template.name} workflow preview`}
-                        className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-300 p-4"
-                      />
-                      <div className="absolute top-3 right-3">
-                        <TemplateFavoriteButton 
-                          templateId={template.id} 
+                  <Card key={template.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+                    <CardHeader className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg mb-1 line-clamp-2">{template.name}</CardTitle>
+                          <CardDescription className="line-clamp-2">{template.description}</CardDescription>
+                        </div>
+                        <TemplateFavoriteButton
+                          templateId={template.id}
                           initialFavorited={favoriteIds.includes(template.id)}
-                          onFavoriteChange={(templateId, isFavorited) => {
-                            const newFavorites = isFavorited 
-                              ? [...favoriteIds, templateId]
-                              : favoriteIds.filter(id => id !== templateId);
-                            setFavoriteIds(newFavorites);
-                          }}
+                          onFavoriteChange={handleFavoriteToggle}
                         />
                       </div>
-                    </div>
-                    
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-xl group-hover:text-indigo-700 transition-colors duration-200">
-                            {template.name}
-                          </CardTitle>
-                          <CardDescription className="mt-1 line-clamp-2 h-10">
-                            {template.description}
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="flex-grow pb-3">
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {template.tags?.slice(0, 3).map((tag, index) => (
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary" className={`${getDifficultyColor(template.difficulty)} capitalize`}>
+                          {template.difficulty}
+                        </Badge>
+                        {template.category && (
+                          <Badge variant="outline" className="capitalize">
+                            {template.category}
+                          </Badge>
+                        )}
+                        {template.tags?.map((tag, index) => (
                           <Badge key={index} variant="outline" className="bg-gray-50">
                             {tag}
                           </Badge>
                         ))}
-                        {(template.tags?.length || 0) > 3 && (
-                          <Badge variant="outline" className="bg-gray-50">
-                            +{(template.tags?.length || 0) - 3} more
-                          </Badge>
-                        )}
                       </div>
-                      
+                    </CardHeader>
+                    <CardContent>
                       <div className="flex gap-4 text-xs text-gray-500">
                         <div className="flex items-center">
                           <FileBadge className="h-3.5 w-3.5 mr-1" />
                           <span className="capitalize">{template.category?.replace(/-/g, ' ')}</span>
                         </div>
-                        <div className="flex items-center">
-                          <Clock className="h-3.5 w-3.5 mr-1" />
-                          <span>{template.estimatedDuration}</span>
-                        </div>
                       </div>
                     </CardContent>
-                    
                     <CardFooter className="pt-3 border-t border-gray-100">
                       <div className="w-full">
-                        <div className="flex flex-wrap justify-between items-center mb-2">
-                          <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
-                            {template.complexity || 'medium'} complexity
-                          </Badge>
+                        <div className="flex justify-between items-center">
                           <Button 
                             size="sm" 
                             onClick={() => handleUseTemplate(template)}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm group-hover:shadow-md"
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-all duration-200 shadow-sm hover:shadow-md"
                           >
                             <Zap className="h-3.5 w-3.5 mr-2" />
                             Use Template
                           </Button>
-                        </div>
-                        <div className="flex justify-center w-full">
-                          <TemplateIntegrationGuide template={template} variant="gradient" className="w-full" />
+                          <TemplateIntegrationGuide template={template} variant="gradient" />
                         </div>
                       </div>
                     </CardFooter>
@@ -611,12 +892,7 @@ export function TemplateSearch() {
                           <TemplateFavoriteButton 
                             templateId={template.id} 
                             initialFavorited={favoriteIds.includes(template.id)}
-                            onFavoriteChange={(templateId, isFavorited) => {
-                              const newFavorites = isFavorited 
-                                ? [...favoriteIds, templateId]
-                                : favoriteIds.filter(id => id !== templateId);
-                              setFavoriteIds(newFavorites);
-                            }}
+                            onFavoriteChange={handleFavoriteToggle}
                           />
                         </div>
                       </div>
@@ -649,19 +925,10 @@ export function TemplateSearch() {
                             <FileBadge className="h-4 w-4 mr-1 text-indigo-600" />
                             <span className="capitalize">{template.category?.replace(/-/g, ' ')}</span>
                           </div>
-                          {template.estimatedDuration && (
-                            <div className="flex items-center">
-                              <Clock className="h-4 w-4 mr-1 text-indigo-600" />
-                              <span>{template.estimatedDuration}</span>
-                            </div>
-                          )}
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1 text-indigo-600" />
                             <span>Updated {template.updatedAt ? new Date(template.updatedAt).toLocaleDateString() : 'recently'}</span>
                           </div>
-                          <Badge variant="secondary" className={`${getComplexityColor(template.complexity || 'medium')} capitalize`}>
-                            {template.complexity || 'medium'} complexity
-                          </Badge>
                         </div>
                         
                         <div className="flex flex-wrap justify-between items-center gap-2">
